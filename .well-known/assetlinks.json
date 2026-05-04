@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.gamkers.ghostchip",
+      "sha256_cert_fingerprints": [
+        "0D:13:84:F3:2D:47:B6:D1:1F:93:CC:79:B8:CA:93:88:65:43:43:31:3F:58:EB:2E:F4:5D:E8:74:57:2E:47:16"
+      ]
+    }
+  }
+]
