@@ -325,8 +325,10 @@ function clearApiKey() {
 }
 // Try to load API key from device EEPROM on startup
 // The device embeds the key in /aigenerate page as: const SAVED_KEY = "gsk_...";
+// Only runs when on the device (HTTP same-origin), not from GitHub Pages (HTTPS)
 async function loadApiKeyFromDevice() {
   if (GROQ_KEY) return; // already have a key from localStorage
+  if (location.protocol === 'https:') return; // can't fetch HTTP device from HTTPS page
   try {
     const url = BASE() + '/aigenerate';
     const r = await fetch(url);
