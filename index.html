@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#0a0a0a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>GhostChip</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ══ BOOT SCREEN ══ -->
+<div id="boot" class="boot">
+  <div class="boot-icon">⚡</div>
+  <div class="boot-brand">GHOST<span>CHIP</span></div>
+  <div class="boot-sub">ESP32-S3 Security Toolkit</div>
+  <div class="boot-log" id="bootLog"></div>
+  <div class="boot-progress"><div class="boot-bar" id="bootBar"></div></div>
+  <div class="boot-by">by GAMKERS</div>
+</div>
+
+<!-- ══ LEGAL MODAL ══ -->
+<div id="legalModal" class="modal-overlay" style="display:none">
+  <div class="modal-card">
+    <div class="modal-icon">🛡️</div>
+    <h3 class="modal-title">Legal & Ethical Notice</h3>
+    <div class="modal-body">
+      <p><strong>GhostChip</strong> is for authorized security testing only.</p>
+      <ul>
+        <li>Use only on systems you <strong>own</strong> or have <strong>written permission</strong></li>
+        <li>Unauthorized access is a criminal offense</li>
+        <li>GAMKERS accepts no responsibility for misuse</li>
+      </ul>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="location='about:blank'">Decline</button>
+      <button class="btn btn-primary" id="acceptBtn">I Accept</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ TOAST CONTAINER ══ -->
+<div id="toasts"></div>
+
+<!-- ══ APP SHELL ══ -->
+<div class="app" id="app" style="display:none">
+
+  <!-- Status Bar -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <div class="conn-dot" id="connDot"></div>
+      <span class="topbar-brand">GhostChip</span>
+    </div>
+    <div class="topbar-right">
+      <span class="topbar-ip" id="topIp">ghostchip.local</span>
+      <button class="icon-btn" onclick="showSettings()" title="Settings">⚙</button>
+    </div>
+  </header>
+
+  <!-- ══ PAGES ══ -->
+  <main class="pages">
+
+    <!-- ── PAGE: SCRIPTS ── -->
+    <section class="page active" id="page-scripts">
+      <!-- Presets -->
+      <div class="section-head">
+        <h2>DuckyScript</h2>
+        <button class="chip" onclick="togglePresets()">Presets ▾</button>
+      </div>
+      <div class="presets-drawer" id="presetsDrawer">
+        <div class="preset-grid">
+          <button class="preset" onclick="loadPreset('win-run')"><span class="preset-os">WIN</span>Run Dialog</button>
+          <button class="preset" onclick="loadPreset('win-term')"><span class="preset-os">WIN</span>Terminal</button>
+          <button class="preset" onclick="loadPreset('win-info')"><span class="preset-os">WIN</span>Sys Info</button>
+          <button class="preset" onclick="loadPreset('win-wifi')"><span class="preset-os">WIN</span>WiFi Pass</button>
+          <button class="preset" onclick="loadPreset('mac-spot')"><span class="preset-os">MAC</span>Spotlight</button>
+          <button class="preset" onclick="loadPreset('mac-term')"><span class="preset-os">MAC</span>Terminal</button>
+          <button class="preset" onclick="loadPreset('lnx-term')"><span class="preset-os">LNX</span>Terminal</button>
+          <button class="preset" onclick="loadPreset('lnx-recon')"><span class="preset-os">LNX</span>Recon</button>
+        </div>
+      </div>
+
+      <!-- Editor -->
+      <div class="card editor-card">
+        <div class="editor-toolbar">
+          <div class="file-info">
+            <span class="file-dot"></span>
+            <span id="fileName">untitled.txt</span>
+            <span class="line-count" id="lineCount">0 lines</span>
+          </div>
+          <div class="toolbar-actions">
+            <button class="icon-btn sm" onclick="document.getElementById('fileIn').click()" title="Open">📂</button>
+            <button class="icon-btn sm" onclick="clearEditor()" title="Clear">✕</button>
+          </div>
+        </div>
+        <div class="editor-wrap">
+          <div class="line-nums" id="lineNums"><span>1</span></div>
+          <textarea id="editor" spellcheck="false" placeholder="REM Your DuckyScript here...&#10;DELAY 500&#10;GUI r&#10;STRING notepad&#10;ENTER"></textarea>
+        </div>
+        <input type="file" id="fileIn" accept=".txt,.ducky,.ds" style="display:none" onchange="openFile(event)">
+      </div>
+
+      <!-- Live Terminal -->
+      <div class="card terminal-card">
+        <div class="terminal-head">
+          <div class="exec-indicator">
+            <div class="exec-dot" id="execDot"></div>
+            <span id="execLabel">Ready</span>
+          </div>
+          <button class="icon-btn sm" onclick="clearTerm()" title="Clear">🗑</button>
+        </div>
+        <div class="terminal" id="terminal">
+          <span class="t-dim">// output appears here...</span>
+        </div>
+      </div>
+
+      <!-- Run -->
+      <button class="btn btn-execute" id="runBtn" onclick="runScript()">
+        <span class="btn-icon">▶</span> EXECUTE
+      </button>
+    </section>
+
+    <!-- ── PAGE: SCAN ── -->
+    <section class="page" id="page-scan">
+      <div class="section-head"><h2>Network Scanner</h2></div>
+
+      <!-- Scan Tabs -->
+      <div class="seg-control">
+        <button class="seg active" id="seg-wifi" onclick="switchScan('wifi')">WiFi</button>
+        <button class="seg" id="seg-ble" onclick="switchScan('ble')">BLE</button>
+        <button class="seg" id="seg-deauth" onclick="switchScan('deauth')">Deauth</button>
+      </div>
+
+      <!-- WiFi Panel -->
+      <div class="scan-panel active" id="scan-wifi">
+        <button class="btn btn-scan" onclick="scanWifi()">
+          <span class="scan-icon">📡</span> Scan WiFi Networks
+        </button>
+        <div id="wifiResults" class="results-list">
+          <div class="empty-state">Tap scan to discover networks</div>
+        </div>
+      </div>
+
+      <!-- BLE Panel -->
+      <div class="scan-panel" id="scan-ble">
+        <button class="btn btn-scan" onclick="scanBle()">
+          <span class="scan-icon">📶</span> Scan BLE Devices
+        </button>
+        <div id="bleResults" class="results-list">
+          <div class="empty-state">Tap scan to discover BLE devices</div>
+        </div>
+      </div>
+
+      <!-- Deauth Panel -->
+      <div class="scan-panel" id="scan-deauth">
+        <div class="deauth-controls">
+          <button class="btn btn-scan" onclick="deauthStart()">▶ Start Monitor</button>
+          <button class="btn btn-danger-sm" onclick="deauthStop()">■ Stop</button>
+        </div>
+        <div class="deauth-status">
+          <div class="dd-dot" id="ddDot"></div>
+          <span id="ddLabel">Stopped</span>
+        </div>
+        <div id="deauthLog" class="terminal deauth-log">
+          <span class="t-dim">// Passive 802.11 deauth detector</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── PAGE: AI ── -->
+    <section class="page" id="page-ai">
+      <div class="section-head"><h2>AI Generator</h2></div>
+      <div class="card">
+        <p class="card-desc">Describe your payload — AI writes the DuckyScript.</p>
+        <div class="ai-tags">
+          <button class="ai-tag" onclick="fillAi('Open cmd as admin on Windows')">CMD Admin</button>
+          <button class="ai-tag" onclick="fillAi('Download file with PowerShell')">PS Download</button>
+          <button class="ai-tag" onclick="fillAi('Extract saved WiFi passwords')">WiFi Pass</button>
+          <button class="ai-tag" onclick="fillAi('Open Terminal on macOS')">macOS Term</button>
+          <button class="ai-tag" onclick="fillAi('Disable Windows Defender')">Kill Defender</button>
+          <button class="ai-tag" onclick="fillAi('Open browser to URL on Windows')">Open URL</button>
+        </div>
+        <textarea id="aiPrompt" class="ai-input" placeholder="e.g. Open PowerShell as admin, disable firewall..."></textarea>
+        <button class="btn btn-primary full" id="aiGenBtn" onclick="aiGenerate()">
+          ⚡ Generate DuckyScript
+        </button>
+      </div>
+      <div class="card" id="aiOutputCard" style="display:none">
+        <div class="card-head">Generated Script</div>
+        <textarea id="aiOutput" class="code-output" readonly></textarea>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="aiExec()">▶ Execute</button>
+          <button class="btn btn-ghost" onclick="aiCopy()">Copy</button>
+          <button class="btn btn-ghost" onclick="aiToEditor()">→ Editor</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── PAGE: TOOLS ── -->
+    <section class="page" id="page-tools">
+      <div class="section-head"><h2>Tools</h2></div>
+
+      <!-- NeoPixel -->
+      <div class="card">
+        <div class="card-head">💡 NeoPixel Control</div>
+        <div class="neo-row">
+          <div class="toggle-wrap">
+            <div class="toggle" id="neoToggle" onclick="neoToggle()"></div>
+            <span id="neoLabel">OFF</span>
+          </div>
+          <div class="neo-preview" id="neoPreview"></div>
+        </div>
+        <div class="slider-group">
+          <label>Brightness</label>
+          <input type="range" id="neoBright" min="0" max="255" value="80" oninput="neoUpdate()">
+          <span class="slider-val" id="neoBrightV">80</span>
+        </div>
+        <div class="slider-group"><label class="c-red">R</label><input type="range" id="neoR" min="0" max="255" value="0" oninput="neoUpdate()"><span class="slider-val" id="neoRV">0</span></div>
+        <div class="slider-group"><label class="c-green">G</label><input type="range" id="neoG" min="0" max="255" value="255" oninput="neoUpdate()"><span class="slider-val" id="neoGV">255</span></div>
+        <div class="slider-group"><label class="c-blue">B</label><input type="range" id="neoB" min="0" max="255" value="65" oninput="neoUpdate()"><span class="slider-val" id="neoBV">65</span></div>
+        <div class="color-dots">
+          <div class="cdot" style="--c:#00ff41" onclick="neoSet(0,255,65)"></div>
+          <div class="cdot" style="--c:#ff3333" onclick="neoSet(255,0,0)"></div>
+          <div class="cdot" style="--c:#3388ff" onclick="neoSet(0,80,255)"></div>
+          <div class="cdot" style="--c:#ffcc00" onclick="neoSet(255,200,0)"></div>
+          <div class="cdot" style="--c:#aa33ff" onclick="neoSet(128,0,255)"></div>
+          <div class="cdot" style="--c:#00ffff" onclick="neoSet(0,255,255)"></div>
+          <div class="cdot" style="--c:#ff6600" onclick="neoSet(255,80,0)"></div>
+          <div class="cdot" style="--c:#ff1493" onclick="neoSet(255,20,120)"></div>
+        </div>
+        <button class="btn btn-primary full" onclick="neoApply()">Apply & Save</button>
+      </div>
+
+      <!-- OTA -->
+      <div class="card">
+        <div class="card-head">📦 Firmware Update</div>
+        <form method="POST" action="/update" enctype="multipart/form-data" id="otaForm">
+          <div class="dropzone" id="dropzone" onclick="document.getElementById('fwFile').click()">
+            <div class="dz-icon">⬆</div>
+            <div>Drop or tap to select <strong>.bin</strong></div>
+            <input type="file" id="fwFile" name="update" accept=".bin" style="display:none" onchange="fwPick(this)">
+          </div>
+          <div id="fwInfo" class="fw-info" style="display:none"></div>
+          <div class="ota-bar-wrap" id="otaBarWrap" style="display:none">
+            <div class="ota-bar" id="otaBar"></div>
+          </div>
+          <button type="submit" class="btn btn-primary full" id="flashBtn" disabled>⚡ Flash Firmware</button>
+        </form>
+      </div>
+
+      <!-- Device Info -->
+      <div class="card">
+        <div class="card-head">ℹ️ Device Info</div>
+        <div class="info-grid">
+          <div class="info-item"><span class="info-k">Firmware</span><span class="info-v">Ghost Chip v2.0</span></div>
+          <div class="info-item"><span class="info-k">Chip</span><span class="info-v">ESP32-S3</span></div>
+          <div class="info-item"><span class="info-k">Build</span><span class="info-v">GAMKERS</span></div>
+          <div class="info-item"><span class="info-k">AP IP</span><span class="info-v">192.168.4.1</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── PAGE: SETTINGS ── -->
+    <section class="page" id="page-settings">
+      <div class="section-head"><h2>Settings</h2></div>
+
+      <!-- Connection -->
+      <div class="card">
+        <div class="card-head">🔗 Connection</div>
+        <div class="input-group">
+          <label>Device IP</label>
+          <div class="input-row">
+            <input type="text" id="ipInput" value="ghostchip.local" class="input" placeholder="ghostchip.local">
+            <button class="btn btn-ghost" onclick="pingDevice()">PING</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- API Key -->
+      <div class="card">
+        <div class="card-head">🔑 API Key (Groq)</div>
+        <div class="input-group">
+          <label>API Key (saved to EEPROM)</label>
+          <div class="input-row">
+            <input type="password" id="apiKeyInput" class="input" placeholder="gsk_...">
+            <button class="btn btn-ghost" onclick="togglePass('apiKeyInput',this)">SHOW</button>
+          </div>
+          <p class="input-hint">Key is stored on device. Never leaves the chip.</p>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="saveApiKey()">Save</button>
+          <button class="btn btn-danger-sm" onclick="clearApiKey()">Clear</button>
+        </div>
+      </div>
+
+      <!-- WiFi Connect -->
+      <div class="card">
+        <div class="card-head">📶 WiFi Station</div>
+        <button class="btn btn-ghost full" onclick="scanWifiSettings()">Scan Networks</button>
+        <div id="wifiSettingsList" class="wifi-list"></div>
+        <div class="input-group" id="wifiPassGroup" style="display:none">
+          <label>Password for <strong id="wifiSelSsid"></strong></label>
+          <input type="password" id="wifiPassInput" class="input" placeholder="WiFi password">
+          <button class="btn btn-primary full" onclick="connectWifi()">Connect</button>
+        </div>
+        <div class="wifi-status" id="wifiStatusCard">
+          <div class="info-item"><span class="info-k">Status</span><span class="info-v" id="wStat">—</span></div>
+          <div class="info-item"><span class="info-k">SSID</span><span class="info-v" id="wSsid">—</span></div>
+          <div class="info-item"><span class="info-k">IP</span><span class="info-v" id="wIp">—</span></div>
+        </div>
+      </div>
+
+      <!-- Danger -->
+      <div class="card">
+        <div class="card-head">⚠️ Danger Zone</div>
+        <div class="btn-row">
+          <button class="btn btn-danger-sm" onclick="if(confirm('Reboot device?'))deviceFetch('/reboot',{method:'POST'}).then(()=>toast('Rebooting...','warn'))">Reboot</button>
+          <button class="btn btn-danger-sm" onclick="if(confirm('FACTORY RESET?'))deviceFetch('/factoryReset',{method:'POST'}).then(()=>toast('Wiping...','warn'))">Factory Reset</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ══ BOTTOM NAV ══ -->
+  <nav class="bottom-nav">
+    <button class="nav-item active" onclick="goPage('scripts',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8M16 17H8M10 9H8"/></svg>
+      <span>Scripts</span>
+    </button>
+    <button class="nav-item" onclick="goPage('scan',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><path d="M20.07 4.93a10 10 0 010 14.14M17.24 7.76a6 6 0 010 8.49M6.76 16.24a6 6 0 010-8.49M3.93 19.07a10 10 0 010-14.14"/></svg>
+      <span>Scan</span>
+    </button>
+    <button class="nav-item" onclick="goPage('ai',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a4 4 0 014 4c0 1.95-2 3-2 8h-4c0-5-2-6.05-2-8a4 4 0 014-4z"/><path d="M10 22h4M10 18h4"/></svg>
+      <span>AI</span>
+    </button>
+    <button class="nav-item" onclick="goPage('tools',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
+      <span>Tools</span>
+    </button>
+    <button class="nav-item" onclick="goPage('settings',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      <span>Settings</span>
+    </button>
+  </nav>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
