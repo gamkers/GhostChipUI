@@ -3,7 +3,7 @@
 // ═══════════════════════════════════════════════════
 
 const $ = id => document.getElementById(id);
-const GROQ_KEY = 'sk_rhlsh2ta_kjfTv5XNrFlU0kguupSIiGhp';
+let GROQ_KEY = localStorage.getItem('gc_groq_key') || '';
 const GROQ_MODEL = 'llama-3.3-70b-versatile';
 const WARN_KEY = 'gc_legal_v2';
 
@@ -122,6 +122,8 @@ function initApp() {
   });
   $('editor').addEventListener('scroll', () => { $('lineNums').scrollTop = $('editor').scrollTop; });
   if ($('ipInput')) $('ipInput').addEventListener('change', () => localStorage.setItem('gc_ip', $('ipInput').value.trim()));
+  // Try loading API key from device EEPROM if we don't have one locally
+  loadApiKeyFromDevice();
 }
 
 // ─── Navigation ───
@@ -301,21 +303,36 @@ function togglePass(id, btn) {
 async function saveApiKey() {
   const k = $('apiKeyInput').value.trim();
   if (!k) { toast('Enter a key first', 'warn'); return; }
+  // Save locally so AI works even when not on device
+  GROQ_KEY = k;
+  localStorage.setItem('gc_groq_key', k);
+  // Also save to device EEPROM if connected
   try {
-    const r = await deviceFetch('/saveApiKey', {
+    await deviceFetch('/saveApiKey', {
       method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: 'apiKey=' + encodeURIComponent(k)
     });
-    if (isRemote()) { toast('API Key sent ✓'); $('apiKeyInput').value = ''; return; }
-    const t = await r.text();
-    if (t === 'saved') { toast('API Key saved to EEPROM ✓'); $('apiKeyInput').value = ''; }
-    else toast('Error: ' + t, 'err');
-  } catch (e) { toast('Save failed', 'err'); }
+  } catch (e) { /* device might not be connected, that's ok */ }
+  toast('API Key saved ✓');
+  $('apiKeyInput').value = '';
 }
 function clearApiKey() {
   if (!confirm('Clear API key?')) return;
+  GROQ_KEY = '';
+  localStorage.removeItem('gc_groq_key');
   deviceFetch('/saveApiKey', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'apiKey=' })
     .then(() => toast('Key cleared', 'warn'));
+}
+// Try to load API key from device EEPROM on startup
+async function loadApiKeyFromDevice() {
+  if (GROQ_KEY) return; // already have a key from localStorage
+  try {
+    const data = await deviceGet('/getApiKey');
+    if (data && data.apiKey && data.apiKey.length > 4) {
+      GROQ_KEY = data.apiKey;
+      localStorage.setItem('gc_groq_key', data.apiKey);
+    }
+  } catch (e) { /* device not connected or no key stored */ }
 }
 
 // ─── Scan Tabs ───
@@ -462,12 +479,19 @@ async function aiGenerate() {
   const btn = $('aiGenBtn');
   btn.disabled = true;
   btn.innerHTML = '<span class="spin"></span> Generating...';
+  const apiKey = GROQ_KEY || localStorage.getItem('gc_groq_key') || '';
+  if (!apiKey || apiKey.length < 5) {
+    toast('No API key found. Go to Settings → save your Groq key first.', 'err');
+    btn.disabled = false;
+    btn.innerHTML = '⚡ Generate DuckyScript';
+    return;
+  }
   try {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + GROQ_KEY
+        'Authorization': 'Bearer ' + apiKey
       },
       body: JSON.stringify({
         model: GROQ_MODEL,
