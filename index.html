@@ -184,7 +184,18 @@
           <button class="ai-tag" onclick="fillAi('Disable Windows Defender')">Kill Defender</button>
           <button class="ai-tag" onclick="fillAi('Open browser to URL on Windows')">Open URL</button>
         </div>
-        <textarea id="aiPrompt" class="ai-input" placeholder="e.g. Open PowerShell as admin, disable firewall..."></textarea>
+        <div class="ai-prompt-wrap">
+          <textarea id="aiPrompt" class="ai-input" placeholder="e.g. Open PowerShell as admin, disable firewall..."></textarea>
+          <button class="btn-mic" id="micBtn" onclick="toggleVoice()" title="Voice input">
+            <svg id="micIcon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+              <line x1="12" y1="19" x2="12" y2="23"/>
+              <line x1="8" y1="23" x2="16" y2="23"/>
+            </svg>
+            <div class="mic-pulse" id="micPulse"></div>
+          </button>
+        </div>
         <button class="btn btn-primary full" id="aiGenBtn" onclick="aiGenerate()">
           ⚡ Generate DuckyScript
         </button>

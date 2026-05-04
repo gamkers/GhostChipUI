@@ -482,6 +482,72 @@ function deauthPoll() {
   }).catch(() => {});
 }
 
+// ─── Voice Input ───
+let voiceRecog = null;
+let isListening = false;
+
+function toggleVoice() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    toast('Speech recognition not supported in this browser', 'err');
+    return;
+  }
+
+  if (isListening && voiceRecog) {
+    voiceRecog.stop();
+    return;
+  }
+
+  voiceRecog = new SpeechRecognition();
+  voiceRecog.lang = 'en-US';
+  voiceRecog.interimResults = true;
+  voiceRecog.continuous = false;
+  voiceRecog.maxAlternatives = 1;
+
+  const btn = $('micBtn');
+  const prompt = $('aiPrompt');
+  let finalTranscript = prompt.value;
+
+  voiceRecog.onstart = () => {
+    isListening = true;
+    btn.classList.add('listening');
+    toast('🎙 Listening...', 'ok', 2000);
+  };
+
+  voiceRecog.onresult = (e) => {
+    let interim = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const t = e.results[i][0].transcript;
+      if (e.results[i].isFinal) {
+        finalTranscript += (finalTranscript ? ' ' : '') + t;
+      } else {
+        interim += t;
+      }
+    }
+    prompt.value = finalTranscript + (interim ? ' ' + interim : '');
+  };
+
+  voiceRecog.onend = () => {
+    isListening = false;
+    btn.classList.remove('listening');
+    if (finalTranscript.trim()) {
+      toast('Voice captured ✓', 'ok', 1500);
+    }
+  };
+
+  voiceRecog.onerror = (e) => {
+    isListening = false;
+    btn.classList.remove('listening');
+    if (e.error === 'not-allowed') {
+      toast('Microphone permission denied', 'err');
+    } else if (e.error !== 'aborted') {
+      toast('Voice error: ' + e.error, 'err');
+    }
+  };
+
+  voiceRecog.start();
+}
+
 // ─── AI Generate ───
 function fillAi(t) { $('aiPrompt').value = t; }
 async function aiGenerate() {

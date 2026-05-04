@@ -165,7 +165,15 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--w
 .ai-tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
 .ai-tag{background:var(--s2);border:1px solid var(--b1);border-radius:20px;padding:6px 12px;font-family:var(--font);font-size:.68rem;font-weight:500;color:var(--dim);cursor:pointer;transition:.2s}
 .ai-tag:active{border-color:var(--g2);color:var(--g);background:var(--g4)}
-.ai-input{width:100%;background:var(--s2);border:1px solid var(--b1);border-radius:var(--radius-sm);padding:12px;font-family:var(--font);font-size:.82rem;color:var(--white);resize:none;outline:none;min-height:80px;margin-bottom:12px;line-height:1.5;transition:border .25s}
+.ai-prompt-wrap{display:flex;gap:8px;margin-bottom:12px;align-items:flex-start}
+.ai-prompt-wrap .ai-input{flex:1;margin-bottom:0}
+.btn-mic{width:48px;height:48px;min-width:48px;border-radius:50%;background:var(--s2);border:1.5px solid var(--b1);color:var(--dim);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .25s;position:relative;margin-top:12px}
+.btn-mic:active{transform:scale(.92)}
+.btn-mic.listening{background:rgba(255,68,68,.12);border-color:var(--red);color:var(--red);box-shadow:0 0 20px rgba(255,68,68,.25)}
+.btn-mic.listening .mic-pulse{display:block}
+.mic-pulse{display:none;position:absolute;inset:-6px;border-radius:50%;border:2px solid var(--red);animation:micRing 1.2s ease-out infinite;pointer-events:none}
+@keyframes micRing{0%{transform:scale(.85);opacity:1}100%{transform:scale(1.4);opacity:0}}
+.ai-input{width:100%;background:var(--s2);border:1px solid var(--b1);border-radius:var(--radius-sm);padding:12px;font-family:var(--font);font-size:.82rem;color:var(--white);resize:none;outline:none;min-height:80px;line-height:1.5;transition:border .25s}
 .ai-input:focus{border-color:var(--g2)}
 .ai-input::placeholder{color:var(--dim2)}
 .code-output{width:100%;background:var(--bg);border:1px solid var(--b1);border-radius:var(--radius-sm);padding:12px;font-family:var(--mono);font-size:.72rem;color:var(--g);min-height:140px;resize:none;outline:none;margin-bottom:10px;line-height:1.6}
