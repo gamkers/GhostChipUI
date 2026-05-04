@@ -324,15 +324,20 @@ function clearApiKey() {
     .then(() => toast('Key cleared', 'warn'));
 }
 // Try to load API key from device EEPROM on startup
+// The device embeds the key in /aigenerate page as: const SAVED_KEY = "gsk_...";
 async function loadApiKeyFromDevice() {
   if (GROQ_KEY) return; // already have a key from localStorage
   try {
-    const data = await deviceGet('/getApiKey');
-    if (data && data.apiKey && data.apiKey.length > 4) {
-      GROQ_KEY = data.apiKey;
-      localStorage.setItem('gc_groq_key', data.apiKey);
+    const url = BASE() + '/aigenerate';
+    const r = await fetch(url);
+    const html = await r.text();
+    const m = html.match(/const\s+SAVED_KEY\s*=\s*"([^"]+)"/);
+    if (m && m[1] && m[1].length > 4) {
+      GROQ_KEY = m[1];
+      localStorage.setItem('gc_groq_key', m[1]);
+      toast('API key loaded from device ✓', 'ok', 2000);
     }
-  } catch (e) { /* device not connected or no key stored */ }
+  } catch (e) { /* device not connected */ }
 }
 
 // ─── Scan Tabs ───
