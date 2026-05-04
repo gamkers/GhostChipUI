@@ -54,9 +54,9 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--w
 
 /* ══ APP ══ */
 .app{display:flex;flex-direction:column;height:100vh;max-width:520px;margin:0 auto}
-.pages{flex:1;overflow-y:auto;overflow-x:hidden;scroll-behavior:smooth;-webkit-overflow-scrolling:touch}
+.pages{flex:1;overflow-y:auto;overflow-x:hidden;scroll-behavior:smooth;-webkit-overflow-scrolling:touch;padding-bottom:var(--nav-h)}
 .pages::-webkit-scrollbar{display:none}
-.page{display:none;padding:16px 16px calc(var(--nav-h) + 16px);animation:pageIn .35s ease}
+.page{display:none;padding:16px 16px calc(var(--nav-h) + 24px + env(safe-area-inset-bottom));animation:pageIn .35s ease}
 .page.active{display:block}
 @keyframes pageIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
