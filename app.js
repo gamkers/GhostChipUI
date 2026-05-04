@@ -327,19 +327,23 @@ function clearApiKey() {
 // The device embeds the key in /aigenerate page as: const SAVED_KEY = "gsk_...";
 // Only runs when on the device (HTTP same-origin), not from GitHub Pages (HTTPS)
 async function loadApiKeyFromDevice() {
-  if (GROQ_KEY) return; // already have a key from localStorage
-  if (location.protocol === 'https:') return; // can't fetch HTTP device from HTTPS page
+  if (GROQ_KEY) { console.log('[GhostChip] API key already loaded from localStorage'); return; }
+  if (location.protocol === 'https:') { console.log('[GhostChip] On HTTPS — skipping device key fetch. Use Settings to enter key.'); return; }
   try {
     const url = BASE() + '/aigenerate';
+    console.log('[GhostChip] Fetching API key from:', url);
     const r = await fetch(url);
     const html = await r.text();
     const m = html.match(/const\s+SAVED_KEY\s*=\s*"([^"]+)"/);
     if (m && m[1] && m[1].length > 4) {
       GROQ_KEY = m[1];
       localStorage.setItem('gc_groq_key', m[1]);
+      console.log('[GhostChip] API key loaded from device ✓');
       toast('API key loaded from device ✓', 'ok', 2000);
+    } else {
+      console.log('[GhostChip] No SAVED_KEY found in /aigenerate response');
     }
-  } catch (e) { /* device not connected */ }
+  } catch (e) { console.log('[GhostChip] Device not reachable:', e.message); }
 }
 
 // ─── Scan Tabs ───
