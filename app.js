@@ -7,6 +7,21 @@ let GROQ_KEY = localStorage.getItem('gc_groq_key') || '';
 const GROQ_MODEL = 'llama-3.3-70b-versatile';
 const WARN_KEY = 'gc_legal_v2';
 
+// ═══════════════════════════════════════════════════
+//  Global Application State
+// ═══════════════════════════════════════════════════
+var kbActiveMods = { shift: false, ctrl: false, alt: false, gui: false };
+var simRunning = false, simAbort = false;
+var targetOS = 'windows';
+var scOS = 'windows';
+var scCmdType = 'run';
+var neo = { on: false, bright: 80, r: 0, g: 255, b: 65 };
+var isRunning = false, execPoll = null, lastLogLen = 0;
+var selectedSsid = null;
+var ddPoll = null, ddSeen = 0;
+var voiceRecog = null, isListening = false;
+
+
 // ─── Smart Base URL ───
 // When served from the ESP32 (same origin) → use relative URLs (no CORS)
 // When opened as file:// or from another host → use absolute URL
@@ -142,13 +157,60 @@ function showSettings() {
   document.querySelectorAll('.nav-item')[4].classList.add('active');
 }
 
-// ─── Line Numbers ───
+// ─── Line Numbers + Syntax Highlighting ───
+const DUCKY_CMDS = /^(DELAY|STRING|ENTER|GUI|ALT|CTRL|SHIFT|TAB|SPACE|REPEAT|DEFAULTDELAY|DEFAULT_DELAY|PRINT|PRINTLN|WINDOWS|COMMAND|MENU|APP|DELETE|HOME|END|INSERT|PAGEUP|PAGEDOWN|UPARROW|DOWNARROW|LEFTARROW|RIGHTARROW|SCROLLLOCK|NUMLOCK|BREAK|PAUSE|ESC|ESCAPE)(?=\s|$)/;
+const DUCKY_KEYS = /\b(F[1-9]|F1[0-2]|UP|DOWN|LEFT|RIGHT|CAPSLOCK|BACKSPACE|PRINTSCREEN)\b/g;
+const DUCKY_MODS = /\b(CTRL|SHIFT|ALT|GUI|COMMAND|WINDOWS)\b/g;
+
+function highlightDucky(code) {
+  return code.split('\n').map(line => {
+    const trimmed = line.trimStart();
+    // Comments
+    if (trimmed.startsWith('REM')) return `<span class="hl-rem">${escHtml(line)}</span>`;
+    // STRING lines
+    if (trimmed.startsWith('STRING ') || trimmed.startsWith('PRINTLN ') || trimmed.startsWith('PRINT ')) {
+      const sp = line.indexOf(' ');
+      return `<span class="hl-cmd">${escHtml(line.slice(0, sp))}</span> <span class="hl-str">${escHtml(line.slice(sp + 1))}</span>`;
+    }
+    // DELAY with numbers
+    if (trimmed.startsWith('DELAY ') || trimmed.startsWith('DEFAULTDELAY ') || trimmed.startsWith('DEFAULT_DELAY ')) {
+      const sp = line.indexOf(' ');
+      return `<span class="hl-cmd">${escHtml(line.slice(0, sp))}</span> <span class="hl-num">${escHtml(line.slice(sp + 1))}</span>`;
+    }
+    // REPEAT
+    if (trimmed.startsWith('REPEAT ')) {
+      const sp = line.indexOf(' ');
+      return `<span class="hl-cmd">${escHtml(line.slice(0, sp))}</span> <span class="hl-num">${escHtml(line.slice(sp + 1))}</span>`;
+    }
+    // Commands with modifiers/keys
+    let hl = escHtml(line);
+    hl = hl.replace(/^(\s*)(CTRL|SHIFT|ALT|GUI|COMMAND|WINDOWS)\b/g, '$1<span class="hl-mod">$2</span>');
+    hl = hl.replace(DUCKY_CMDS, '<span class="hl-cmd">$1</span>');
+    hl = hl.replace(DUCKY_KEYS, '<span class="hl-key">$1</span>');
+    hl = hl.replace(/\b(CTRL|SHIFT|ALT|GUI|COMMAND|WINDOWS)\b/g, '<span class="hl-mod">$1</span>');
+    return hl;
+  }).join('\n');
+}
+function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
 function updateLines() {
-  const lines = $('editor').value.split('\n').length;
+  const code = $('editor').value;
+  const lines = code.split('\n').length;
   $('lineNums').innerHTML = Array.from({ length: lines }, (_, i) => `<span>${i + 1}</span>`).join('');
   $('lineCount').textContent = lines + ' line' + (lines !== 1 ? 's' : '');
+  // Syntax highlight overlay
+  const hl = $('editorHighlight');
+  if (hl) hl.querySelector('code').innerHTML = highlightDucky(code) + '\n';
 }
 updateLines();
+// Sync scroll between editor and highlight
+const edEl = $('editor');
+if (edEl) {
+  edEl.addEventListener('scroll', () => {
+    const hl = $('editorHighlight');
+    if (hl) { hl.scrollTop = edEl.scrollTop; hl.scrollLeft = edEl.scrollLeft; }
+  });
+}
 
 // ─── Presets ───
 function togglePresets() {
@@ -210,7 +272,10 @@ function clearTerm() {
 }
 
 // ─── Execute Script ───
-let isRunning = false, execPoll = null, lastLogLen = 0;
+function terminalReset() {
+  $('terminal').innerHTML = '<div><span class="t-dim">Terminal initialized...</span></div>';
+  lastLogLen = 0;
+}
 
 async function runScript() {
   const script = $('editor').value.trim();
@@ -388,7 +453,9 @@ async function scanWifi() {
 }
 
 // ─── WiFi Settings Scan ───
-let selectedSsid = null;
+// ═══════════════════════════════════════════════════
+//  WIFI SCANNER
+// ═══════════════════════════════════════════════════
 async function scanWifiSettings() {
   const list = $('wifiSettingsList');
   list.innerHTML = '<div class="skeleton"></div><div class="skeleton"></div>';
@@ -447,7 +514,9 @@ async function scanBle() {
 }
 
 // ─── Deauth Detector ───
-let ddPoll = null, ddSeen = 0;
+// ═══════════════════════════════════════════════════
+//  DEAUTH LOGS
+// ═══════════════════════════════════════════════════
 function deauthStart() {
   deviceFetch('/deauth/start', { method: 'POST' }).then(() => {
     $('ddDot').className = 'dd-dot on';
@@ -483,10 +552,7 @@ function deauthPoll() {
 }
 
 // ─── Voice Input ───
-let voiceRecog = null;
-let isListening = false;
-
-function toggleVoice() {
+function setupVoice() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) {
     toast('Speech recognition not supported in this browser', 'err');
@@ -549,7 +615,25 @@ function toggleVoice() {
 }
 
 // ─── AI Generate ───
+// ═══════════════════════════════════════════════════
+//  AI GENERATE
+// ═══════════════════════════════════════════════════
+function setTargetOS(os, btn) {
+  targetOS = os;
+  document.querySelectorAll('.os-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
 function fillAi(t) { $('aiPrompt').value = t; }
+
+function getOSContext() {
+  const map = {
+    windows: 'Target OS is Windows. Use GUI r for Run dialog, cmd/powershell for terminal.',
+    macos: 'Target OS is macOS. Use GUI SPACE for Spotlight, open Terminal.app via Spotlight.',
+    linux: 'Target OS is Linux. Use CTRL ALT t to open terminal on most distros.'
+  };
+  return map[targetOS] || map.windows;
+}
+
 async function aiGenerate() {
   const prompt = $('aiPrompt').value.trim();
   if (!prompt) { toast('Enter a description', 'warn'); return; }
@@ -575,7 +659,7 @@ async function aiGenerate() {
         messages: [
           {
             role: 'system',
-            content: 'You are a DuckyScript expert for USB Rubber Ducky / ESP32 HID payloads. Generate ONLY the DuckyScript payload — no explanations, no markdown code fences, no extra text. Use proper DuckyScript syntax: DELAY, STRING, ENTER, GUI, ALT, CTRL, SHIFT, TAB, SPACE, UP, DOWN, LEFT, RIGHT, REM, F1-F12, CAPSLOCK, etc.'
+            content: `You are a DuckyScript expert for USB Rubber Ducky / ESP32 HID payloads. ${getOSContext()} Generate ONLY the DuckyScript payload — no explanations, no markdown code fences, no extra text. Use proper DuckyScript syntax: DELAY, STRING, ENTER, GUI, ALT, CTRL, SHIFT, TAB, SPACE, UP, DOWN, LEFT, RIGHT, REM, F1-F12, CAPSLOCK, etc.`
           },
           { role: 'user', content: prompt }
         ],
@@ -600,6 +684,37 @@ async function aiGenerate() {
     btn.innerHTML = '⚡ Generate DuckyScript';
   }
 }
+
+// ─── Multi-OS Converter ───
+async function aiConvertOS(newOS) {
+  const script = $('aiOutput').value.trim();
+  if (!script) { toast('No script to convert', 'warn'); return; }
+  const apiKey = GROQ_KEY || localStorage.getItem('gc_groq_key') || '';
+  if (!apiKey || apiKey.length < 5) { toast('No API key. Save in Settings.', 'err'); return; }
+  const osNames = { windows: 'Windows', macos: 'macOS', linux: 'Linux' };
+  toast(`Converting to ${osNames[newOS]}...`, 'ok', 2000);
+  try {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+      body: JSON.stringify({
+        model: GROQ_MODEL,
+        messages: [
+          { role: 'system', content: `Convert the following DuckyScript payload to work on ${osNames[newOS]}. Output ONLY the converted DuckyScript — no explanations, no code fences. Adapt all OS-specific commands (e.g. GUI r for Windows Run → GUI SPACE for macOS Spotlight, CTRL ALT t for Linux terminal). Keep the same overall logic and intent.` },
+          { role: 'user', content: script }
+        ],
+        temperature: 0.2,
+        max_tokens: 800
+      })
+    });
+    if (!res.ok) throw new Error('API error');
+    const data = await res.json();
+    let converted = data.choices?.[0]?.message?.content?.trim() || '';
+    converted = converted.replace(/```[\w]*\n?/g, '').trim();
+    $('aiOutput').value = converted;
+    toast(`Converted to ${osNames[newOS]} ✓`);
+  } catch (e) { toast('Conversion failed: ' + e.message, 'err'); }
+}
 function aiCopy() {
   navigator.clipboard.writeText($('aiOutput').value).then(() => toast('Copied ✓', 'ok', 2000));
 }
@@ -620,7 +735,9 @@ async function aiExec() {
 }
 
 // ─── NeoPixel ───
-let neo = { on: false, bright: 80, r: 0, g: 255, b: 65 };
+// ═══════════════════════════════════════════════════
+//  NEOPIXEL
+// ═══════════════════════════════════════════════════
 function neoToggle() {
   neo.on = !neo.on;
   neoUI();
@@ -683,3 +800,481 @@ $('otaForm')?.addEventListener('submit', () => {
   toast('Flashing firmware...', 'warn', 12000);
   setTimeout(() => { clearInterval(iv); $('otaBar').style.width = '100%'; toast('Flash complete — rebooting'); }, 10000);
 });
+
+// ═══════════════════════════════════════════════════
+//  TOOL PANELS
+// ═══════════════════════════════════════════════════
+function openTool(name) {
+  document.querySelectorAll('.tool-panel').forEach(p => p.classList.remove('open'));
+  const panel = $('tool-' + name);
+  if (panel) panel.classList.add('open');
+}
+function closeTool(name) {
+  const panel = $('tool-' + name);
+  if (panel) panel.classList.remove('open');
+}
+
+// ═══════════════════════════════════════════════════
+//  PAYLOAD QUEUE
+// ═══════════════════════════════════════════════════
+let payloadQueue = JSON.parse(localStorage.getItem('gc_queue') || '[]');
+let queueRunning = false;
+
+function saveQueue() { localStorage.setItem('gc_queue', JSON.stringify(payloadQueue)); }
+
+function addToQueue() {
+  const script = $('editor').value.trim();
+  if (!script) { toast('Write a script first', 'warn'); return; }
+  const delay = parseInt($('queueDelay').value) || 0;
+  const firstLine = script.split('\n').find(l => !l.trim().startsWith('REM') && l.trim()) || 'Payload';
+  payloadQueue.push({ script, delay, name: firstLine.substring(0, 40) });
+  saveQueue();
+  renderQueue();
+  toast('Added to queue ✓', 'ok', 1500);
+  if (!$('queuePanel').classList.contains('open')) toggleQueuePanel();
+}
+
+function removeFromQueue(i) {
+  payloadQueue.splice(i, 1);
+  saveQueue();
+  renderQueue();
+}
+
+function clearQueue() {
+  if (!confirm('Clear entire queue?')) return;
+  payloadQueue = [];
+  saveQueue();
+  renderQueue();
+  toast('Queue cleared', 'warn', 1500);
+}
+
+function renderQueue() {
+  const list = $('queueList');
+  if (!payloadQueue.length) {
+    list.innerHTML = '<div class="empty-state">Queue empty — add scripts to chain</div>';
+    $('runQueueBtn').style.display = 'none';
+    $('clearQueueBtn').style.display = 'none';
+    return;
+  }
+  $('runQueueBtn').style.display = 'block';
+  $('clearQueueBtn').style.display = 'block';
+  list.innerHTML = payloadQueue.map((item, i) => `
+    <div class="queue-item" id="qi-${i}">
+      <div class="qi-num">${i + 1}</div>
+      <div class="qi-body">
+        <div class="qi-name">${escHtml(item.name)}</div>
+        <div class="qi-meta">${item.script.split('\\n').length} lines · ${item.delay}s delay</div>
+      </div>
+      <button class="qi-del" onclick="removeFromQueue(${i})" title="Remove">✕</button>
+      <div class="qi-progress" style="width:0"></div>
+    </div>
+  `).join('');
+}
+renderQueue();
+
+async function runQueue() {
+  if (queueRunning || !payloadQueue.length) return;
+  if (!confirm(`Execute ${payloadQueue.length} payloads sequentially?`)) return;
+  queueRunning = true;
+  $('runQueueBtn').disabled = true;
+  $('runQueueBtn').innerHTML = '<span class="spin"></span> Running Queue...';
+
+  for (let i = 0; i < payloadQueue.length; i++) {
+    const item = payloadQueue[i];
+    const el = $('qi-' + i);
+    if (el) { el.classList.add('qi-active'); el.classList.remove('qi-done'); }
+
+    // Wait delay
+    if (item.delay > 0) {
+      toast(`⏱ Waiting ${item.delay}s before payload ${i + 1}...`, 'warn', item.delay * 1000);
+      for (let s = 0; s < item.delay * 10; s++) {
+        await new Promise(r => setTimeout(r, 100));
+        const pct = ((s + 1) / (item.delay * 10)) * 100;
+        if (el) el.querySelector('.qi-progress').style.width = pct + '%';
+      }
+    }
+
+    // Execute
+    try {
+      await deviceFetch('/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'duckyscript=' + encodeURIComponent(item.script)
+      });
+      toast(`Payload ${i + 1} executed ✓`, 'ok', 2000);
+    } catch (e) {
+      toast(`Payload ${i + 1} sent ✓`, 'ok', 2000);
+    }
+
+    if (el) { el.classList.remove('qi-active'); el.classList.add('qi-done'); el.querySelector('.qi-progress').style.width = '100%'; }
+  }
+
+  queueRunning = false;
+  $('runQueueBtn').disabled = false;
+  $('runQueueBtn').innerHTML = '⚡ Run Queue';
+  toast('Queue complete ✓');
+}
+
+// ═══════════════════════════════════════════════════
+//  LIVE PAYLOAD SIMULATOR
+// ═══════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
+//  LIVE PAYLOAD SIMULATOR
+// ═══════════════════════════════════════════════════
+
+function parseDucky(script) {
+  return script.split('\n').filter(l => l.trim()).map(line => {
+    const trimmed = line.trim();
+    const parts = trimmed.split(/\s+/);
+    const cmd = parts[0].toUpperCase();
+    const arg = trimmed.substring(cmd.length).trim();
+    return { cmd, arg, raw: trimmed };
+  });
+}
+
+function simGetSpeed() {
+  return parseInt($('simSpeed')?.value || '2');
+}
+
+function simDelay(ms) {
+  return new Promise(r => {
+    const actual = Math.max(ms / simGetSpeed(), 30);
+    const id = setTimeout(r, actual);
+    if (simAbort) { clearTimeout(id); r(); }
+  });
+}
+
+async function simulatePayload() {
+  const script = $('editor').value.trim();
+  if (!script) { toast('No script to simulate', 'warn'); return; }
+  if (simRunning) return;
+
+  simRunning = true;
+  simAbort = false;
+  $('simOverlay').style.display = 'flex';
+  const content = $('simContent');
+  const cmdEl = $('simCmd');
+  const counterEl = $('simCounter');
+  const progressEl = $('simProgress');
+  content.innerHTML = '';
+
+  const commands = parseDucky(script);
+  const total = commands.length;
+
+  for (let i = 0; i < commands.length; i++) {
+    if (simAbort) break;
+    const { cmd, arg, raw } = commands[i];
+    counterEl.textContent = `${i + 1} / ${total}`;
+    progressEl.style.width = ((i + 1) / total * 100) + '%';
+    cmdEl.textContent = raw;
+
+    switch (cmd) {
+      case 'REM':
+        content.innerHTML += `<div class="sim-comment">// ${escHtml(arg)}</div>`;
+        await simDelay(300);
+        break;
+
+      case 'DELAY':
+      case 'DEFAULTDELAY':
+      case 'DEFAULT_DELAY': {
+        const ms = parseInt(arg) || 500;
+        const delayEl = document.createElement('span');
+        delayEl.className = 'sim-delay';
+        content.appendChild(delayEl);
+        content.appendChild(document.createElement('br'));
+        // Countdown
+        const steps = 20;
+        const stepMs = ms / steps;
+        for (let s = steps; s >= 0; s--) {
+          if (simAbort) break;
+          delayEl.textContent = `⏱ DELAY ${Math.round(s * stepMs)}ms`;
+          await simDelay(stepMs);
+        }
+        delayEl.textContent = `⏱ DELAY ${ms}ms ✓`;
+        break;
+      }
+
+      case 'STRING':
+      case 'PRINT':
+      case 'PRINTLN': {
+        const text = arg;
+        for (let c = 0; c < text.length; c++) {
+          if (simAbort) break;
+          content.innerHTML += escHtml(text[c]);
+          content.scrollTop = content.scrollHeight;
+          await simDelay(30 + Math.random() * 20);
+        }
+        if (cmd === 'PRINTLN' || cmd === 'STRING') {
+          // Don't add newline for STRING, only PRINTLN
+        }
+        break;
+      }
+
+      case 'ENTER':
+      case 'RETURN':
+        content.innerHTML += `<span class="sim-newline">↵</span>\n`;
+        await simDelay(100);
+        break;
+
+      case 'GUI':
+      case 'WINDOWS':
+      case 'COMMAND': {
+        const keyCombo = cmd + (arg ? ' ' + arg : '');
+        content.innerHTML += `<span class="sim-badge">${escHtml(keyCombo)}</span>`;
+        // Show OS-appropriate window hint
+        if (arg.toLowerCase() === 'r') {
+          content.innerHTML += `\n<div class="sim-window"><div class="sim-window-title">▸ Run Dialog</div>Windows + R → Run</div>`;
+        } else if (arg.toLowerCase() === 'space') {
+          content.innerHTML += `\n<div class="sim-window"><div class="sim-window-title">▸ Spotlight / Search</div>⌘ Space → Spotlight Search</div>`;
+        }
+        content.innerHTML += '\n';
+        await simDelay(400);
+        break;
+      }
+
+      case 'CTRL':
+      case 'ALT':
+      case 'SHIFT': {
+        const keyCombo = cmd + (arg ? ' ' + arg : '');
+        content.innerHTML += `<span class="sim-badge">${escHtml(keyCombo)}</span>\n`;
+        if (cmd === 'CTRL' && arg.toUpperCase().includes('ALT') && arg.toLowerCase().includes('t')) {
+          content.innerHTML += `<div class="sim-window"><div class="sim-window-title">▸ Terminal</div>Ctrl+Alt+T → Open Terminal</div>`;
+        }
+        await simDelay(300);
+        break;
+      }
+
+      case 'TAB':
+      case 'SPACE':
+      case 'ESCAPE':
+      case 'ESC':
+      case 'DELETE':
+      case 'BACKSPACE':
+      case 'CAPSLOCK':
+      case 'UPARROW':
+      case 'DOWNARROW':
+      case 'LEFTARROW':
+      case 'RIGHTARROW':
+      case 'UP':
+      case 'DOWN':
+      case 'LEFT':
+      case 'RIGHT':
+      case 'HOME':
+      case 'END':
+      case 'PAGEUP':
+      case 'PAGEDOWN':
+      case 'INSERT':
+      case 'MENU':
+      case 'APP':
+      case 'BREAK':
+      case 'PAUSE':
+      case 'NUMLOCK':
+      case 'SCROLLLOCK':
+      case 'PRINTSCREEN':
+        content.innerHTML += `<span class="sim-badge">${escHtml(cmd)}</span>\n`;
+        await simDelay(200);
+        break;
+
+      case 'REPEAT': {
+        const count = parseInt(arg) || 1;
+        content.innerHTML += `<span class="sim-delay">🔁 REPEAT ×${count}</span>\n`;
+        await simDelay(200 * count);
+        break;
+      }
+
+      default:
+        // F-keys or unknown
+        if (cmd.match(/^F\d{1,2}$/)) {
+          content.innerHTML += `<span class="sim-badge">${escHtml(cmd)}</span>\n`;
+          await simDelay(200);
+        } else {
+          content.innerHTML += `<span class="sim-badge">${escHtml(raw)}</span>\n`;
+          await simDelay(200);
+        }
+    }
+
+    content.scrollTop = content.scrollHeight;
+  }
+
+  if (!simAbort) {
+    content.innerHTML += `\n<span class="sim-delay" style="color:var(--g)">✓ Simulation Complete</span>`;
+    cmdEl.textContent = 'Done';
+    progressEl.style.width = '100%';
+  }
+  simRunning = false;
+}
+
+function stopSimulator() {
+  simAbort = true;
+  simRunning = false;
+  $('simOverlay').style.display = 'none';
+}
+
+// ═══════════════════════════════════════════════════
+//  SCRIPT CONSTRUCTOR
+// ═══════════════════════════════════════════════════
+//  SCRIPT CONSTRUCTOR
+// ═══════════════════════════════════════════════════
+
+function scSetOS(os, btn) {
+  scOS = os;
+  document.querySelectorAll('.sc-os-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function scShowForm(name) {
+  // Hide all forms
+  document.querySelectorAll('#scFormArea .sc-form').forEach(f => f.style.display = 'none');
+  // Show the requested one
+  const form = $('scf-' + name);
+  if (form) {
+    form.style.display = 'block';
+    // Focus the first input in the form
+    const inp = form.querySelector('input[type=text],input[type=url]');
+    if (inp) setTimeout(() => inp.focus(), 100);
+  }
+}
+
+function scAppend(line) {
+  const out = $('scOutput');
+  if (out.value && !out.value.endsWith('\n')) out.value += '\n';
+  out.value += line;
+  $('scLineCount').textContent = out.value.split('\n').filter(l => l.trim()).length + ' lines';
+  out.scrollTop = out.scrollHeight;
+}
+
+function scQuick(cmd) {
+  scAppend(cmd);
+  toast('Added: ' + cmd, 'ok', 1000);
+}
+
+function scAddText() {
+  const val = $('scTextInput').value;
+  if (!val) { toast('Enter text first', 'warn'); return; }
+  scAppend('STRING ' + val);
+  $('scTextInput').value = '';
+  toast('Added STRING', 'ok', 1000);
+}
+
+function scAddRem() {
+  const val = $('scRemInput').value;
+  if (!val) { toast('Enter comment', 'warn'); return; }
+  scAppend('REM ' + val);
+  $('scRemInput').value = '';
+}
+
+function scAddUrl() {
+  const url = $('scUrlInput').value;
+  if (!url || url === 'https://') { toast('Enter a URL', 'warn'); return; }
+  const s = 'REM Open URL\nDELAY 500\nGUI r\nDELAY 600\nSTRING ' + url + '\nENTER';
+  scAppend(s);
+  $('scUrlInput').value = '';
+  toast('Added Open URL', 'ok', 1000);
+}
+
+function scAddDownload() {
+  const url = $('scDlUrl').value;
+  const name = $('scDlName').value || 'downloaded_file';
+  if (!url || url === 'https://') { toast('Enter download URL', 'warn'); return; }
+  const s = 'REM Download & Execute\nDELAY 500\nGUI r\nDELAY 600\nSTRING powershell\nENTER\nDELAY 800\nSTRING Invoke-WebRequest -Uri "' + url + '" -OutFile "$env:TEMP\\' + name + '"\nENTER';
+  scAppend(s);
+  $('scDlUrl').value = '';
+  $('scDlName').value = '';
+  toast('Added Download', 'ok', 1000);
+}
+
+function scSetCmdType(type, btn) {
+  scCmdType = type;
+  document.querySelectorAll('#scCmdChoices .sc-choice').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function scAddCmd() {
+  const type = scCmdType;
+  const cmd = $('scCmdInput').value;
+  if (!cmd) { toast('Enter a command', 'warn'); return; }
+
+  let s = '';
+  if (type === 'run') {
+    s = 'REM Run\nDELAY 500\nGUI r\nDELAY 600\nSTRING ' + cmd + '\nENTER';
+  } else if (type === 'powershell') {
+    s = 'REM PowerShell\nDELAY 500\nGUI r\nDELAY 600\nSTRING powershell -w hidden -c "' + cmd + '"\nENTER';
+  } else if (type === 'powershell_admin') {
+    s = 'REM PS Admin\nDELAY 500\nGUI x\nDELAY 400\nSTRING a\nDELAY 1000\nLEFTARROW\nENTER\nDELAY 1200\nSTRING ' + cmd + '\nENTER';
+  } else if (type === 'cmd') {
+    s = 'REM CMD\nDELAY 500\nGUI r\nDELAY 600\nSTRING cmd\nENTER\nDELAY 600\nSTRING ' + cmd + '\nENTER';
+  } else if (type === 'cmd_admin') {
+    s = 'REM CMD Admin\nDELAY 500\nGUI x\nDELAY 400\nSTRING a\nDELAY 800\nLEFTARROW\nENTER\nDELAY 1000\nSTRING ' + cmd + '\nENTER';
+  } else if (type === 'terminal') {
+    s = 'REM Terminal\nDELAY 500\nGUI SPACE\nDELAY 600\nSTRING Terminal\nENTER\nDELAY 800\nSTRING ' + cmd + '\nENTER';
+  }
+  scAppend(s);
+  $('scCmdInput').value = '';
+  toast('Added Command', 'ok', 1000);
+}
+
+function scClear() {
+  $('scOutput').value = '';
+  $('scLineCount').textContent = '0 lines';
+}
+
+function scToEditor() {
+  const script = $('scOutput').value.trim();
+  if (!script) { toast('Build a script first', 'warn'); return; }
+  $('editor').value = script;
+  updateLines();
+  localStorage.setItem('gc_script', script);
+  closeTool('constructor');
+  goPage('scripts', document.querySelectorAll('.nav-item')[0]);
+  toast('Script sent to editor');
+}
+
+// ═══════════════════════════════════════════════════
+//  LIVE KEYBOARD
+// ═══════════════════════════════════════════════════
+
+function kbToggle(mod) {
+  kbActiveMods[mod] = !kbActiveMods[mod];
+  const el = $(`kb${mod.charAt(0).toUpperCase() + mod.slice(1)}`);
+  if (el) el.classList.toggle('active', kbActiveMods[mod]);
+}
+
+function kbKey(key) {
+  let script = '';
+  let mods = [];
+  if (kbActiveMods.ctrl) mods.push('CTRL');
+  if (kbActiveMods.alt) mods.push('ALT');
+  if (kbActiveMods.shift) mods.push('SHIFT');
+  if (kbActiveMods.gui) mods.push('GUI');
+
+  if (mods.length > 0) {
+    script = mods.join(' ') + ' ' + key.toUpperCase();
+  } else {
+    if (key.length === 1) {
+      script = 'STRING ' + key;
+    } else {
+      script = key.toUpperCase();
+    }
+  }
+
+  $('kbStatus').textContent = 'Sending: ' + script;
+  deviceFetch('/', { 
+    method: 'POST', 
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, 
+    body: 'duckyscript=' + encodeURIComponent(script) 
+  }).then(() => {
+    setTimeout(() => { if ($('kbStatus')) $('kbStatus').textContent = 'Ready.'; }, 500);
+  });
+}
+
+function kbMacro(m) {
+  $('kbStatus').textContent = 'Executing macro...';
+  deviceFetch('/', { 
+    method: 'POST', 
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, 
+    body: 'duckyscript=' + encodeURIComponent(m) 
+  }).then(() => {
+    setTimeout(() => { if ($('kbStatus')) $('kbStatus').textContent = 'Ready.'; }, 800);
+  });
+}
+

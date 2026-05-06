@@ -57,7 +57,7 @@
     </div>
     <div class="topbar-right">
       <span class="topbar-ip" id="topIp">ghostchip.local</span>
-      <button class="icon-btn" onclick="showSettings()" title="Settings">⚙</button>
+      <button class="icon-btn" onclick="showSettings()" title="Settings"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></button>
     </div>
   </header>
 
@@ -93,13 +93,14 @@
             <span class="line-count" id="lineCount">0 lines</span>
           </div>
           <div class="toolbar-actions">
-            <button class="icon-btn sm" onclick="document.getElementById('fileIn').click()" title="Open">📂</button>
+            <button class="icon-btn sm" onclick="document.getElementById('fileIn').click()" title="Open">OPEN</button>
             <button class="icon-btn sm" onclick="clearEditor()" title="Clear">✕</button>
           </div>
         </div>
         <div class="editor-wrap">
           <div class="line-nums" id="lineNums"><span>1</span></div>
           <textarea id="editor" spellcheck="false" placeholder="REM Your DuckyScript here...&#10;DELAY 500&#10;GUI r&#10;STRING notepad&#10;ENTER"></textarea>
+          <pre class="editor-highlight" id="editorHighlight" aria-hidden="true"><code></code></pre>
         </div>
         <input type="file" id="fileIn" accept=".txt,.ducky,.ds" style="display:none" onchange="openFile(event)">
       </div>
@@ -111,17 +112,21 @@
             <div class="exec-dot" id="execDot"></div>
             <span id="execLabel">Ready</span>
           </div>
-          <button class="icon-btn sm" onclick="clearTerm()" title="Clear">🗑</button>
+          <button class="icon-btn sm" onclick="clearTerm()" title="Clear">CLR</button>
         </div>
         <div class="terminal" id="terminal">
           <span class="t-dim">// output appears here...</span>
         </div>
       </div>
 
-      <!-- Run -->
-      <button class="btn btn-execute" id="runBtn" onclick="runScript()">
-        <span class="btn-icon">▶</span> EXECUTE
-      </button>
+      <!-- Run + Simulate -->
+      <div class="exec-row">
+        <button class="btn btn-execute" id="runBtn" onclick="runScript()">
+          <span class="btn-icon">▶</span> EXECUTE
+        </button>
+        <button class="btn btn-simulate" onclick="simulatePayload()" title="Simulate">SIM</button>
+      </div>
+
     </section>
 
     <!-- ── PAGE: SCAN ── -->
@@ -138,7 +143,7 @@
       <!-- WiFi Panel -->
       <div class="scan-panel active" id="scan-wifi">
         <button class="btn btn-scan" onclick="scanWifi()">
-          <span class="scan-icon">📡</span> Scan WiFi Networks
+          Scan WiFi Networks
         </button>
         <div id="wifiResults" class="results-list">
           <div class="empty-state">Tap scan to discover networks</div>
@@ -148,7 +153,7 @@
       <!-- BLE Panel -->
       <div class="scan-panel" id="scan-ble">
         <button class="btn btn-scan" onclick="scanBle()">
-          <span class="scan-icon">📶</span> Scan BLE Devices
+          Scan BLE Devices
         </button>
         <div id="bleResults" class="results-list">
           <div class="empty-state">Tap scan to discover BLE devices</div>
@@ -176,6 +181,12 @@
       <div class="section-head"><h2>AI Generator</h2></div>
       <div class="card">
         <p class="card-desc">Describe your payload — AI writes the DuckyScript.</p>
+        <!-- OS Target Toggle -->
+        <div class="os-toggle">
+          <button class="os-btn active" id="os-windows" onclick="setTargetOS('windows',this)">WIN</button>
+          <button class="os-btn" id="os-macos" onclick="setTargetOS('macos',this)">MAC</button>
+          <button class="os-btn" id="os-linux" onclick="setTargetOS('linux',this)">LINUX</button>
+        </div>
         <div class="ai-tags">
           <button class="ai-tag" onclick="fillAi('Open cmd as admin on Windows')">CMD Admin</button>
           <button class="ai-tag" onclick="fillAi('Download file with PowerShell')">PS Download</button>
@@ -208,69 +219,295 @@
           <button class="btn btn-ghost" onclick="aiCopy()">Copy</button>
           <button class="btn btn-ghost" onclick="aiToEditor()">→ Editor</button>
         </div>
+        <div class="convert-row">
+          <span class="convert-label">Convert to:</span>
+          <button class="ai-tag" onclick="aiConvertOS('windows')">WIN</button>
+          <button class="ai-tag" onclick="aiConvertOS('macos')">MAC</button>
+          <button class="ai-tag" onclick="aiConvertOS('linux')">LINUX</button>
+        </div>
       </div>
     </section>
 
     <!-- ── PAGE: TOOLS ── -->
     <section class="page" id="page-tools">
       <div class="section-head"><h2>Tools</h2></div>
+      <div class="tool-grid">
+        <button class="tool-app" onclick="openTool('constructor')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg><span>Script Builder</span></button>
+        <button class="tool-app" onclick="openTool('neopixel')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg><span>NeoPixel</span></button>
+        <button class="tool-app" onclick="openTool('firmware')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg><span>Firmware</span></button>
+        <button class="tool-app" onclick="openTool('devinfo')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6M9 13h6M9 17h4"/></svg><span>Device Info</span></button>
+        <button class="tool-app" onclick="simulatePayload()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg><span>Simulator</span></button>
+        <button class="tool-app" onclick="openTool('guide')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg><span>User Guide</span></button>
+        <button class="tool-app" onclick="openTool('keyboard')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2" ry="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M6 12h.01M10 12h.01M14 12h.01M18 12h.01M7 16h10"/></svg><span>Live Keyboard</span></button>
+      </div>
+      <div class="tool-panel" id="tool-constructor">
+        <div class="tool-panel-head"><h3>Script Builder</h3><button class="tool-back" onclick="closeTool('constructor')">Back</button></div>
 
-      <!-- NeoPixel -->
-      <div class="card">
-        <div class="card-head">💡 NeoPixel Control</div>
-        <div class="neo-row">
-          <div class="toggle-wrap">
-            <div class="toggle" id="neoToggle" onclick="neoToggle()"></div>
-            <span id="neoLabel">OFF</span>
+        <div class="sc-section">
+          <div class="sc-section-head">Commands</div>
+          <div class="sc-blocks">
+            <button class="sc-block" onclick="scShowForm('delay')"><span class="sc-ico">T</span>Delay</button>
+            <button class="sc-block" onclick="scShowForm('text')"><span class="sc-ico">A</span>Type Text</button>
+            <button class="sc-block" onclick="scQuick('ENTER')"><span class="sc-ico">+</span>Enter</button>
+            <button class="sc-block" onclick="scShowForm('comment')"><span class="sc-ico">//</span>Comment</button>
+            <button class="sc-block" onclick="scShowForm('url')"><span class="sc-ico">W</span>Open URL</button>
+            <button class="sc-block" onclick="scShowForm('download')"><span class="sc-ico">D</span>Download</button>
+            <button class="sc-block" onclick="scShowForm('runcmd')"><span class="sc-ico">></span>Run Cmd</button>
+            <button class="sc-block" onclick="scQuick('TAB')"><span class="sc-ico">-</span>Tab</button>
+            <button class="sc-block" onclick="scQuick('ESCAPE')"><span class="sc-ico">E</span>Escape</button>
+            <button class="sc-block" onclick="scQuick('GUI r')"><span class="sc-ico">R</span>Run Dlg</button>
+            <button class="sc-block" onclick="scQuick('GUI SPACE')"><span class="sc-ico">S</span>Search</button>
+            <button class="sc-block" onclick="scQuick('CTRL ALT t')"><span class="sc-ico">#</span>Terminal</button>
+            <button class="sc-block" onclick="scQuick('ALT F4')"><span class="sc-ico">X</span>Close</button>
+            <button class="sc-block" onclick="scQuick('CTRL c')"><span class="sc-ico">C</span>Copy</button>
+            <button class="sc-block" onclick="scQuick('CTRL v')"><span class="sc-ico">V</span>Paste</button>
           </div>
-          <div class="neo-preview" id="neoPreview"></div>
         </div>
-        <div class="slider-group">
-          <label>Brightness</label>
-          <input type="range" id="neoBright" min="0" max="255" value="80" oninput="neoUpdate()">
-          <span class="slider-val" id="neoBrightV">80</span>
+
+        <div id="scFormArea">
+          <div class="sc-form" id="scf-delay" style="display:none">
+            <div class="sc-form-head">Add Delay</div>
+            <div class="sc-slider-row">
+              <label>Time</label>
+              <input type="range" id="scDelaySlider" min="100" max="5000" value="500" step="100" oninput="document.getElementById('scDelayVal').textContent=this.value+'ms'">
+              <span class="sc-slider-val" id="scDelayVal">500ms</span>
+            </div>
+            <button class="sc-add-btn" onclick="scAppend('DELAY '+document.getElementById('scDelaySlider').value)">Add Delay</button>
+          </div>
+
+          <div class="sc-form" id="scf-text" style="display:none">
+            <div class="sc-form-head">Type Text</div>
+            <div class="sc-form-row"><label>Text</label><input type="text" class="input" id="scTextInput" placeholder="Enter text to type..."></div>
+            <button class="sc-add-btn" onclick="scAddText()">Add STRING</button>
+          </div>
+
+          <div class="sc-form" id="scf-comment" style="display:none">
+            <div class="sc-form-head">Add Comment</div>
+            <div class="sc-form-row"><label>Note</label><input type="text" class="input" id="scRemInput" placeholder="Add a comment..."></div>
+            <button class="sc-add-btn" onclick="scAddRem()">Add Comment</button>
+          </div>
+
+          <div class="sc-form" id="scf-url" style="display:none">
+            <div class="sc-form-head">Open URL in Browser</div>
+            <div class="sc-form-row"><label>URL</label><input type="url" class="input" id="scUrlInput" placeholder="https://example.com"></div>
+            <button class="sc-add-btn" onclick="scAddUrl()">Add Open URL</button>
+          </div>
+
+          <div class="sc-form" id="scf-download" style="display:none">
+            <div class="sc-form-head">Download File</div>
+            <div class="sc-form-row"><label>URL</label><input type="url" class="input" id="scDlUrl" placeholder="https://example.com/file.exe"></div>
+            <div class="sc-form-row"><label>Save As</label><input type="text" class="input" id="scDlName" placeholder="file.exe"></div>
+            <button class="sc-add-btn" onclick="scAddDownload()">Add Download</button>
+          </div>
+
+          <div class="sc-form" id="scf-runcmd" style="display:none">
+            <div class="sc-form-head">Run Command</div>
+            <div class="sc-form-row">
+              <label>Type</label>
+              <div class="sc-choices" id="scCmdChoices">
+                <button class="sc-choice active" onclick="scSetCmdType('run', this)">Run</button>
+                <button class="sc-choice" onclick="scSetCmdType('powershell', this)">PS</button>
+                <button class="sc-choice" onclick="scSetCmdType('powershell_admin', this)">PS Admin</button>
+                <button class="sc-choice" onclick="scSetCmdType('cmd', this)">CMD</button>
+                <button class="sc-choice" onclick="scSetCmdType('cmd_admin', this)">CMD Admin</button>
+                <button class="sc-choice" onclick="scSetCmdType('terminal', this)">Terminal</button>
+              </div>
+            </div>
+            <div class="sc-form-row"><label>Cmd</label><input type="text" class="input" id="scCmdInput" placeholder="Command to execute..."></div>
+            <button class="sc-add-btn" onclick="scAddCmd()">Add Command</button>
+          </div>
         </div>
+
+        <div class="card" style="margin-top:16px">
+          <div class="card-head">Generated Script <span class="line-count" id="scLineCount">0 lines</span></div>
+          <textarea id="scOutput" class="code-output" style="min-height:140px"></textarea>
+          <div class="btn-row">
+            <button class="btn btn-primary" onclick="scToEditor()">Send to Editor</button>
+            <button class="btn btn-ghost" onclick="scClear()">Clear</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">DuckyScript Reference</div>
+          <div class="sc-ref">
+            <div class="sc-ref-item"><code>DELAY n</code><span>Wait n milliseconds before next command</span></div>
+            <div class="sc-ref-item"><code>STRING text</code><span>Type the given text as keystrokes</span></div>
+            <div class="sc-ref-item"><code>ENTER</code><span>Press Enter / Return key</span></div>
+            <div class="sc-ref-item"><code>GUI r</code><span>Win+R opens Run dialog (Windows)</span></div>
+            <div class="sc-ref-item"><code>GUI SPACE</code><span>Cmd+Space opens Spotlight (macOS)</span></div>
+            <div class="sc-ref-item"><code>CTRL ALT t</code><span>Opens terminal on most Linux distros</span></div>
+            <div class="sc-ref-item"><code>ALT F4</code><span>Close the active window</span></div>
+            <div class="sc-ref-item"><code>CTRL SHIFT ESC</code><span>Opens Task Manager (Windows)</span></div>
+            <div class="sc-ref-item"><code>TAB</code><span>Tab key - cycle between fields</span></div>
+            <div class="sc-ref-item"><code>ESCAPE / ESC</code><span>Cancel current dialog</span></div>
+            <div class="sc-ref-item"><code>REM comment</code><span>Script comment, not executed</span></div>
+            <div class="sc-ref-item"><code>REPEAT n</code><span>Repeat previous command n times</span></div>
+            <div class="sc-ref-item"><code>DEFAULTDELAY n</code><span>Default delay between all commands</span></div>
+            <div class="sc-ref-item"><code>F1 - F12</code><span>Function keys</span></div>
+          </div>
+        </div>
+
+      </div>
+      <div class="tool-panel" id="tool-neopixel">
+        <div class="tool-panel-head"><h3>NeoPixel</h3><button class="tool-back" onclick="closeTool('neopixel')">Back</button></div>
+        <div class="neo-row"><div class="toggle-wrap"><div class="toggle" id="neoToggle" onclick="neoToggle()"></div><span id="neoLabel">OFF</span></div><div class="neo-preview" id="neoPreview"></div></div>
+        <div class="slider-group"><label>Brightness</label><input type="range" id="neoBright" min="0" max="255" value="80" oninput="neoUpdate()"><span class="slider-val" id="neoBrightV">80</span></div>
         <div class="slider-group"><label class="c-red">R</label><input type="range" id="neoR" min="0" max="255" value="0" oninput="neoUpdate()"><span class="slider-val" id="neoRV">0</span></div>
         <div class="slider-group"><label class="c-green">G</label><input type="range" id="neoG" min="0" max="255" value="255" oninput="neoUpdate()"><span class="slider-val" id="neoGV">255</span></div>
         <div class="slider-group"><label class="c-blue">B</label><input type="range" id="neoB" min="0" max="255" value="65" oninput="neoUpdate()"><span class="slider-val" id="neoBV">65</span></div>
-        <div class="color-dots">
-          <div class="cdot" style="--c:#00ff41" onclick="neoSet(0,255,65)"></div>
-          <div class="cdot" style="--c:#ff3333" onclick="neoSet(255,0,0)"></div>
-          <div class="cdot" style="--c:#3388ff" onclick="neoSet(0,80,255)"></div>
-          <div class="cdot" style="--c:#ffcc00" onclick="neoSet(255,200,0)"></div>
-          <div class="cdot" style="--c:#aa33ff" onclick="neoSet(128,0,255)"></div>
-          <div class="cdot" style="--c:#00ffff" onclick="neoSet(0,255,255)"></div>
-          <div class="cdot" style="--c:#ff6600" onclick="neoSet(255,80,0)"></div>
-          <div class="cdot" style="--c:#ff1493" onclick="neoSet(255,20,120)"></div>
+        <div class="color-dots"><div class="cdot" style="--c:#00ff41" onclick="neoSet(0,255,65)"></div><div class="cdot" style="--c:#ff3333" onclick="neoSet(255,0,0)"></div><div class="cdot" style="--c:#3388ff" onclick="neoSet(0,80,255)"></div><div class="cdot" style="--c:#ffcc00" onclick="neoSet(255,200,0)"></div><div class="cdot" style="--c:#aa33ff" onclick="neoSet(128,0,255)"></div></div>
+        <button class="btn btn-primary full" onclick="neoApply()">Apply and Save</button>
+      </div>
+      <div class="tool-panel" id="tool-firmware">
+        <div class="tool-panel-head"><h3>Firmware</h3><button class="tool-back" onclick="closeTool('firmware')">Back</button></div>
+        <form method="POST" action="/update" enctype="multipart/form-data" id="otaForm"><div class="dropzone" id="dropzone" onclick="document.getElementById('fwFile').click()"><div class="dz-icon">^</div><div>Drop or tap .bin file</div><input type="file" id="fwFile" name="update" accept=".bin" style="display:none" onchange="fwPick(this)"></div><div id="fwInfo" class="fw-info" style="display:none"></div><div class="ota-bar-wrap" id="otaBarWrap" style="display:none"><div class="ota-bar" id="otaBar"></div></div><button type="submit" class="btn btn-primary full" id="flashBtn" disabled>Flash Firmware</button></form>
+      </div>
+      <div class="tool-panel" id="tool-devinfo">
+        <div class="tool-panel-head"><h3>Device Info</h3><button class="tool-back" onclick="closeTool('devinfo')">Back</button></div>
+        <div class="info-grid"><div class="info-item"><span class="info-k">Firmware</span><span class="info-v">Ghost Chip v2.0</span></div><div class="info-item"><span class="info-k">Chip</span><span class="info-v">ESP32-S3</span></div><div class="info-item"><span class="info-k">Build</span><span class="info-v">GAMKERS</span></div><div class="info-item"><span class="info-k">AP IP</span><span class="info-v">192.168.4.1</span></div></div>
+      </div>
+      <div class="tool-panel" id="tool-guide">
+        <div class="tool-panel-head"><h3>User Guide</h3><button class="tool-back" onclick="closeTool('guide')">Back</button></div>
+        
+        <div class="card">
+          <div class="card-head">DuckyScript Syntax</div>
+          <div class="sc-doc">
+            <p>DuckyScript is the industry standard for BadUSB payloads. It consists of simple commands that represent keystrokes.</p>
+            
+            <div class="sc-section-head" style="font-size:0.85rem;margin-top:15px">Core Commands</div>
+            <div class="sc-ref">
+              <div class="sc-ref-item"><code>DELAY [ms]</code><span>Pauses the script for the specified milliseconds. Essential for timing.</span></div>
+              <div class="sc-ref-item"><code>STRING [text]</code><span>Types the specified text exactly as provided.</span></div>
+              <div class="sc-ref-item"><code>ENTER</code><span>Presses the Enter/Return key.</span></div>
+              <div class="sc-ref-item"><code>GUI [key]</code><span>Presses the System/Windows/Command key + another key.</span></div>
+              <div class="sc-ref-item"><code>REM [text]</code><span>Comment line. Ignored during execution.</span></div>
+              <div class="sc-ref-item"><code>DEFAULTDELAY [ms]</code><span>Sets a delay between every single command.</span></div>
+            </div>
+
+            <div class="sc-section-head" style="font-size:0.85rem;margin-top:15px">Modifier Keys</div>
+            <div class="sc-ref">
+              <div class="sc-ref-item"><code>CTRL / CONTROL</code><span>The Control key.</span></div>
+              <div class="sc-ref-item"><code>ALT</code><span>The Alt / Option key.</span></div>
+              <div class="sc-ref-item"><code>SHIFT</code><span>The Shift key.</span></div>
+              <div class="sc-ref-item"><code>CAPSLOCK</code><span>Toggles Caps Lock.</span></div>
+            </div>
+
+            <div class="sc-section-head" style="font-size:0.85rem;margin-top:15px">Special Keys</div>
+            <div class="sc-ref">
+              <div class="sc-ref-item"><code>TAB</code><span>The Tab key.</span></div>
+              <div class="sc-ref-item"><code>ESCAPE / ESC</code><span>The Escape key.</span></div>
+              <div class="sc-ref-item"><code>SPACE</code><span>The Space bar.</span></div>
+              <div class="sc-ref-item"><code>UP / DOWN / LEFT / RIGHT</code><span>Arrow keys.</span></div>
+              <div class="sc-ref-item"><code>PAGEUP / PAGEDOWN</code><span>Page navigation keys.</span></div>
+              <div class="sc-ref-item"><code>HOME / END</code><span>Cursor navigation keys.</span></div>
+              <div class="sc-ref-item"><code>F1 - F12</code><span>Function keys.</span></div>
+            </div>
+          </div>
         </div>
-        <button class="btn btn-primary full" onclick="neoApply()">Apply & Save</button>
-      </div>
 
-      <!-- OTA -->
-      <div class="card">
-        <div class="card-head">📦 Firmware Update</div>
-        <form method="POST" action="/update" enctype="multipart/form-data" id="otaForm">
-          <div class="dropzone" id="dropzone" onclick="document.getElementById('fwFile').click()">
-            <div class="dz-icon">⬆</div>
-            <div>Drop or tap to select <strong>.bin</strong></div>
-            <input type="file" id="fwFile" name="update" accept=".bin" style="display:none" onchange="fwPick(this)">
-          </div>
-          <div id="fwInfo" class="fw-info" style="display:none"></div>
-          <div class="ota-bar-wrap" id="otaBarWrap" style="display:none">
-            <div class="ota-bar" id="otaBar"></div>
-          </div>
-          <button type="submit" class="btn btn-primary full" id="flashBtn" disabled>⚡ Flash Firmware</button>
-        </form>
-      </div>
+        <div class="card">
+          <div class="card-head">Feature Guide</div>
+          <div class="sc-doc">
+            <div class="sc-section-head" style="font-size:0.85rem">Script Builder</div>
+            <p>A visual interface to create scripts. Select a command block, fill in the details, and add it to your script buffer.</p>
 
-      <!-- Device Info -->
-      <div class="card">
-        <div class="card-head">ℹ️ Device Info</div>
-        <div class="info-grid">
-          <div class="info-item"><span class="info-k">Firmware</span><span class="info-v">Ghost Chip v2.0</span></div>
-          <div class="info-item"><span class="info-k">Chip</span><span class="info-v">ESP32-S3</span></div>
-          <div class="info-item"><span class="info-k">Build</span><span class="info-v">GAMKERS</span></div>
-          <div class="info-item"><span class="info-k">AP IP</span><span class="info-v">192.168.4.1</span></div>
+            <div class="sc-section-head" style="font-size:0.85rem;margin-top:15px">Payload Queue</div>
+            <p>Allows you to chain multiple scripts together with custom delays. Great for complex multi-stage attacks.</p>
+
+            <div class="sc-section-head" style="font-size:0.85rem;margin-top:15px">Simulator</div>
+            <p>A real-time preview of what your script will do. It shows the keystrokes and timing without actually executing on the host.</p>
+
+            <div class="sc-section-head" style="font-size:0.85rem;margin-top:15px">NeoPixel Control</div>
+            <p>Change the color and brightness of the onboard LED to indicate status or for stealth mode.</p>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">Advanced Tips</div>
+          <div class="sc-doc">
+            <div class="sc-doc-warn">
+              <b>Stealth Tip:</b> Use <code>DEFAULTDELAY 0</code> and manual <code>DELAY</code> commands for the fastest possible execution while maintaining reliability.
+            </div>
+            <ul class="sc-doc-list">
+              <li>Use <code>REM</code> liberally to explain what your script does.</li>
+              <li>Always test new scripts in the <b>Simulator</b> before deployment.</li>
+              <li>For Windows, use PowerShell for exfiltration. For Mac, use Curl or Terminal.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="tool-panel" id="tool-keyboard">
+        <div class="tool-panel-head"><h3>Live Keyboard</h3><button class="tool-back" onclick="closeTool('keyboard')">Back</button></div>
+        
+        <div class="card">
+          <div class="card-head">Quick Macros</div>
+          <div class="macro-grid">
+            <button class="macro-btn" onclick="kbMacro('GUI r')">Run Dialog</button>
+            <button class="macro-btn" onclick="kbMacro('GUI SPACE')">Spotlight</button>
+            <button class="macro-btn" onclick="kbMacro('CTRL ALT t')">Terminal</button>
+            <button class="macro-btn" onclick="kbMacro('GUI x')">Win + X</button>
+            <button class="macro-btn" onclick="kbMacro('GUI')">Windows Key</button>
+            <button class="macro-btn" onclick="kbMacro('ENTER')">Enter</button>
+            <button class="macro-btn" onclick="kbMacro('CTRL SHIFT ESC')">Task Mgr</button>
+            <button class="macro-btn" onclick="kbMacro('ALT F4')">Close Win</button>
+          </div>
+        </div>
+
+        <div class="keyboard-wrap">
+          <div class="kb-row">
+            <button class="kb-key" onclick="kbKey('q')">Q</button>
+            <button class="kb-key" onclick="kbKey('w')">W</button>
+            <button class="kb-key" onclick="kbKey('e')">E</button>
+            <button class="kb-key" onclick="kbKey('r')">R</button>
+            <button class="kb-key" onclick="kbKey('t')">T</button>
+            <button class="kb-key" onclick="kbKey('y')">Y</button>
+            <button class="kb-key" onclick="kbKey('u')">U</button>
+            <button class="kb-key" onclick="kbKey('i')">I</button>
+            <button class="kb-key" onclick="kbKey('o') POSITION_LAST">O</button>
+            <button class="kb-key" onclick="kbKey('p')">P</button>
+          </div>
+          <div class="kb-row">
+            <button class="kb-key" onclick="kbKey('a')">A</button>
+            <button class="kb-key" onclick="kbKey('s')">S</button>
+            <button class="kb-key" onclick="kbKey('d')">D</button>
+            <button class="kb-key" onclick="kbKey('f')">F</button>
+            <button class="kb-key" onclick="kbKey('g')">G</button>
+            <button class="kb-key" onclick="kbKey('h')">H</button>
+            <button class="kb-key" onclick="kbKey('j')">J</button>
+            <button class="kb-key" onclick="kbKey('k')">K</button>
+            <button class="kb-key" onclick="kbKey('l')">L</button>
+          </div>
+          <div class="kb-row">
+            <button class="kb-key mod" id="kbShift" onclick="kbToggle('shift')">SHIFT</button>
+            <button class="kb-key" onclick="kbKey('z')">Z</button>
+            <button class="kb-key" onclick="kbKey('x')">X</button>
+            <button class="kb-key" onclick="kbKey('c')">C</button>
+            <button class="kb-key" onclick="kbKey('v')">V</button>
+            <button class="kb-key" onclick="kbKey('b')">B</button>
+            <button class="kb-key" onclick="kbKey('n')">N</button>
+            <button class="kb-key" onclick="kbKey('m')">M</button>
+            <button class="kb-key wide" onclick="kbKey('BACKSPACE')">BKSP</button>
+          </div>
+          <div class="kb-row">
+            <button class="kb-key mod" id="kbCtrl" onclick="kbToggle('ctrl')">CTRL</button>
+            <button class="kb-key mod" id="kbAlt" onclick="kbToggle('alt')">ALT</button>
+            <button class="kb-key mod" id="kbGui" onclick="kbToggle('gui')">GUI</button>
+            <button class="kb-key space" onclick="kbKey('SPACE')">SPACE</button>
+            <button class="kb-key wide" onclick="kbKey('ENTER')">ENTER</button>
+          </div>
+          <div class="kb-row" style="margin-top:10px">
+            <button class="kb-key" onclick="kbKey('UP')">UP</button>
+            <button class="kb-key" onclick="kbKey('DOWN')">DOWN</button>
+            <button class="kb-key" onclick="kbKey('LEFT')">LEFT</button>
+            <button class="kb-key" onclick="kbKey('RIGHT')">RIGHT</button>
+            <button class="kb-key" onclick="kbKey('TAB')">TAB</button>
+            <button class="kb-key" onclick="kbKey('ESC')">ESC</button>
+          </div>
+        </div>
+        
+        <div class="card" style="margin-top:16px">
+          <div class="card-head">Keyboard Status</div>
+          <div id="kbStatus" class="kb-status">Ready. Tap keys to send.</div>
         </div>
       </div>
     </section>
@@ -310,7 +547,7 @@
 
       <!-- WiFi Connect -->
       <div class="card">
-        <div class="card-head">📶 WiFi Station</div>
+        <div class="card-head">WiFi Station</div>
         <button class="btn btn-ghost full" onclick="scanWifiSettings()">Scan Networks</button>
         <div id="wifiSettingsList" class="wifi-list"></div>
         <div class="input-group" id="wifiPassGroup" style="display:none">
@@ -327,7 +564,7 @@
 
       <!-- Danger -->
       <div class="card">
-        <div class="card-head">⚠️ Danger Zone</div>
+        <div class="card-head">Danger Zone</div>
         <div class="btn-row">
           <button class="btn btn-danger-sm" onclick="if(confirm('Reboot device?'))deviceFetch('/reboot',{method:'POST'}).then(()=>toast('Rebooting...','warn'))">Reboot</button>
           <button class="btn btn-danger-sm" onclick="if(confirm('FACTORY RESET?'))deviceFetch('/factoryReset',{method:'POST'}).then(()=>toast('Wiping...','warn'))">Factory Reset</button>
@@ -359,6 +596,32 @@
       <span>Settings</span>
     </button>
   </nav>
+</div>
+
+<!-- ══ SIMULATOR MODAL ══ -->
+<div id="simOverlay" class="sim-overlay" style="display:none">
+  <div class="sim-container">
+    <div class="sim-header">
+      <span class="sim-title">PAYLOAD SIMULATOR</span>
+      <div class="sim-controls">
+        <select id="simSpeed" class="sim-speed">
+          <option value="1">1×</option>
+          <option value="2" selected>2×</option>
+          <option value="5">5×</option>
+          <option value="10">10×</option>
+        </select>
+        <button class="btn btn-ghost" onclick="stopSimulator()" style="padding:6px 12px">✕ Close</button>
+      </div>
+    </div>
+    <div class="sim-screen" id="simScreen">
+      <div class="sim-content" id="simContent"><span class="sim-cursor">▌</span></div>
+    </div>
+    <div class="sim-status">
+      <div class="sim-progress-wrap"><div class="sim-progress" id="simProgress"></div></div>
+      <div class="sim-cmd" id="simCmd">Ready</div>
+      <div class="sim-counter" id="simCounter">0 / 0</div>
+    </div>
+  </div>
 </div>
 
 <script src="app.js"></script>
