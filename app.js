@@ -552,7 +552,7 @@ function deauthPoll() {
 }
 
 // ─── Voice Input ───
-function setupVoice() {
+function toggleVoice() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) {
     toast('Speech recognition not supported in this browser', 'err');
