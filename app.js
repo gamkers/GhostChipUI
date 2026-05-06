@@ -647,6 +647,8 @@ async function aiGenerate() {
     btn.innerHTML = '⚡ Generate DuckyScript';
     return;
   }
+  $('aiOutput').value = '';
+  $('aiOutputCard').style.display = 'none';
   try {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
