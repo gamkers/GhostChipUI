@@ -95,17 +95,25 @@ const BOOT_LINES = [
 (function boot() {
   let i = 0;
   const log = $('bootLog'), bar = $('bootBar'), overlay = $('boot');
+  let bootFinished = false;
+  function finishBoot() {
+    if (bootFinished) return;
+    bootFinished = true;
+    overlay.classList.add('done');
+    setTimeout(() => {
+      overlay.style.display = 'none';
+      $('app').style.display = 'flex';
+      if (!sessionStorage.getItem(WARN_KEY)) $('legalModal').style.display = 'flex';
+      try { initApp(); }
+      catch (e) {
+        console.error('[GhostChip] init failed:', e);
+        toast('Startup recovered. Check settings if a feature is offline.', 'warn', 4500);
+      }
+    }, 700);
+  }
   function next() {
     if (i >= BOOT_LINES.length) {
-      setTimeout(() => {
-        overlay.classList.add('done');
-        setTimeout(() => {
-          overlay.style.display = 'none';
-          $('app').style.display = 'flex';
-          if (!sessionStorage.getItem(WARN_KEY)) $('legalModal').style.display = 'flex';
-          initApp();
-        }, 700);
-      }, 400);
+      setTimeout(finishBoot, 400);
       return;
     }
     log.innerHTML += BOOT_LINES[i] + '<br>';
@@ -115,6 +123,7 @@ const BOOT_LINES = [
     setTimeout(next, 180 + Math.random() * 120);
   }
   next();
+  setTimeout(finishBoot, 5000);
 })();
 
 $('acceptBtn').addEventListener('click', () => {
@@ -852,6 +861,7 @@ function clearQueue() {
 
 function renderQueue() {
   const list = $('queueList');
+  if (!list) return;
   if (!payloadQueue.length) {
     list.innerHTML = '<div class="empty-state">Queue empty — add scripts to chain</div>';
     $('runQueueBtn').style.display = 'none';
@@ -1280,3 +1290,217 @@ function kbMacro(m) {
   });
 }
 
+
+// ═══════════════════════════════════════════════════
+//  FILE MANAGER
+// ═══════════════════════════════════════════════════
+
+var fmCurrentPath = '/';
+var fmSelectedFile = null;
+var fmRunBusy = false;
+
+function fmBase() {
+  const b = BASE();
+  if (b === '') return location.origin;
+  return b || 'http://192.168.4.1';
+}
+
+async function fmFetch(path) {
+  const url = fmBase() + path;
+  try {
+    return await fetch(url, {
+      headers: { 'Accept': '*/*', 'Referer': fmBase() + '/file-manager' }
+    });
+  } catch (e) {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('GET', url, true);
+      xhr.setRequestHeader('Accept', '*/*');
+      xhr.onload = () => resolve({ ok: xhr.status < 400, status: xhr.status, text: async () => xhr.responseText, json: async () => JSON.parse(xhr.responseText) });
+      xhr.onerror = () => reject(new Error('Network error'));
+      xhr.timeout = 8000; xhr.ontimeout = () => reject(new Error('Timeout'));
+      xhr.send();
+    });
+  }
+}
+
+async function fmFetchPost(path) {
+  const url = fmBase() + path;
+  const crossOrigin = new URL(url).origin !== location.origin;
+  const opts = crossOrigin
+    ? { method: 'POST', mode: 'no-cors', body: null }
+    : { method: 'POST', headers: { 'Accept': '*/*' }, body: null };
+  return fetch(url, opts);
+}
+
+async function fmNavigate(path) {
+  fmCurrentPath = path;
+  fmSelectedFile = null;
+  fmRenderBreadcrumb(path);
+  await fmLoadList(path);
+}
+
+function fmRefresh() { fmNavigate(fmCurrentPath); }
+
+function fmUp() {
+  if (fmCurrentPath === '/') return;
+  const parent = fmCurrentPath.split('/').filter(Boolean).slice(0, -1).join('/');
+  fmNavigate(parent ? '/' + parent : '/');
+}
+
+function fmRenderBreadcrumb(path) {
+  const parts = path.split('/').filter(p => p);
+  let crumbs = [{ label: '⌂ root', path: '/' }];
+  let built = '';
+  parts.forEach(p => { built += '/' + p; crumbs.push({ label: p, path: built }); });
+  const bc = $('fmBreadcrumb');
+  if (!bc) return;
+  bc.innerHTML = crumbs.map((c, i) =>
+    '<span class="fm-crumb' + (i === crumbs.length - 1 ? ' active' : '') + '" onclick="fmNavigate(\'' + c.path.replace(/'/g, "\\'") + '\')">' + escHtml(c.label) + '</span>'
+  ).join('<span class="fm-sep">›</span>');
+}
+
+async function fmLoadList(path) {
+  const list = $('fmList');
+  if (!list) return;
+  list.innerHTML = '<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>';
+  try {
+    const r = await fmFetch('/fm/list?path=' + encodeURIComponent(path));
+    const text = await r.text();
+    let data;
+    try { data = JSON.parse(text); } catch { data = []; }
+    const items = Array.isArray(data) ? data : (data.files || data.entries || []);
+    if (!items.length) { list.innerHTML = '<div class="empty-state">Empty folder</div>'; return; }
+    items.sort((a, b) => {
+      const aD = a.dir === true || a.type === 'dir' || a.isDir || a.directory;
+      const bD = b.dir === true || b.type === 'dir' || b.isDir || b.directory;
+      if (aD && !bD) return -1; if (!aD && bD) return 1;
+      return (a.name || '').localeCompare(b.name || '');
+    });
+    list.innerHTML = items.map(item => {
+      const isDir = item.dir === true || item.type === 'dir' || item.isDir || item.directory;
+      const name = item.name || item.filename || '';
+      const size = item.size != null ? fmFormatSize(item.size) : '';
+      const iPath = (path === '/' ? '' : path) + '/' + name;
+      const sp = iPath.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+      const sn = name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+      const icon = isDir
+        ? '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>'
+        : fmFileIcon(name);
+      return '<div class="fm-item' + (isDir ? ' fm-dir' : '') + '" onclick="' + (isDir ? 'fmNavigate(\'' + sp + '\')' : 'fmSelectFile(\'' + sp + '\',\'' + sn + '\',false,this)') + '">' +
+        '<div class="fm-item-icon">' + icon + '</div>' +
+        '<div class="fm-item-info"><div class="fm-item-name">' + escHtml(name) + '</div>' + (!isDir && size ? '<div class="fm-item-size">' + size + '</div>' : '') + '</div>' +
+        (isDir ? '<span class="fm-arrow">›</span>' : '') + '</div>';
+    }).join('');
+  } catch (e) {
+    list.innerHTML = '<div class="empty-state">Failed to load — check connection<br><small style="opacity:.6">' + escHtml(e.message) + '</small></div>';
+    toast('FM: Load failed', 'err');
+  }
+}
+
+function fmFileIcon(name) {
+  const ext = (name.split('.').pop() || '').toLowerCase();
+  if (['txt','ducky','ds','ps1','sh','bat','py'].includes(ext))
+    return '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>';
+  return '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>';
+}
+
+function fmFormatSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / 1048576).toFixed(1) + ' MB';
+}
+
+function fmSelectFile(path, name, isDir, el) {
+  fmSelectedFile = { path, name, isDir };
+  document.querySelectorAll('.fm-item').forEach(e => e.classList.remove('fm-selected'));
+  document.querySelectorAll('.fm-file-actions').forEach(e => e.remove());
+  if (el) el.classList.add('fm-selected');
+  if (!el) return;
+  const actions = document.createElement('div');
+  actions.className = 'fm-file-actions';
+  actions.innerHTML =
+    '<button class="fm-inline-btn fm-inline-run" onclick="event.stopPropagation(); fmRunSelected()">Run</button>' +
+    '<button class="fm-inline-btn" onclick="event.stopPropagation(); fmDownloadSelected()">Download</button>';
+  el.appendChild(actions);
+}
+
+function fmClearSelection() {
+  fmSelectedFile = null;
+  document.querySelectorAll('.fm-item').forEach(e => e.classList.remove('fm-selected'));
+  document.querySelectorAll('.fm-file-actions').forEach(e => e.remove());
+}
+
+async function fmRunSelected() {
+  if (!fmSelectedFile || fmRunBusy) return;
+  fmRunBusy = true;
+  try {
+    await fmFetchPost('/fm/run?path=' + encodeURIComponent(fmSelectedFile.path));
+    toast('Script running: ' + fmSelectedFile.name + ' ✓');
+    fmClearSelection();
+  } catch (e) {
+    toast('Run sent. Check device status.', 'warn');
+    fmClearSelection();
+  } finally {
+    fmRunBusy = false;
+  }
+}
+
+function fmDownloadSelected() {
+  if (!fmSelectedFile) return;
+  const url = fmBase() + '/fm/download?path=' + encodeURIComponent(fmSelectedFile.path);
+  const a = document.createElement('a');
+  a.href = url; a.download = fmSelectedFile.name; a.target = '_blank';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  toast('Downloading ' + fmSelectedFile.name + '...');
+}
+
+function fmUploadClick() { if ($('fmUploadInput')) $('fmUploadInput').click(); }
+
+async function fmHandleUpload(event) {
+  const files = Array.from(event.target.files);
+  if (!files.length) return;
+  const uploadUrl = fmBase() + '/fm/upload?path=' + encodeURIComponent(fmCurrentPath);
+  for (const file of files) {
+    toast('Uploading ' + file.name + '...', 'warn', 4000);
+    try {
+      const fd = new FormData();
+      fd.append('file', file, file.name);
+      await fetch(uploadUrl, { method: 'POST', headers: { 'Accept': '*/*', 'Referer': fmBase() + '/file-manager' }, body: fd });
+      toast('Uploaded ' + file.name + ' ✓');
+    } catch (e) { toast('Upload failed: ' + e.message, 'err'); }
+  }
+  event.target.value = '';
+  await fmLoadList(fmCurrentPath);
+}
+
+setTimeout(() => {
+  const dz = $('fmDropzone');
+  if (!dz) return;
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('drag'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault(); dz.classList.remove('drag');
+    const files = Array.from(e.dataTransfer.files);
+    if (!files.length) return;
+    const dt = new DataTransfer();
+    files.forEach(f => dt.items.add(f));
+    $('fmUploadInput').files = dt.files;
+    fmHandleUpload({ target: $('fmUploadInput') });
+  });
+}, 800);
+
+function fmShowMkdir() { if ($('fmMkdirForm')) { $('fmMkdirForm').style.display = 'block'; setTimeout(() => $('fmMkdirName') && $('fmMkdirName').focus(), 100); } }
+function fmHideMkdir() { if ($('fmMkdirForm')) { $('fmMkdirForm').style.display = 'none'; if ($('fmMkdirName')) $('fmMkdirName').value = ''; } }
+
+async function fmCreateFolder() {
+  const name = $('fmMkdirName') ? $('fmMkdirName').value.trim() : '';
+  if (!name) { toast('Enter a folder name', 'warn'); return; }
+  const folderPath = (fmCurrentPath === '/' ? '' : fmCurrentPath) + '/' + name;
+  try {
+    await fmFetchPost('/fm/mkdir?path=' + encodeURIComponent(folderPath));
+    toast('Folder created: ' + name + ' ✓');
+    fmHideMkdir();
+    await fmLoadList(fmCurrentPath);
+  } catch (e) { toast('Create failed: ' + e.message, 'err'); }
+}

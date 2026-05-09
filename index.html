@@ -9,7 +9,7 @@
 <title>GhostChip</title>
 <link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=20260509-fm3">
 </head>
 <body>
 
@@ -239,6 +239,7 @@
         <button class="tool-app" onclick="simulatePayload()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg><span>Simulator</span></button>
         <button class="tool-app" onclick="openTool('guide')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg><span>User Guide</span></button>
         <button class="tool-app" onclick="openTool('keyboard')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2" ry="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M6 12h.01M10 12h.01M14 12h.01M18 12h.01M7 16h10"/></svg><span>Live Keyboard</span></button>
+        <button class="tool-app" onclick="openTool('filemanager'); fmNavigate(fmCurrentPath)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6a2 2 0 012-2h5l2 2h7a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><path d="M3 10h18"/></svg><span>File Manager</span></button>
       </div>
       <div class="tool-panel" id="tool-constructor">
         <div class="tool-panel-head"><h3>Script Builder</h3><button class="tool-back" onclick="closeTool('constructor')">Back</button></div>
@@ -510,6 +511,41 @@
           <div id="kbStatus" class="kb-status">Ready. Tap keys to send.</div>
         </div>
       </div>
+      <div class="tool-panel" id="tool-filemanager">
+        <div class="tool-panel-head"><h3>File Manager</h3><button class="tool-back" onclick="closeTool('filemanager')">Back</button></div>
+
+        <div class="fm-topbar">
+          <div class="fm-breadcrumb" id="fmBreadcrumb"></div>
+          <div class="fm-toolbar">
+            <button class="fm-tool-btn" onclick="fmUp()" title="Up"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg></button>
+            <button class="fm-tool-btn" onclick="fmRefresh()" title="Refresh"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-2.64-6.36"/><path d="M21 3v6h-6"/></svg></button>
+            <button class="fm-tool-btn" onclick="fmShowMkdir()" title="New Folder"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg></button>
+            <button class="fm-tool-btn" onclick="fmUploadClick()" title="Upload"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></svg></button>
+          </div>
+        </div>
+
+        <div class="fm-mkdir-form" id="fmMkdirForm" style="display:none">
+          <div class="input-group">
+            <label>Folder Name</label>
+            <input type="text" id="fmMkdirName" class="input" placeholder="New folder">
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-primary" onclick="fmCreateFolder()">Create</button>
+            <button class="btn btn-ghost" onclick="fmHideMkdir()">Cancel</button>
+          </div>
+        </div>
+
+        <div class="fm-dropzone" id="fmDropzone" onclick="fmUploadClick()">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12"/><path d="M17 8l-5-5-5 5"/><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/></svg>
+          <span>Tap or drop files to upload here</span>
+        </div>
+        <input type="file" id="fmUploadInput" multiple style="display:none" onchange="fmHandleUpload(event)">
+
+        <div class="fm-list" id="fmList">
+          <div class="empty-state">Open File Manager to load files</div>
+        </div>
+
+      </div>
     </section>
 
     <!-- ── PAGE: SETTINGS ── -->
@@ -624,6 +660,6 @@
   </div>
 </div>
 
-<script src="app.js"></script>
+<script src="app.js?v=20260509-fm3"></script>
 </body>
 </html>
