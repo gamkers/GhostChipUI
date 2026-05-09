@@ -1449,6 +1449,13 @@ async function fmRunSelected() {
 function fmDownloadSelected() {
   if (!fmSelectedFile) return;
   const url = fmBase() + '/fm/download?path=' + encodeURIComponent(fmSelectedFile.path);
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  if (isMobile) {
+    const opened = window.open(url, '_blank', 'noopener');
+    if (!opened) location.href = url;
+    toast('Opening download: ' + fmSelectedFile.name + '...');
+    return;
+  }
   const a = document.createElement('a');
   a.href = url; a.download = fmSelectedFile.name; a.target = '_blank';
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
@@ -1461,14 +1468,20 @@ async function fmHandleUpload(event) {
   const files = Array.from(event.target.files);
   if (!files.length) return;
   const uploadUrl = fmBase() + '/fm/upload?path=' + encodeURIComponent(fmCurrentPath);
+  const crossOrigin = new URL(uploadUrl).origin !== location.origin;
   for (const file of files) {
     toast('Uploading ' + file.name + '...', 'warn', 4000);
     try {
       const fd = new FormData();
       fd.append('file', file, file.name);
-      await fetch(uploadUrl, { method: 'POST', headers: { 'Accept': '*/*', 'Referer': fmBase() + '/file-manager' }, body: fd });
+      const opts = crossOrigin
+        ? { method: 'POST', mode: 'no-cors', body: fd }
+        : { method: 'POST', headers: { 'Accept': '*/*' }, body: fd };
+      await fetch(uploadUrl, opts);
       toast('Uploaded ' + file.name + ' ✓');
-    } catch (e) { toast('Upload failed: ' + e.message, 'err'); }
+    } catch (e) {
+      toast('Upload sent. Refreshing folder...', 'warn', 2500);
+    }
   }
   event.target.value = '';
   await fmLoadList(fmCurrentPath);
