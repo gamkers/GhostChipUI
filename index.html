@@ -204,7 +204,8 @@
               <line x1="12" y1="19" x2="12" y2="23"/>
               <line x1="8" y1="23" x2="16" y2="23"/>
             </svg>
-            <div class="mic-pulse" id="micPulse"></div>
+            <div class="mic-pulse"></div>
+            <div class="mic-pulse"></div>
           </button>
         </div>
         <button class="btn btn-primary full" id="aiGenBtn" onclick="aiGenerate()">
@@ -241,6 +242,7 @@
         <button class="tool-app" onclick="openTool('keyboard')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2" ry="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M6 12h.01M10 12h.01M14 12h.01M18 12h.01M7 16h10"/></svg><span>Live Keyboard</span></button>
         <button class="tool-app" onclick="openTool('filemanager'); fmNavigate(fmCurrentPath)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6a2 2 0 012-2h5l2 2h7a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><path d="M3 10h18"/></svg><span>File Manager</span></button>
         <button class="tool-app" onclick="openTool('templates')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3H5a2 2 0 00-2 2v4a2 2 0 002 2h4a2 2 0 002-2V5a2 2 0 00-2-2zM19 3h-4a2 2 0 00-2 2v4a2 2 0 002 2h4a2 2 0 002-2V5a2 2 0 00-2-2zM9 13H5a2 2 0 00-2 2v4a2 2 0 002 2h4a2 2 0 002-2v-4a2 2 0 00-2-2zM17 13v3m0 3v.01M13 19h1m3 0h1"/></svg><span>Templates</span></button>
+        <button class="tool-app" onclick="openTool('assistant')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8"/><path d="M8 13h6"/></svg><span>AI Assistant</span></button>
       </div>
       <div class="tool-panel" id="tool-constructor">
         <div class="tool-panel-head"><h3>Script Builder</h3><button class="tool-back" onclick="closeTool('constructor')">Back</button></div>
@@ -591,6 +593,48 @@
           <div class="btn-row">
             <button class="btn btn-primary" onclick="tpToEditor()">Send to Editor</button>
             <button class="btn btn-ghost" onclick="tpClear()">Clear</button>
+          </div>
+        </div>
+      </div>
+      <div class="tool-panel" id="tool-assistant">
+        <div class="tool-panel-head"><h3>AI Assistant</h3><button class="tool-back" onclick="closeTool('assistant')">Back</button></div>
+        
+        <div class="os-toggle assistant-os" style="margin-bottom:15px">
+          <button class="os-btn active" onclick="setAssistOS('windows',this)">WIN</button>
+          <button class="os-btn" onclick="setAssistOS('macos',this)">MAC</button>
+          <button class="os-btn" onclick="setAssistOS('linux',this)">LINUX</button>
+          <button class="os-btn" onclick="setAssistOS('android',this)">AND</button>
+        </div>
+
+        <div class="assistant-chat" id="assistantChat">
+          <div class="chat-msg bot">Hi! I'm your GhostChip agent. Select your target OS and tell me what you need. I'll automatically detect if you need an HID script or just a quick answer.</div>
+        </div>
+
+        <div class="assistant-controls">
+          <div class="mic-wrap large" id="assistMicBtn" onclick="toggleAssistantVoice()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+              <line x1="12" y1="19" x2="12" y2="23"/>
+              <line x1="8" y1="23" x2="16" y2="23"/>
+            </svg>
+            <div class="mic-pulse"></div>
+            <div class="mic-pulse"></div>
+          </div>
+          <div id="assistStatus" class="assist-status">Tap to speak</div>
+          
+          <div class="assist-playback" style="margin-top:15px;display:flex;gap:12px">
+            <button class="btn btn-danger-sm" onclick="stopAssistant()" style="padding:8px 16px">Stop Voice</button>
+            <button class="btn btn-ghost-sm" onclick="clearAssistantChat()" style="padding:8px 16px">Clear Chat</button>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:20px">
+          <div class="card-head">Last Executed Script</div>
+          <textarea id="assistScript" class="code-output" readonly style="min-height:100px;font-size:0.7rem"></textarea>
+          <div class="btn-row" style="margin-top:10px">
+            <button class="btn btn-primary-sm" onclick="simulateAssistant()">Simulate</button>
+            <button class="btn btn-ghost-sm" onclick="copyAssistant()">Copy</button>
           </div>
         </div>
       </div>

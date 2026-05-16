@@ -159,7 +159,7 @@ function goPage(name, btn) {
   // Scroll to top
   document.querySelector('.pages').scrollTop = 0;
 }
-function showSettings() { 
+function showSettings() {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   $('page-settings').classList.add('active');
@@ -200,7 +200,7 @@ function highlightDucky(code) {
     return hl;
   }).join('\n');
 }
-function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escHtml(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
 function updateLines() {
   const code = $('editor').value;
@@ -334,7 +334,7 @@ function pollExec() {
       lastLogLen = d.log.length;
     }
     if (!d.running) finishExec();
-  }).catch(() => {});
+  }).catch(() => { });
 }
 
 function finishExec() {
@@ -557,7 +557,7 @@ function deauthPoll() {
       }
       ddSeen = d.events.length;
     }
-  }).catch(() => {});
+  }).catch(() => { });
 }
 
 // ─── Voice Input ───
@@ -670,7 +670,7 @@ async function aiGenerate() {
         messages: [
           {
             role: 'system',
-            content: `You are a DuckyScript expert for USB Rubber Ducky / ESP32 HID payloads. ${getOSContext()} Generate ONLY the DuckyScript payload — no explanations, no markdown code fences, no extra text. Use proper DuckyScript syntax: DELAY, STRING, ENTER, GUI, ALT, CTRL, SHIFT, TAB, SPACE, UP, DOWN, LEFT, RIGHT, REM, F1-F12, CAPSLOCK, etc.`
+            content: `You are a DuckyScript expert for USB Rubber Ducky / ESP32 HID payloads. ${getOSContext()} Generate ONLY the DuckyScript payload — no explanations, no markdown code fences, no extra text. Use proper DuckyScript syntax: DELAY, STRING, ENTER, GUI, ALT, CTRL, SHIFT, TAB, SPACE, UP, DOWN, LEFT, RIGHT, REM, F1-F12, CAPSLOCK, etc. add DELAY 2000 for each line`
           },
           { role: 'user', content: prompt }
         ],
@@ -752,7 +752,7 @@ async function aiExec() {
 function neoToggle() {
   neo.on = !neo.on;
   neoUI();
-  deviceFetch('/neopixel/toggle', { method: 'POST' }).catch(() => {});
+  deviceFetch('/neopixel/toggle', { method: 'POST' }).catch(() => { });
   toast('NeoPixel ' + (neo.on ? 'ON' : 'OFF'), neo.on ? 'ok' : 'warn', 1500);
 }
 function neoUpdate() {
@@ -1251,7 +1251,7 @@ function tpSelectTemplate(id, btn) {
   tpSelected = id;
   document.querySelectorAll('#tpChoices .sc-choice').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
-  
+
   const desc = $('tpDesc');
   if (id === 'sysinfo') {
     desc.textContent = 'Collects hardware, OS, and user information and sends it to a webhook.';
@@ -1273,7 +1273,7 @@ function tpSelectTemplate(id, btn) {
 function tpGenerate() {
   const webhook = $('tpWebhookUrl').value.trim();
   if (!webhook) { toast('Enter a Webhook URL', 'warn'); return; }
-  
+
   let script = '';
   if (tpSelected === 'sysinfo') {
     script = `REM System Info Collector - Hardware, OS, Users
@@ -1601,10 +1601,10 @@ function kbKey(key) {
   }
 
   $('kbStatus').textContent = 'Sending: ' + script;
-  deviceFetch('/', { 
-    method: 'POST', 
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, 
-    body: 'duckyscript=' + encodeURIComponent(script) 
+  deviceFetch('/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: 'duckyscript=' + encodeURIComponent(script)
   }).then(() => {
     setTimeout(() => { if ($('kbStatus')) $('kbStatus').textContent = 'Ready.'; }, 500);
   });
@@ -1612,10 +1612,10 @@ function kbKey(key) {
 
 function kbMacro(m) {
   $('kbStatus').textContent = 'Executing macro...';
-  deviceFetch('/', { 
-    method: 'POST', 
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, 
-    body: 'duckyscript=' + encodeURIComponent(m) 
+  deviceFetch('/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: 'duckyscript=' + encodeURIComponent(m)
   }).then(() => {
     setTimeout(() => { if ($('kbStatus')) $('kbStatus').textContent = 'Ready.'; }, 800);
   });
@@ -1731,7 +1731,7 @@ async function fmLoadList(path) {
 
 function fmFileIcon(name) {
   const ext = (name.split('.').pop() || '').toLowerCase();
-  if (['txt','ducky','ds','ps1','sh','bat','py'].includes(ext))
+  if (['txt', 'ducky', 'ds', 'ps1', 'sh', 'bat', 'py'].includes(ext))
     return '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>';
   return '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>';
 }
@@ -1847,4 +1847,187 @@ async function fmCreateFolder() {
     fmHideMkdir();
     await fmLoadList(fmCurrentPath);
   } catch (e) { toast('Create failed: ' + e.message, 'err'); }
+}
+
+// ═══════════════════════════════════════════════════
+//  AI ASSISTANT AGENT
+// ═══════════════════════════════════════════════════
+var assistRecog = null;
+var assistListening = false;
+var assistOS = 'windows';
+
+function setAssistOS(os, btn) {
+  assistOS = os;
+  btn.parentElement.querySelectorAll('.os-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  toast('Target: ' + os.toUpperCase());
+}
+
+function stopAssistant() {
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
+  if (assistRecog) {
+    assistRecog.onend = null; // Prevent auto-restart
+    assistRecog.stop();
+  }
+  assistListening = false;
+  $('assistMicBtn').classList.remove('listening');
+  $('assistStatus').textContent = 'Tap to speak';
+}
+
+function clearAssistantChat() {
+  const chat = $('assistantChat');
+  if (chat) chat.innerHTML = '<div class="chat-msg bot">Chat cleared. How can I help you next?</div>';
+  if ($('assistScript')) $('assistScript').value = '';
+}
+
+function toggleAssistantVoice() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    toast('Speech recognition not supported', 'err');
+    return;
+  }
+
+  if (assistListening && assistRecog) {
+    assistRecog.stop();
+    return;
+  }
+
+  assistRecog = new SpeechRecognition();
+  assistRecog.lang = 'en-US';
+  assistRecog.interimResults = false;
+  assistRecog.continuous = false;
+
+  const btn = $('assistMicBtn');
+  const status = $('assistStatus');
+
+  assistRecog.onstart = () => {
+    assistListening = true;
+    btn.classList.add('listening');
+    status.textContent = 'Listening...';
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+  };
+
+  assistRecog.onresult = (e) => {
+    const text = e.results[0][0].transcript;
+    addChatMsg('user', text);
+    processAssistantRequest(text);
+  };
+
+  assistRecog.onerror = (err) => {
+    assistListening = false;
+    btn.classList.remove('listening');
+    status.textContent = 'Tap to speak';
+    if (err.error !== 'no-speech') toast('Mic error: ' + err.error, 'err');
+  };
+
+  assistRecog.onend = () => {
+    assistListening = false;
+    btn.classList.remove('listening');
+    if (status.textContent === 'Listening...') status.textContent = 'Tap to speak';
+  };
+
+  assistRecog.start();
+}
+
+function addChatMsg(role, text) {
+  const chat = $('assistantChat');
+  if (!chat) return;
+  const msg = document.createElement('div');
+  msg.className = 'chat-msg ' + role;
+  msg.textContent = text;
+  chat.appendChild(msg);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+async function processAssistantRequest(query) {
+  const apiKey = GROQ_KEY || localStorage.getItem('gc_groq_key') || '';
+  if (!apiKey) {
+    addChatMsg('bot', 'Please save your Groq API key in Settings first.');
+    speakAssistant('Please save your API key in Settings first.', false);
+    return;
+  }
+
+  try {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+      body: JSON.stringify({
+        model: GROQ_MODEL,
+        messages: [
+          {
+            role: 'system',
+            content: `You are the GhostChip AI Agent. Target OS: ${assistOS}.
+            1. If the user asks a general question (e.g. "what is python", "who are you"), answer briefly as an expert. Set "script" to null.
+            2. If the user asks for a technical action or HID payload (e.g. "open notepad", "extract wifi"), provide a short text response AND the DuckyScript for ${assistOS}.
+            You MUST respond in JSON: {"text": "verbal reply", "script": "duckyscript or null"}.
+            Use proper DuckyScript syntax: DELAY, STRING, ENTER, GUI, ALT, CTRL, SHIFT, TAB, SPACE, UP, DOWN, LEFT, RIGHT, REM, F1-F12, CAPSLOCK, etc. for windows use GUI for windows key.
+            *NOTE: always add DELAY 2000 for each line*,
+            Text replies must be under 100 words.`
+          },
+          { role: 'user', content: query }
+        ],
+        temperature: 0.2,
+        response_format: { type: "json_object" }
+      })
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error?.message || 'API Error');
+
+    const reply = JSON.parse(data.choices[0].message.content);
+
+    addChatMsg('bot', reply.text);
+
+    if (reply.script) {
+      $('assistScript').value = reply.script;
+      toast('Agent executing script...', 'ok');
+      deviceFetch('/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'duckyscript=' + encodeURIComponent(reply.script)
+      });
+      // For scripts, maybe don't auto-listen immediately to avoid loop, but let's try it.
+      speakAssistant(reply.text, true);
+    } else {
+      speakAssistant(reply.text, true);
+    }
+
+    $('assistStatus').textContent = 'Tap to speak';
+  } catch (e) {
+    addChatMsg('bot', 'Error: ' + e.message);
+    speakAssistant('I encountered an error.', true);
+    $('assistStatus').textContent = 'Tap to speak';
+  }
+}
+
+function speakAssistant(text, autoListen = false) {
+  if (!window.speechSynthesis) return;
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.rate = 1.0;
+  utterance.pitch = 1.1;
+
+  utterance.onend = () => {
+    // Only auto-listen if we are still in the assistant tool
+    const panel = $('tool-assistant');
+    if (autoListen && panel && panel.style.display !== 'none') {
+      setTimeout(() => {
+        if (!assistListening) toggleAssistantVoice();
+      }, 300);
+    }
+  };
+
+  window.speechSynthesis.speak(utterance);
+}
+
+function copyAssistant() {
+  const s = $('assistScript').value;
+  if (!s) return;
+  navigator.clipboard.writeText(s).then(() => toast('Copied ✓'));
+}
+
+function simulateAssistant() {
+  const s = $('assistScript').value;
+  if (!s) return;
+  $('editor').value = s;
+  simulatePayload();
 }
