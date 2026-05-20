@@ -1,0 +1,2946 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>GhostESP Dashboard</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@700;800&family=Inter:wght@400;500;600;700&display=swap');
+
+        *,
+        *::before,
+        *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box
+        }
+
+        :root {
+            --bg: #060606;
+            --s1: #0e0e0e;
+            --s2: #161616;
+            --s3: #1e1e1e;
+            --b1: #1a1a1a;
+            --b2: #2a2a2a;
+            --g: #00ff41;
+            --g2: #00cc33;
+            --g3: rgba(0, 255, 65, .12);
+            --g4: rgba(0, 255, 65, .05);
+            --g5: rgba(0, 255, 65, .25);
+            --g6: rgba(0, 255, 65, .4);
+            --red: #ff4444;
+            --red-g: rgba(255, 68, 68, .12);
+            --red-g4: rgba(255, 68, 68, .05);
+            --warn: #ffaa00;
+            --warn-g: rgba(255, 170, 0, .12);
+            --info: #00aaff;
+            --white: #eaeaea;
+            --dim: #999999;
+            --dim2: #777777;
+            --radius: 14px;
+            --radius-sm: 10px;
+            --nav-h: 72px;
+            --top-h: 56px;
+            --font: 'Inter', system-ui, sans-serif;
+            --mono: 'Space Mono', monospace;
+            --display: 'Syne', sans-serif;
+        }
+
+        html,
+        body {
+            height: 100%;
+            background: var(--bg);
+            color: var(--white);
+            font-family: var(--font);
+            overflow: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* scanline overlay */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 9999;
+            background: repeating-linear-gradient(0deg, rgba(0, 0, 0, .04) 0, rgba(0, 0, 0, .04) 1px, transparent 1px, transparent 3px);
+        }
+
+        /* ── MAIN LAYOUT CONTEXT ── */
+        .app {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            max-width: 560px;
+            margin: 0 auto;
+            background: var(--bg);
+            border-left: 1px solid var(--b1);
+            border-right: 1px solid var(--b1);
+            position: relative;
+        }
+
+        /* ── TOPBAR ── */
+        .net-card {
+            background: var(--s2);
+            border: 1px solid var(--b1);
+            border-radius: var(--radius-sm);
+            padding: 12px 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            animation: fadeIn .3s;
+            cursor: pointer;
+            transition: border-color .2s, background .2s;
+        }
+
+        .net-card:active {
+            border-color: var(--g2);
+            background: var(--g4);
+        }
+
+        .net-card.selected {
+            border-color: var(--g);
+            background: var(--g3);
+        }
+
+        .topbar {
+            height: var(--top-h);
+            padding: 0 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(6, 6, 6, .85);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--b1);
+            z-index: 100;
+        }
+
+        .topbar-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .topbar-brand {
+            font-family: var(--mono);
+            font-weight: 700;
+            font-size: 1rem;
+            color: var(--g);
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .topbar-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .conn-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--dim2);
+            transition: all .4s;
+        }
+
+        .conn-dot.on {
+            background: var(--g);
+            box-shadow: 0 0 10px var(--g5);
+            animation: pulse 2s infinite;
+        }
+
+        .conn-dot.sim {
+            background: var(--warn);
+            box-shadow: 0 0 10px var(--warn-g);
+            animation: pulse 1.5s infinite;
+        }
+
+        .conn-dot.err {
+            background: var(--red);
+            box-shadow: 0 0 10px rgba(255, 68, 68, .3);
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: .4;
+            }
+        }
+
+        .topbar-ip {
+            font-family: var(--mono);
+            font-size: .7rem;
+            color: var(--dim);
+            padding: 4px 10px;
+            background: var(--s2);
+            border-radius: 20px;
+        }
+
+        /* ── PAGES PORT ── */
+        .pages {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            scroll-behavior: smooth;
+            padding-bottom: calc(var(--nav-h) + 16px);
+            scrollbar-width: none;
+        }
+
+        .pages::-webkit-scrollbar {
+            display: none;
+        }
+
+        .page {
+            display: none;
+            padding: 16px;
+            animation: pageIn .35s ease;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        @keyframes pageIn {
+            from {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+
+            to {
+                opacity: 1;
+                transform: none;
+            }
+        }
+
+        .section-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .section-head h2 {
+            font-size: 1.4rem;
+            font-weight: 700;
+            letter-spacing: -.5px;
+        }
+
+        /* ── CARDS ── */
+        .card {
+            background: var(--s1);
+            border: 1px solid var(--b1);
+            border-radius: var(--radius);
+            padding: 16px;
+            margin-bottom: 14px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--g4), transparent);
+        }
+
+        .card-head {
+            font-weight: 600;
+            font-size: .85rem;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--g);
+        }
+
+        .card-desc {
+            font-size: .78rem;
+            color: var(--dim);
+            margin-bottom: 12px;
+            line-height: 1.5;
+        }
+
+        /* ── BUTTONS & ACTION CONTROLS ── */
+        .btn {
+            font-family: var(--font);
+            font-weight: 600;
+            font-size: .8rem;
+            border: none;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: all .25s;
+            padding: 12px 20px;
+            letter-spacing: .3px;
+        }
+
+        .btn:active {
+            transform: scale(.96);
+        }
+
+        .btn-primary {
+            background: var(--g);
+            color: #000;
+            box-shadow: 0 0 20px var(--g3);
+        }
+
+        .btn-primary:active {
+            box-shadow: 0 0 30px var(--g5);
+        }
+
+        .btn-ghost {
+            background: var(--s2);
+            color: var(--white);
+            border: 1px solid var(--b1);
+        }
+
+        .btn-ghost:active {
+            border-color: var(--g2);
+            background: var(--g4);
+        }
+
+        .btn-danger-sm {
+            background: rgba(255, 68, 68, 0.1);
+            color: var(--red);
+            border: 1px solid rgba(255, 68, 68, 0.2);
+            padding: 10px 16px;
+            font-size: .75rem;
+        }
+
+        .btn-danger-sm:active {
+            background: rgba(255, 68, 68, 0.25);
+        }
+
+        .btn.full {
+            width: 100%;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 14px;
+        }
+
+        .btn-row .btn {
+            flex: 1;
+            min-width: 100px;
+        }
+
+        /* ── TAB & SEGMENT CONTROL ── */
+        .seg-control {
+            display: flex;
+            background: var(--s1);
+            border: 1px solid var(--b1);
+            border-radius: var(--radius-sm);
+            padding: 3px;
+            margin-bottom: 16px;
+            gap: 3px;
+        }
+
+        .seg {
+            flex: 1;
+            padding: 10px;
+            background: none;
+            border: none;
+            border-radius: 8px;
+            font-family: var(--font);
+            font-size: .75rem;
+            font-weight: 600;
+            color: var(--dim);
+            cursor: pointer;
+            transition: .25s;
+            text-align: center;
+        }
+
+        .seg.active {
+            background: var(--g);
+            color: #000;
+            box-shadow: 0 0 12px var(--g3);
+        }
+
+        /* ── WIFI TWO-COLUMN SPLIT ── */
+        .wifi-split {
+            display: grid;
+            grid-template-columns: 1fr 1px 1fr;
+            gap: 0;
+            min-height: 60vh;
+        }
+
+        .wifi-panel {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        .wifi-panel-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 0 14px 0;
+            border-bottom: 1px solid var(--b1);
+            margin-bottom: 12px;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .wifi-panel-title {
+            font-size: .8rem;
+            font-weight: 700;
+            color: var(--fg, var(--white));
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+
+        .wifi-panel-title svg { color: var(--g); }
+
+        .wifi-panel-actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        .panel-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 7px 12px;
+            border-radius: 8px;
+            font-family: var(--font);
+            font-size: .72rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all .2s;
+            letter-spacing: .2px;
+        }
+
+        .panel-btn.primary {
+            background: var(--g);
+            color: #000;
+            box-shadow: 0 0 12px var(--g3);
+        }
+
+        .panel-btn.primary:active {
+            box-shadow: 0 0 20px var(--g5);
+            transform: scale(.96);
+        }
+
+        .panel-btn.danger {
+            background: var(--red-g);
+            color: var(--red);
+            border: 1px solid rgba(255,68,68,.2);
+        }
+
+        .panel-btn.danger:active {
+            background: rgba(255,68,68,.25);
+            transform: scale(.96);
+        }
+
+        .wifi-divider {
+            background: var(--b1);
+            width: 1px;
+            margin: 0 14px;
+        }
+
+        .panel-results {
+            flex: 1;
+            overflow-y: auto;
+            max-height: calc(100vh - 280px);
+        }
+
+        /* Mobile: stack vertically */
+        @media (max-width: 600px) {
+            .wifi-split {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto auto auto;
+            }
+            .wifi-divider {
+                width: 100%;
+                height: 1px;
+                margin: 14px 0;
+            }
+            .panel-results { max-height: 40vh; }
+        }
+
+        /* ── SCANNERS (TABLES & RESULTS) ── */
+        .results-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 2.5rem;
+            color: var(--dim2);
+            font-size: .8rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .loader-ring {
+            width: 24px;
+            height: 24px;
+            border: 2px solid var(--b2);
+            border-top-color: var(--g);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Selected AP card highlight */
+        .net-card.selected {
+            border-color: var(--g2) !important;
+            background: rgba(0, 204, 51, 0.06) !important;
+            box-shadow: 0 0 0 1px rgba(0, 204, 51, 0.15), inset 0 0 20px rgba(0, 204, 51, 0.03);
+        }
+
+        .net-card.selected .net-ssid { color: var(--g); }
+
+        .sel-badge {
+            font-size: .55rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 700;
+            font-family: var(--mono);
+            background: var(--g3);
+            color: var(--g);
+            border: 1px solid var(--g5);
+            margin-left: 6px;
+            animation: pulse 1.5s infinite;
+        }
+
+        .net-card {
+            cursor: pointer;
+        }
+
+        .net-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            flex: 1;
+            min-width: 0;
+            padding-right: 8px;
+        }
+
+        .net-ssid {
+            font-weight: 600;
+            font-size: .82rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .net-meta {
+            font-size: .65rem;
+            color: var(--dim);
+            font-family: var(--mono);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px 10px;
+        }
+
+        .net-meta span {
+            display: inline-block;
+        }
+
+        .net-signal {
+            display: flex;
+            align-items: flex-end;
+            gap: 2px;
+            height: 16px;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }
+
+        .net-signal span {
+            width: 3px;
+            background: var(--b2);
+            border-radius: 1px;
+            transition: .2s;
+        }
+
+        .net-signal span.lit {
+            background: var(--g);
+            box-shadow: 0 0 4px var(--g5);
+        }
+
+        .btn-act {
+            padding: 6px 12px;
+            font-size: .68rem;
+            font-weight: 700;
+            border-radius: 6px;
+            background: var(--s3);
+            border: 1px solid var(--b2);
+            color: var(--dim);
+            cursor: pointer;
+            transition: .2s;
+            flex-shrink: 0;
+        }
+
+        .btn-act:hover {
+            color: var(--red);
+            border-color: var(--red);
+            background: var(--red-g4);
+        }
+
+        /* BLE details */
+        .badge {
+            font-size: .55rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 700;
+            font-family: var(--mono);
+            letter-spacing: .05em;
+        }
+
+        .badge-wifi {
+            background: rgba(0, 170, 255, .12);
+            color: var(--info);
+            border: 1px solid rgba(0, 170, 255, .2);
+        }
+
+        .badge-ble {
+            background: rgba(136, 102, 255, .12);
+            color: #aa88ff;
+            border: 1px solid rgba(136, 102, 255, .2);
+        }
+
+        .badge-atk {
+            background: rgba(255, 68, 68, .12);
+            color: var(--red);
+            border: 1px solid rgba(255, 68, 68, .2);
+        }
+
+        .badge-sys {
+            background: rgba(0, 255, 65, .08);
+            color: var(--g);
+            border: 1px solid rgba(0, 255, 65, .15);
+        }
+
+        /* ── THREAT CONSOLE (RADAR) ── */
+        .radar-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+
+        .radar-container {
+            position: relative;
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            border: 2px dashed var(--b2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: border-color .3s;
+        }
+
+        .radar-container.active {
+            border: 2px solid var(--red);
+            background: radial-gradient(circle, rgba(255, 68, 68, 0.04) 0%, transparent 70%);
+        }
+
+        .radar-container.active.ble {
+            border-color: var(--g);
+            background: radial-gradient(circle, rgba(0, 255, 65, 0.04) 0%, transparent 70%);
+        }
+
+        .radar-sweep {
+            display: none;
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: conic-gradient(from 0deg, transparent 40%, rgba(255, 68, 68, 0.25) 100%);
+            animation: radarSweep 3s linear infinite;
+            pointer-events: none;
+        }
+
+        .radar-container.active.ble .radar-sweep {
+            background: conic-gradient(from 0deg, transparent 40%, rgba(0, 255, 65, 0.25) 100%);
+        }
+
+        .radar-pulse {
+            display: none;
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 2px solid var(--red);
+            opacity: 0;
+            animation: radarRipple 2s cubic-bezier(0.1, 0.8, 0.3, 1) infinite;
+            pointer-events: none;
+        }
+
+        .radar-container.active.ble .radar-pulse {
+            border-color: var(--g);
+        }
+
+        .radar-pulse:nth-child(2) {
+            animation-delay: 1s;
+        }
+
+        .radar-container.active .radar-sweep,
+        .radar-container.active .radar-pulse {
+            display: block;
+        }
+
+        .radar-core {
+            width: 20px;
+            height: 20px;
+            background: var(--b2);
+            border-radius: 50%;
+            position: relative;
+            z-index: 2;
+            transition: background .3s, box-shadow .3s;
+        }
+
+        .radar-container.active .radar-core {
+            background: var(--red);
+            box-shadow: 0 0 15px var(--red);
+            animation: coreBlink 1s infinite alternate;
+        }
+
+        .radar-container.active.ble .radar-core {
+            background: var(--g);
+            box-shadow: 0 0 15px var(--g);
+        }
+
+        @keyframes radarSweep {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes radarRipple {
+            0% {
+                transform: scale(0.1);
+                opacity: 0.9;
+            }
+
+            100% {
+                transform: scale(1.5);
+                opacity: 0;
+            }
+        }
+
+        @keyframes coreBlink {
+            from {
+                transform: scale(0.9);
+            }
+
+            to {
+                transform: scale(1.15);
+            }
+        }
+
+        .threat-lbl {
+            margin-top: 14px;
+            font-family: var(--mono);
+            font-size: .75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .1em;
+            color: var(--dim);
+        }
+
+        .threat-lbl.active {
+            color: var(--red);
+            text-shadow: 0 0 10px rgba(255, 68, 68, 0.3);
+        }
+
+        .threat-lbl.active.ble {
+            color: var(--g);
+            text-shadow: 0 0 10px var(--g4);
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .stat-card {
+            background: var(--s2);
+            border: 1px solid var(--b1);
+            border-radius: var(--radius-sm);
+            padding: 12px 14px;
+        }
+
+        .stat-title {
+            font-size: .62rem;
+            color: var(--dim);
+            text-transform: uppercase;
+            letter-spacing: .05em;
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            font-family: var(--mono);
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--g);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .stat-card.alert .stat-value {
+            color: var(--red);
+        }
+
+        /* campaign launcher */
+        .campaign-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        .campaign-btn {
+            background: var(--s2);
+            border: 1px solid var(--b1);
+            border-radius: var(--radius-sm);
+            padding: 14px 10px;
+            text-align: left;
+            font-family: var(--font);
+            cursor: pointer;
+            transition: .2s;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            position: relative;
+        }
+
+        .campaign-btn:active {
+            border-color: var(--red);
+            background: rgba(255, 68, 68, 0.03);
+        }
+
+        /* Running indicator dot on campaign cards */
+        .camp-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--b2);
+            transition: background .3s, box-shadow .3s;
+        }
+
+        .campaign-name {
+            font-size: .78rem;
+            font-weight: 600;
+            color: var(--white);
+        }
+
+        .campaign-meta {
+            font-family: var(--mono);
+            font-size: .55rem;
+            color: var(--dim);
+        }
+
+        /* ── LOOT TABLE & INTERCEPTS ── */
+        .loot-card {
+            background: var(--s2);
+            border: 1px solid var(--b1);
+            border-radius: var(--radius-sm);
+            padding: 12px;
+            margin-bottom: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .loot-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: .72rem;
+            border-bottom: 1px solid rgba(255, 255, 255, .03);
+            padding-bottom: 6px;
+        }
+
+        .loot-row:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .loot-k {
+            color: var(--dim);
+        }
+
+        .loot-v {
+            font-family: var(--mono);
+            color: var(--g);
+        }
+
+        .loot-v.user {
+            color: var(--white);
+            font-weight: 600;
+        }
+
+        .loot-copy {
+            background: var(--s3);
+            border: 1px solid var(--b2);
+            color: var(--g);
+            padding: 2px 6px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: .6rem;
+            transition: .2s;
+        }
+
+        .loot-copy:hover {
+            background: var(--g);
+            color: #000;
+        }
+
+        /* ── FORMS & WIZARD ── */
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-bottom: 10px;
+        }
+
+        .field label {
+            font-size: .65rem;
+            color: var(--dim);
+            letter-spacing: .05em;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .field select,
+        .field input {
+            background: var(--s2);
+            border: 1px solid var(--b1);
+            color: var(--white);
+            font-family: var(--mono);
+            font-size: .8rem;
+            padding: 10px 12px;
+            border-radius: var(--radius-sm);
+            outline: none;
+            width: 100%;
+            -webkit-appearance: none;
+            appearance: none;
+            transition: border .2s, background .2s;
+        }
+
+        .field select:focus,
+        .field input:focus {
+            border-color: var(--g2);
+        }
+
+        /* ── TERMINAL COLLAPSIBLE DRAWER ── */
+        .collapse-trigger {
+            width: 100%;
+            background: var(--s1);
+            border: 1px solid var(--b1);
+            color: var(--dim);
+            font-family: var(--mono);
+            font-size: .72rem;
+            font-weight: 700;
+            padding: 12px 14px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            text-align: left;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .collapse-content {
+            display: none;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .collapse-content.open {
+            display: flex;
+        }
+
+        .terminal-wrap {
+            height: 180px;
+            position: relative;
+            background: #040404;
+            border: 1px solid var(--b1);
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+        }
+
+        .terminal {
+            position: absolute;
+            inset: 0;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 10px 12px;
+            font-family: var(--mono);
+            font-size: .68rem;
+            line-height: 1.5;
+        }
+
+        .line {
+            display: flex;
+            gap: 6px;
+            padding: 1px 0;
+        }
+
+        .ts {
+            color: var(--dim2);
+            font-size: .6rem;
+            flex-shrink: 0;
+        }
+
+        .ltype {
+            font-size: .5rem;
+            padding: 1px 3px;
+            border-radius: 2px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .ltype.out {
+            background: rgba(0, 255, 65, .08);
+            color: var(--g2);
+        }
+
+        .ltype.in {
+            background: rgba(0, 170, 255, .08);
+            color: var(--info);
+        }
+
+        .ltype.sys {
+            background: rgba(240, 165, 0, .08);
+            color: var(--warn);
+        }
+
+        .ltype.err {
+            background: rgba(255, 68, 68, .08);
+            color: var(--red);
+        }
+
+        .lmsg {
+            flex: 1;
+            color: #bbb;
+            word-break: break-all;
+        }
+
+        .lmsg.out {
+            color: var(--g);
+        }
+
+        .lmsg.sys {
+            color: var(--warn);
+        }
+
+        .lmsg.err {
+            color: var(--red);
+        }
+
+        /* CLI command bar */
+        .cli-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--s2);
+            border: 1px solid var(--b1);
+            border-radius: var(--radius-sm);
+            padding: 8px 10px;
+        }
+
+        .cli-prompt {
+            font-family: var(--mono);
+            font-size: .75rem;
+            color: var(--g2);
+            user-select: none;
+        }
+
+        .cli-row input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: var(--g);
+            font-family: var(--mono);
+            font-size: .75rem;
+        }
+
+        .cli-row input::placeholder {
+            color: var(--dim2);
+        }
+
+        .cli-row button {
+            background: var(--g);
+            color: #000;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-family: var(--mono);
+            font-size: .62rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .cli-row button:active {
+            transform: scale(.95);
+        }
+
+        /* ── BOTTOM NAVIGATION BAR ── */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 560px;
+            height: var(--nav-h);
+            background: rgba(10, 10, 10, .92);
+            backdrop-filter: blur(24px);
+            border-top: 1px solid var(--b1);
+            display: flex;
+            z-index: 1000;
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+
+        /* ════════════════════════════════════════
+           DESKTOP RESPONSIVE LAYOUT (≥ 768px)
+           Bottom nav stays, app just gets wider
+           ════════════════════════════════════════ */
+        @media (min-width: 768px) {
+            .app {
+                max-width: 860px;
+                border-left: 1px solid var(--b1);
+                border-right: 1px solid var(--b1);
+            }
+            .bottom-nav {
+                max-width: 860px;
+            }
+            .page { padding: 22px 28px; }
+            .stat-grid { grid-template-columns: repeat(4, 1fr); }
+            .campaign-grid { grid-template-columns: repeat(4, 1fr); }
+        }
+
+        @media (min-width: 1200px) {
+            .app { max-width: 1080px; }
+            .bottom-nav { max-width: 1080px; }
+            .page { padding: 28px 40px; }
+        }
+
+        .nav-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            background: none;
+            border: none;
+            color: var(--dim2);
+            font-family: var(--font);
+            font-size: .65rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: color .25s;
+            padding: 8px 0;
+            position: relative;
+        }
+
+        .nav-item svg {
+            width: 22px;
+            height: 22px;
+            transition: all .25s;
+        }
+
+        .nav-item.active {
+            color: var(--g);
+        }
+
+        .nav-item.active svg {
+            filter: drop-shadow(0 0 6px var(--g5));
+        }
+
+        .nav-item.active::before {
+            content: '';
+            position: absolute;
+            top: -1px;
+            left: 25%;
+            right: 25%;
+            height: 2px;
+            background: var(--g);
+            border-radius: 0 0 4px 4px;
+            box-shadow: 0 0 8px var(--g5);
+        }
+
+        /* ── TOAST NOTIFICATIONS ── */
+        .notif {
+            position: fixed;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 99999;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            pointer-events: none;
+            width: 90%;
+            max-width: 380px;
+        }
+
+        .toast {
+            padding: 12px 16px;
+            border-radius: var(--radius-sm);
+            font-size: .78rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            pointer-events: auto;
+            animation: tIn .3s cubic-bezier(.16, 1, .3, 1);
+            backdrop-filter: blur(16px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .toast.ok {
+            background: rgba(0, 255, 65, .12);
+            border: 1px solid rgba(0, 255, 65, .25);
+            color: var(--g);
+        }
+
+        .toast.er {
+            background: rgba(255, 68, 68, .12);
+            border: 1px solid rgba(255, 68, 68, .25);
+            color: var(--red);
+        }
+
+        .toast.wa {
+            background: rgba(255, 170, 0, .12);
+            border: 1px solid rgba(255, 170, 0, .25);
+            color: var(--warn);
+        }
+
+        @keyframes tIn {
+            from {
+                transform: translateY(-20px);
+                opacity: 0;
+            }
+
+            to {
+                transform: none;
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="app">
+        <!-- STATUS TOPBAR -->
+        <header class="topbar">
+            <div class="topbar-left">
+                <div class="conn-dot" id="connDot"></div>
+                <span class="topbar-brand" id="activeHeaderLabel">WiFi Scanner</span>
+            </div>
+            <div class="topbar-right">
+                <span class="topbar-ip" id="portLabel">Disconnected</span>
+            </div>
+        </header>
+
+        <!-- ══ PAGE VIEWPORT ══ -->
+        <main class="pages">
+
+            <!-- ── PAGE: WIFI ── -->
+            <section class="page active" id="page-wifi">
+                <div class="section-head">
+                    <h2>WiFi Inspector</h2>
+                </div>
+
+                <!-- Two-column split -->
+                <div class="wifi-split">
+
+                    <!-- ── LEFT: AP Scanner ── -->
+                    <div class="wifi-panel">
+                        <div class="wifi-panel-head">
+                            <div class="wifi-panel-title">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20" stroke-linecap="round" stroke-width="3"/></svg>
+                                Access Points
+                            </div>
+                            <div class="wifi-panel-actions">
+                                <button class="panel-btn primary" onclick="triggerCmd('scanap')">
+                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                    Scan
+                                </button>
+                                <button class="panel-btn danger" onclick="stopAPScan()">
+                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+                                    Stop
+                                </button>
+                            </div>
+                        </div>
+                        <div id="panelAPs" class="results-list panel-results">
+                            <div class="empty-state" id="wifiEmptyState">
+                                <div class="loader-ring" id="wifiLoader" style="display:none"></div>
+                                <span id="wifiEmptyText">Tap Scan to discover networks.</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Divider -->
+                    <div class="wifi-divider"></div>
+
+                    <!-- ── RIGHT: Station Sniffer ── -->
+                    <div class="wifi-panel">
+                        <div class="wifi-panel-head">
+                            <div class="wifi-panel-title">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+                                Client Stations
+                            </div>
+                            <div class="wifi-panel-actions">
+                                <button class="panel-btn primary" onclick="startStaScan()">
+                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.41 2 2 0 0 1 3.6 1.22h3a2 2 0 0 1 2 1.72c.12.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.32a16 16 0 0 0 5.5 5.5l1.18-.95a2 2 0 0 1 2.11-.45c.91.34 1.85.58 2.81.7A2 2 0 0 1 21.22 16.92z"/></svg>
+                                    Sniff
+                                </button>
+                                <button class="panel-btn danger" onclick="stopSTAScan()">
+                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+                                    Stop
+                                </button>
+                            </div>
+                        </div>
+                        <div id="panelSTAs" class="results-list panel-results">
+                            <div class="empty-state" id="staEmptyState">
+                                <div class="loader-ring" id="staLoader" style="display:none"></div>
+                                <span id="staEmptyText">Tap Sniff to intercept clients.</span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- ── PAGE: BLE ── -->
+            <section class="page" id="page-ble">
+                <div class="section-head">
+                    <h2>BLE Scanner</h2>
+                </div>
+
+                <div class="wifi-split">
+
+                    <!-- LEFT: Flipper Finder -->
+                    <div class="wifi-panel">
+                        <div class="wifi-panel-head">
+                            <div class="wifi-panel-title">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9" stroke-width="3" stroke-linecap="round"/><line x1="15" y1="9" x2="15.01" y2="9" stroke-width="3" stroke-linecap="round"/></svg>
+                                Find Flippers
+                            </div>
+                            <div class="wifi-panel-actions">
+                                <button class="panel-btn primary" onclick="startBleScan('flipper')">
+                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                    Scan
+                                </button>
+                                <button class="panel-btn danger" onclick="stopBleScan()">
+                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+                                    Stop
+                                </button>
+                            </div>
+                        </div>
+                        <div id="bleFlipperResults" class="results-list panel-results">
+                            <div class="empty-state" id="bleFlipperEmpty">
+                                <div class="loader-ring" id="bleFlipperLoader" style="display:none"></div>
+                                <span id="bleFlipperText">Tap Scan to find Flipper Zeros.</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Divider -->
+                    <div class="wifi-divider"></div>
+
+                    <!-- RIGHT: AirTag / Apple BLE -->
+                    <div class="wifi-panel">
+                        <div class="wifi-panel-head">
+                            <div class="wifi-panel-title">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                                Find AirTags
+                            </div>
+                            <div class="wifi-panel-actions">
+                                <button class="panel-btn primary" onclick="startBleScan('airtag')">
+                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                    Scan
+                                </button>
+                                <button class="panel-btn danger" onclick="stopBleScan()">
+                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+                                    Stop
+                                </button>
+                            </div>
+                        </div>
+                        <div id="bleAirtagResults" class="results-list panel-results">
+                            <div class="empty-state" id="bleAirtagEmpty">
+                                <div class="loader-ring" id="bleAirtagLoader" style="display:none"></div>
+                                <span id="bleAirtagText">Tap Scan to find AirTags &amp; Apple devices.</span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- ── PAGE: ATTACK ── -->
+            <section class="page" id="page-attack">
+                <div class="section-head">
+                    <h2>Threat Console</h2>
+                </div>
+
+                <!-- Radar Display -->
+                <div class="card">
+                    <div class="radar-box">
+                        <div class="radar-container" id="attackRadar">
+                            <div class="radar-sweep"></div>
+                            <div class="radar-pulse"></div>
+                            <div class="radar-pulse"></div>
+                            <div class="radar-core"></div>
+                        </div>
+                        <div class="threat-lbl" id="threatStatusLabel">Threat Modules Offline</div>
+                    </div>
+                </div>
+
+                <!-- Stats Grid -->
+                <div class="stat-grid">
+                    <div class="stat-card alert">
+                        <div class="stat-title">Active module</div>
+                        <div class="stat-value" id="activeAttackType">NONE</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-title">Dispatched Pkts</div>
+                        <div class="stat-value" id="attackPacketCount">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-title">Subnet Target</div>
+                        <div class="stat-value" id="attackTargetSSID">—</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-title">Transmission rate</div>
+                        <div class="stat-value" id="attackPacketRate">0 pkts/s</div>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary full"
+                    style="background:var(--red); box-shadow:0 0 20px rgba(255,68,68,0.25); color:#fff; font-family:var(--mono); letter-spacing:1px; margin-bottom: 20px"
+                    onclick="abortActiveAttack()">
+                    🛑 SHUT DOWN THREAT ENGAGEMENTS
+                </button>
+
+                <!-- Attack quick campaigns -->
+                <div class="section-head">
+                    <h2>Campaign Launcher</h2>
+                </div>
+                <div class="campaign-grid">
+                    <button class="campaign-btn" id="camp-deauth" onclick="launchCampaign('attack -d','WIFI DEAUTH','All Networks','red')">
+                        <div class="camp-indicator" id="ind-deauth"></div>
+                        <span class="campaign-name">WiFi Deauthentication</span>
+                        <span class="campaign-meta">DEAUTH ALL CLIENTS</span>
+                    </button>
+                    <button class="campaign-btn" id="camp-beacon" onclick="launchCampaign('beaconspam -r','BEACON FLOOD','All Channels','ble')">
+                        <div class="camp-indicator" id="ind-beacon"></div>
+                        <span class="campaign-name">Multi-SSID Beacon Spam</span>
+                        <span class="campaign-meta">FLOOD AIRWAVES</span>
+                    </button>
+                    <button class="campaign-btn" id="camp-apple" onclick="launchCampaign('blespam -apple','BLE APPLE SPAM','Nearby Apple Devices','ble')">
+                        <div class="camp-indicator" id="ind-apple"></div>
+                        <span class="campaign-name">Apple BLE Spam</span>
+                        <span class="campaign-meta">PROXIMITY FLOOD SPOOF</span>
+                    </button>
+                    <button class="campaign-btn" id="camp-samsung" onclick="launchCampaign('blespam -samsung','BLE SAMSUNG SPOOF','Nearby Samsung Devices','ble')">
+                        <div class="camp-indicator" id="ind-samsung"></div>
+                        <span class="campaign-name">Samsung BLE Spoof</span>
+                        <span class="campaign-meta">DISRUPT DEVICES</span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- ── PAGE: CONSOLE & CONNECTION ── -->
+            <section class="page" id="page-console">
+                <div class="section-head">
+                    <h2>Connection Wizard</h2>
+                </div>
+
+                <div class="card">
+                    <div class="field">
+                        <label>Port / Channel</label>
+                        <select id="portSelect">
+                            <option value="">— Select Port —</option>
+                            <option value="simulated">⚡ DEMO SIMULATOR</option>
+                        </select>
+                    </div>
+
+                    <div class="field" style="display:none" id="advBaudField">
+                        <label>Baud Rate</label>
+                        <select id="baudSelect">
+                            <option value="115200" selected>115200</option>
+                            <option value="9600">9600</option>
+                        </select>
+                    </div>
+
+                    <div class="btn-row" style="margin-bottom:0">
+                        <button class="btn btn-ghost" onclick="requestPort()">⟳ Scan USB Ports</button>
+                        <button class="btn btn-primary" id="connectBtn" onclick="toggleConnect()">Connect</button>
+                    </div>
+                </div>
+
+                <!-- Collapsible Advanced logs -->
+                <button class="collapse-trigger" onclick="toggleConsoleDrawer()">
+                    <span>Advanced Serial Console</span>
+                    <span id="drawerArrow">◀</span>
+                </button>
+
+                <div class="collapse-content" id="consoleDrawer">
+                    <div class="terminal-wrap">
+                        <div class="terminal" id="terminal"></div>
+                    </div>
+
+                    <div class="cli-row">
+                        <span class="cli-prompt">ghost-cli&gt;</span>
+                        <input type="text" id="cmdInput" placeholder="Send manual command..." disabled
+                            autocomplete="off">
+                        <button onclick="sendInput()" id="sendBtn" disabled>SEND ↵</button>
+                    </div>
+                </div>
+
+                <!-- ── ABOUT & ATTRIBUTION ── -->
+                <div class="section-head" style="margin-top:20px">
+                    <h2>About &amp; Credits</h2>
+                </div>
+
+                <div class="card" style="padding:18px;display:flex;flex-direction:column;gap:14px">
+
+                    <div style="display:flex;align-items:center;gap:12px">
+                        <div style="width:42px;height:42px;border-radius:10px;background:rgba(0,204,51,0.08);border:1px solid var(--g5);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="var(--g)" stroke-width="2"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M8 12h8M12 8v8"/></svg>
+                        </div>
+                        <div>
+                            <div style="font-size:.86rem;font-weight:700;color:var(--fg)">GhostESP Web UI</div>
+                            <div style="font-size:.69rem;color:var(--dim);margin-top:2px">Open-source mobile dashboard by <strong style="color:var(--g)">Gamkers</strong></div>
+                        </div>
+                    </div>
+
+                    <div style="background:rgba(0,204,51,0.04);border:1px solid var(--g5);border-radius:8px;padding:12px 14px;font-size:.72rem;line-height:1.75;color:var(--dim2)">
+                        <div style="font-weight:700;color:var(--g);margin-bottom:6px;font-size:.74rem">⚡ Powered by GhostESP Firmware</div>
+                        This is an <strong style="color:var(--fg)">unofficial, open-source Web UI</strong> built to communicate with
+                        devices running the <strong style="color:var(--fg)">GhostESP</strong> firmware via the WebSerial API.
+                        It is a community contribution and is <strong style="color:var(--fg)">not affiliated with, endorsed by,
+                        or officially associated</strong> with the GhostESP development team.
+                        All GhostESP firmware trademarks, branding, and intellectual property remain
+                        the property of their respective owners.
+                    </div>
+
+                    <a href="https://ghostesp.net/" target="_blank" rel="noopener noreferrer"
+                       style="display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--s2);border:1px solid var(--b1);border-radius:8px;text-decoration:none;color:var(--fg);font-size:.76rem;font-weight:600;transition:border-color .2s"
+                       onmouseover="this.style.borderColor='var(--g)'" onmouseout="this.style.borderColor='var(--b1)'">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="var(--g)" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                        <span>ghostesp.net — Official GhostESP Project</span>
+                        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="var(--dim)" stroke-width="2" style="margin-left:auto;flex-shrink:0"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                    </a>
+
+                    <a href="https://github.com/Gamkers" target="_blank" rel="noopener noreferrer"
+                       style="display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--s2);border:1px solid var(--b1);border-radius:8px;text-decoration:none;color:var(--fg);font-size:.76rem;font-weight:600;transition:border-color .2s"
+                       onmouseover="this.style.borderColor='var(--g)'" onmouseout="this.style.borderColor='var(--b1)'">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="var(--dim2)"><path d="M12 2C6.48 2 2 6.48 2 12c0 4.42 2.87 8.17 6.84 9.49.5.09.66-.22.66-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.45-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.61.07-.61 1 .07 1.53 1.03 1.53 1.03.89 1.52 2.34 1.08 2.91.83.09-.65.35-1.08.63-1.33-2.22-.25-4.56-1.11-4.56-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.02A9.56 9.56 0 0 1 12 6.8c.85 0 1.71.11 2.51.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.37.2 2.39.1 2.64.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.69-4.57 4.93.36.31.68.92.68 1.85v2.74c0 .27.16.58.67.48A10 10 0 0 0 22 12c0-5.52-4.48-10-10-10z"/></svg>
+                        <span>Gamkers — Web UI Source &amp; Community</span>
+                        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="var(--dim)" stroke-width="2" style="margin-left:auto;flex-shrink:0"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                    </a>
+
+                    <div style="font-size:.64rem;color:var(--dim);line-height:1.65;border-top:1px solid var(--b1);padding-top:12px;margin-top:2px">
+                        ⚠️ <strong style="color:var(--dim2)">For educational &amp; authorized security research use only.</strong>
+                        Using wireless attack tools against networks or devices without explicit permission is illegal.
+                        The creators of this UI and the GhostESP firmware accept no liability for misuse.
+                        Always obtain proper authorization before performing any security assessments.
+                    </div>
+
+                </div>
+
+            </section>
+
+        </main>
+
+        <!-- ── BOTTOM NAVIGATION ── -->
+        <nav class="bottom-nav">
+            <button class="nav-item active" id="nav-wifi" onclick="goPage('wifi')">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M5 12.55a11 11 0 0 1 14.08 0" />
+                    <path d="M1.42 9a16 16 0 0 1 21.16 0" />
+                    <path d="M8.53 16.11a6 6 0 0 1 6.95 0" />
+                    <line x1="12" y1="20" x2="12.01" y2="20" stroke-linecap="round" stroke-width="3" />
+                </svg>
+                <span>WiFi</span>
+            </button>
+            <button class="nav-item" id="nav-ble" onclick="goPage('ble')">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M6.5 6.5h11a3 3 0 0 1 3 3v5a3 3 0 0 1-3 3h-11a3 3 0 0 1-3-3v-5a3 3 0 0 1 3-3z" />
+                    <path d="M12 3v18M3 12h18" />
+                </svg>
+                <span>BLE</span>
+            </button>
+            <button class="nav-item" id="nav-attack" onclick="goPage('attack')">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+                </svg>
+                <span>Attacks</span>
+            </button>
+
+            <button class="nav-item" id="nav-console" onclick="goPage('console')">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="4 17 10 11 4 5" />
+                    <line x1="12" y1="19" x2="20" y2="19" />
+                </svg>
+                <span>Console</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- NOTIF DRAWER -->
+    <div class="notif" id="notif"></div>
+
+    <script>
+        // ── STATE ──
+        let port = null;
+        let reader = null;
+        let writer = null;
+        let connected = false;
+        let rxCount = 0;
+        let lineEndMode = '\r\n';
+        let cmdHistory = [];
+        let histIdx = -1;
+
+        // Structured visual states
+        let wifiAPs = [];
+        let wifiStations = [];
+        let bleDevices    = [];
+        let activeBLEScan = null; // 'flipper' | 'airtag' | null
+        let capturedLoot = [];
+        let activeAttack = {
+            running: false,
+            type: 'NONE',
+            packets: 0,
+            target: '—',
+            rate: 0
+        };
+        let sniffStats = { probes: 0, beacons: 0, deauths: 0, wps: 0 };
+
+        // Simulation Loops
+        let simulationMode = false;
+        let simTimers = [];
+
+        // Dynamic multi-line parser states
+        let currentParseAP  = null;   // WiFi AP block
+        let currentParseSTA = null;   // Station block
+        let currentParseBLE = null;   // BLE device block
+        let selectedAPIndex = -1;     // Currently selected AP index (-1 = none)
+
+        // DOM elements
+        const term = document.getElementById('terminal');
+        const cmdInput = document.getElementById('cmdInput');
+        const connDot = document.getElementById('connDot');
+        const portLabel = document.getElementById('portLabel');
+        const connectBtn = document.getElementById('connectBtn');
+        const rxCountEl = document.getElementById('rxCount');
+
+        // ── BOOT ──
+        function boot() {
+            sysLine('GhostESP Console initialized.');
+            sysLine('Offline Demo Simulator support loaded.');
+            sysLine('────────────────────────────────────────');
+        }
+
+        // ── APP ROUTING ──
+        function goPage(pageId) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+
+            document.getElementById(`page-${pageId}`).classList.add('active');
+            document.getElementById(`nav-${pageId}`).classList.add('active');
+
+            // Update status bar header label
+            const labelMap = {
+                'wifi': 'WiFi Scanner',
+                'ble': 'BLE Tag Sniffer',
+                'attack': 'Threat Console',
+                'portal': 'Portal & Sniffer',
+                'console': 'Advanced CLI'
+            };
+            document.getElementById('activeHeaderLabel').textContent = labelMap[pageId];
+        }
+
+        function switchWifiSeg(segId) {
+            // Guard: seg buttons may not exist in split-panel layout
+            document.querySelectorAll('.seg').forEach(s => s.classList.remove('active'));
+            const apsBtn  = document.getElementById('wifiSegAPs');
+            const stasBtn = document.getElementById('wifiSegSTAs');
+            const apsPanel  = document.getElementById('panelAPs');
+            const stasPanel = document.getElementById('panelSTAs');
+            if (segId === 'aps') {
+                apsBtn?.classList.add('active');
+                if (apsPanel)  apsPanel.style.display  = 'block';
+                if (stasPanel) stasPanel.style.display = 'none';
+            } else {
+                stasBtn?.classList.add('active');
+                if (apsPanel)  apsPanel.style.display  = 'none';
+                if (stasPanel) stasPanel.style.display = 'block';
+            }
+        }
+
+        function toggleConsoleDrawer() {
+            const drawer = document.getElementById('consoleDrawer');
+            const arrow = document.getElementById('drawerArrow');
+            drawer.classList.toggle('open');
+            if (drawer.classList.contains('open')) {
+                arrow.textContent = '▼';
+                term.scrollTop = term.scrollHeight;
+            } else {
+                arrow.textContent = '◀';
+            }
+        }
+
+        // ── CONNECTION WIZARD ──
+        async function requestPort() {
+            if (!('serial' in navigator)) {
+                toast('Web Serial API is unavailable. Connect via Demo Simulator!', 'wa');
+                return;
+            }
+            try {
+                port = await navigator.serial.requestPort({ filters: [] });
+                const info = port.getInfo();
+                const label = info.usbVendorId ? `USB Port (${info.usbVendorId.toString(16).padStart(4, '0')})` : 'Physical Device';
+
+                const opt = document.getElementById('portSelect');
+                opt.innerHTML = `<option value="simulated">⚡ DEMO SIMULATOR</option>
+                                 <option value="physical" selected>${label}</option>`;
+                toast('USB device selected!', 'ok');
+            } catch (e) {
+                if (e.name !== 'NotFoundError') toast('Port error: ' + e.message, 'er');
+            }
+        }
+
+        async function toggleConnect() {
+            if (connected) {
+                await disconnect();
+                return;
+            }
+
+            const selection = document.getElementById('portSelect').value;
+            if (!selection) {
+                toast('Select a Port option first', 'wa');
+                return;
+            }
+
+            if (selection === 'simulated') {
+                enterSimulation();
+                return;
+            }
+
+            if (!port) {
+                toast('Scan and select a USB device first', 'wa');
+                return;
+            }
+
+            try {
+                await port.open({ baudRate: 115200 });
+                connected = true;
+                writer = port.writable.getWriter();
+                setConnectedState(true, false);
+                startReadLoop();
+            } catch (e) {
+                toast('Connection failed: ' + e.message, 'er');
+                errLine('Port Open Error: ' + e.message);
+            }
+        }
+
+        async function disconnect() {
+            if (simulationMode) {
+                exitSimulation();
+                return;
+            }
+
+            connected = false;
+            try {
+                if (reader) { await reader.cancel(); reader = null; }
+                if (writer) { writer.releaseLock(); writer = null; }
+                if (port) { await port.close(); }
+            } catch (_) { }
+            setConnectedState(false);
+        }
+
+        function setConnectedState(state, isSim = false) {
+            connected = state;
+            if (state) {
+                connDot.className = 'conn-dot' + (isSim ? ' sim' : ' on');
+                portLabel.textContent = isSim ? 'Simulator Mode' : 'ESP32 Connected';
+                connectBtn.textContent = 'Disconnect';
+                connectBtn.className = 'btn btn-danger-sm';
+
+                cmdInput.disabled = false;
+                document.getElementById('sendBtn').disabled = false;
+                toast('GhostESP system online!', 'ok');
+            } else {
+                connDot.className = 'conn-dot';
+                portLabel.textContent = 'Disconnected';
+                connectBtn.textContent = 'Connect';
+                connectBtn.className = 'btn btn-primary';
+
+                cmdInput.disabled = true;
+                document.getElementById('sendBtn').disabled = true;
+                toast('GhostESP connection closed', 'wa');
+            }
+        }
+
+        // ── RAW READ LOOP ──
+        async function startReadLoop() {
+            const decoder = new TextDecoder();
+            let buf = '';
+            reader = port.readable.getReader();
+            try {
+                while (connected) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+                    buf += decoder.decode(value, { stream: true });
+                    let lines = buf.split('\n');
+                    buf = lines.pop();
+                    lines.forEach(l => {
+                        // Strip ANSI escape codes (e.g. [0;33m [0;31m)
+                        const t = l.replace(/\r/g, '').replace(/\x1B\[[0-9;]*m/g, '').replace(/\[[0-9;]*m/g, '');
+                        if (t.trim()) {
+                            inLine(t);
+                            parseSerialLine(t);
+                        }
+                    });
+                }
+            } catch (e) {
+                if (connected) errLine('Serial read error: ' + e.message);
+            } finally {
+                reader = null;
+                if (connected) disconnect();
+            }
+        }
+
+        // ── DYNAMIC MULTI-LINE PARSER ──
+        function parseSerialLine(line) {
+            // Strip carriage return, ANSI codes, and the ghost-cli> prompt echo prefix
+            let cleaned = line.trim();
+            // Remove "ghost-cli> " prompt prefix that the firmware echoes on some lines
+            cleaned = cleaned.replace(/^ghost-cli>\s*/i, '').trim();
+            if (!cleaned) return;
+
+            // Detect scan started → show loader
+            if (cleaned.includes('WiFi Scan started') || cleaned.includes('Please wait')) {
+                setScanState(true);
+                return;
+            }
+            // Detect scan complete → hide loader, but DO NOT return so AP lines still parse
+            const foundMatch = cleaned.match(/(?:Initial scan found|Found)\s+(\d+) access point/i);
+            if (foundMatch) {
+                setScanState(false, foundMatch[1]);
+                // fall through – don't return
+            }
+            // Station scan lifecycle
+            if (cleaned.includes('Started Station Scan') || cleaned.includes('Channel Hopping Enabled')) {
+                const staLoader = document.getElementById('staLoader');
+                const staTxt   = document.getElementById('staEmptyText');
+                if (staLoader) staLoader.style.display = 'inline-block';
+                if (staTxt)   staTxt.textContent = 'Sniffing client stations...';
+                // Note: no segment switching — both panels are always visible side-by-side
+                return;
+            }
+            if (cleaned.includes('Station Scan Stopped') || cleaned.includes('Scan halted')
+                || cleaned.includes('Stopping scan') || cleaned.match(/Found \d+ station/i)) {
+                const staLoader = document.getElementById('staLoader');
+                const wifiLoader = document.getElementById('wifiLoader');
+                if (staLoader) staLoader.style.display = 'none';
+                if (wifiLoader) wifiLoader.style.display = 'none';
+                const staTxt = document.getElementById('staEmptyText');
+                const cntM = cleaned.match(/(\d+) station/i);
+                if (staTxt) staTxt.textContent = cntM
+                    ? `Scan done — ${cntM[1]} clients found`
+                    : (wifiStations.length > 0 ? `${wifiStations.length} clients captured` : 'Scan stopped');
+                return;
+            }
+            // Skip noisy divider / header lines from scansta
+            if (cleaned.startsWith('---') || cleaned.startsWith('===')) return;
+
+            // ── SINGLE-LINE AP REFERENCE (used in scansta header) ──
+            // Format: [0] BSSID: 3C:6A:D2:4F:D8:16, SSID: Akash_2.4Ghz
+            const singleLineAPMatch = cleaned.match(/^\[(\d+)\]\s*BSSID:\s*([0-9a-fA-F:]+),\s*SSID:\s*(.*)/i);
+            if (singleLineAPMatch) {
+                const idx  = parseInt(singleLineAPMatch[1]);
+                const bssid = singleLineAPMatch[2].trim();
+                let ssid   = singleLineAPMatch[3].trim().replace(/,$/, '');
+                // Add or refresh the AP in the list (rssi unknown, keep existing if present)
+                const existing = wifiAPs.find(a => a.bssid.toLowerCase() === bssid.toLowerCase());
+                if (!existing) {
+                    addOrUpdateWiFiAP({ idx, ssid: ssid || '(hidden)', bssid, rssi: -90, ch: 0, secure: true, sec: 'WPA2', vendor: '' });
+                }
+                return;
+            }
+            // Parse firmware live packet rate: "140 packets/sec"
+            const pktRateMatch = cleaned.match(/^(\d+)\s*packets\/sec/i);
+            if (pktRateMatch && activeAttack.running) {
+                activeAttack.rate = parseInt(pktRateMatch[1]);
+                activeAttack.packets += activeAttack.rate;
+                updateThreatUI();
+                return;
+            }
+            // Parse "Selected Access Point: SSID: ..., BSSID: ..."
+            if (cleaned.includes('Selected Access Point Successfully')) {
+                toast('AP selected. Launching deauth...', 'wa');
+                return;
+            }
+            // Parse "Deauthentication starting..."
+            if (cleaned.includes('Deauthentication starting') || cleaned.includes('deauth attack on')) {
+                activeAttack.running = true;
+                activeAttack.type = 'WIFI DEAUTH';
+                document.getElementById('attackRadar').className = 'radar-container active';
+                updateThreatUI();
+            }
+
+            // ── MULTI-LINE AP BLOCK PARSER ──
+            const apStartMatch = cleaned.match(/^\[(\d+)\]\s*SSID:\s*(.*)/i);
+            if (apStartMatch) {
+                if (currentParseAP && currentParseAP.bssid) {
+                    addOrUpdateWiFiAP(currentParseAP);
+                }
+                let ssidVal = apStartMatch[2].trim();
+                if (ssidVal.endsWith(',')) ssidVal = ssidVal.slice(0, -1).trim();
+                currentParseAP = {
+                    idx: parseInt(apStartMatch[1]),
+                    ssid: ssidVal || '(hidden)',
+                    bssid: '', rssi: -85, ch: 1,
+                    secure: true, sec: 'WPA2', vendor: ''
+                };
+                return;
+            }
+
+            if (currentParseAP) {
+                if (cleaned.startsWith('BSSID:')) {
+                    let val = cleaned.replace(/^BSSID:\s*/i, '').trim().replace(/,$/, '');
+                    currentParseAP.bssid = val;
+                    addOrUpdateWiFiAP(currentParseAP);
+                    return;
+                }
+                if (cleaned.startsWith('RSSI:')) {
+                    let val = cleaned.replace(/^RSSI:\s*/i, '').trim().replace(/,$/, '');
+                    currentParseAP.rssi = parseInt(val) || -85;
+                    addOrUpdateWiFiAP(currentParseAP);
+                    return;
+                }
+                if (cleaned.startsWith('Channel:')) {
+                    let val = cleaned.replace(/^Channel:\s*/i, '').trim().replace(/,$/, '');
+                    currentParseAP.ch = parseInt(val) || 1;
+                    addOrUpdateWiFiAP(currentParseAP);
+                    return;
+                }
+                if (cleaned.startsWith('Vendor:')) {
+                    let val = cleaned.replace(/^Vendor:\s*/i, '').trim().replace(/,$/, '');
+                    currentParseAP.vendor = val;
+                    addOrUpdateWiFiAP(currentParseAP);
+                    currentParseAP = null;
+                    return;
+                }
+                if (cleaned.match(/^\[\d+\]/)) {
+                    if (currentParseAP.bssid) addOrUpdateWiFiAP(currentParseAP);
+                    currentParseAP = null;
+                }
+            }
+
+            // ── MULTI-LINE STATION BLOCK PARSER ──
+            // Real firmware output:
+            //   New Station:
+            //   Station: E0:D4:E8:4D:53:73,
+            //   STA Vendor: Intel Corporate,
+            //   Associated AP: ZTE-ZhXZD7,
+            //   AP BSSID: E4:47:B3:8D:A3:8E,
+            //   AP Vendor: Unknown
+            if (cleaned === 'New Station:' || cleaned === 'New Station') {
+                // commit pending
+                if (currentParseSTA && currentParseSTA.stationMac) addOrUpdateWiFiStation(currentParseSTA);
+                currentParseSTA = { stationMac: '', staVendor: '', apSSID: '', apBssid: '', apVendor: '', rssi: -80 };
+                return;
+            }
+            if (currentParseSTA) {
+                if (cleaned.startsWith('Station:')) {
+                    currentParseSTA.stationMac = cleaned.replace(/^Station:\s*/i,'').trim().replace(/,$/,'');
+                    return;
+                }
+                if (cleaned.startsWith('STA Vendor:')) {
+                    currentParseSTA.staVendor = cleaned.replace(/^STA Vendor:\s*/i,'').trim().replace(/,$/,'');
+                    return;
+                }
+                if (cleaned.startsWith('Associated AP:')) {
+                    currentParseSTA.apSSID = cleaned.replace(/^Associated AP:\s*/i,'').trim().replace(/,$/,'');
+                    return;
+                }
+                if (cleaned.startsWith('AP BSSID:')) {
+                    currentParseSTA.apBssid = cleaned.replace(/^AP BSSID:\s*/i,'').trim().replace(/,$/,'');
+                    return;
+                }
+                if (cleaned.startsWith('AP Vendor:')) {
+                    currentParseSTA.apVendor = cleaned.replace(/^AP Vendor:\s*/i,'').trim().replace(/,$/,'');
+                    addOrUpdateWiFiStation(currentParseSTA);
+                    currentParseSTA = null;
+                    return;
+                }
+            }
+
+            // ── MULTI-LINE BLE BLOCK PARSER ──
+            // Real firmware output:
+            //   [0] White Flipper Found:
+            //   MAC: 47:61:6d:26:e1:80,
+            //   Name: Gamkers,
+            //   RSSI: -57 dBm
+            const bleStartMatch = cleaned.match(/^\[(\d+)\]\s*(.+?)(?:\s+Found)?:\s*$/i);
+            if (bleStartMatch) {
+                // Commit pending BLE
+                if (currentParseBLE && currentParseBLE.mac) addOrUpdateBLE(currentParseBLE);
+                const label = bleStartMatch[2].trim();
+                let type = 'Generic';
+                if (label.toLowerCase().includes('flipper')) type = 'Flipper Zero';
+                else if (label.toLowerCase().includes('airtag') || label.toLowerCase().includes('air tag')) type = 'AirTag';
+                else if (label.toLowerCase().includes('apple')) type = 'Apple Device';
+                currentParseBLE = { idx: parseInt(bleStartMatch[1]), mac: '', name: label, rssi: -85, type };
+                return;
+            }
+            if (currentParseBLE) {
+                if (cleaned.startsWith('MAC:')) {
+                    currentParseBLE.mac = cleaned.replace(/^MAC:\s*/i,'').trim().replace(/,$/,'');
+                    addOrUpdateBLE(currentParseBLE);
+                    return;
+                }
+                if (cleaned.startsWith('Name:')) {
+                    currentParseBLE.name = cleaned.replace(/^Name:\s*/i,'').trim().replace(/,$/,'');
+                    // Update type from name
+                    const n = currentParseBLE.name.toLowerCase();
+                    if (n.includes('flipper')) currentParseBLE.type = 'Flipper Zero';
+                    else if (n.includes('airtag')) currentParseBLE.type = 'AirTag';
+                    if (currentParseBLE.mac) addOrUpdateBLE(currentParseBLE);
+                    return;
+                }
+                if (cleaned.startsWith('RSSI:')) {
+                    const rssiMatch = cleaned.match(/(-?\d+)/);
+                    if (rssiMatch) currentParseBLE.rssi = parseInt(rssiMatch[1]);
+                    if (currentParseBLE.mac) addOrUpdateBLE(currentParseBLE);
+                    currentParseBLE = null;
+                    return;
+                }
+            }
+
+            // Fallback: single-line [BLE] tag for other firmware variants
+            if (cleaned.includes('[BLE]')) {
+                const macMatch = cleaned.match(/([0-9a-fA-F]{2}[:-]){5}[0-9a-fA-F]{2}/);
+                if (macMatch) {
+                    const mac = macMatch[0];
+                    let name = '(unknown)';
+                    const nameMatch = cleaned.match(/NAME[:\s=]*["']?([^"'\r\n,]+)["']?/i);
+                    if (nameMatch) name = nameMatch[1];
+                    let rssi = -85;
+                    const rssiM = cleaned.match(/RSSI[:\s=]*(-?\d+)/i);
+                    if (rssiM) rssi = parseInt(rssiM[1]);
+                    let type = 'Generic';
+                    if (cleaned.toLowerCase().includes('flipper')) type = 'Flipper Zero';
+                    else if (cleaned.toLowerCase().includes('airtag')) type = 'AirTag';
+                    addOrUpdateBLE({ mac, name, rssi, type });
+                }
+            }
+
+            // 5. Captures and sniffer statistics
+            if (cleaned.toLowerCase().includes('probe')) {
+                sniffStats.probes += 1;
+                document.getElementById('sniffCountProbes').textContent = sniffStats.probes;
+            } else if (cleaned.toLowerCase().includes('wps')) {
+                sniffStats.wps += 1;
+                document.getElementById('sniffCountWPS').textContent = sniffStats.wps;
+                toast('⚠ Intercepted WPS authentication frame!', 'wa');
+            }
+
+            // 6. Captive Portal Loot exfiltration
+            if (cleaned.includes('[PORTAL]') || cleaned.includes('Captured:')) {
+                const userMatch = cleaned.match(/User[:\s=]*["']?([^"'\r\n,]+)["']?/i);
+                const passMatch = cleaned.match(/Pass[:\s=]*["']?([^"'\r\n,]+)["']?/i);
+                if (userMatch && passMatch) {
+                    const user = userMatch[1];
+                    const pass = passMatch[1];
+                    let ip = '192.168.4.15';
+                    const ipMatch = cleaned.match(/IP[:\s=]*([^\s,]+)/i);
+                    if (ipMatch) ip = ipMatch[1];
+                    let portal = 'Default Portal';
+                    const ssidMatch = cleaned.match(/SSID[:\s=]*["']?([^"'\r\n,]+)["']?/i);
+                    if (ssidMatch) portal = ssidMatch[1];
+
+                    capturedLoot.unshift({ user, pass, ip, portal, ts: stamp() });
+                    renderLoot();
+                    toast('🔑 Captured Login Exfiltrated!', 'ok');
+                }
+            }
+        }
+
+        // ── ENGAGEMENTS & DATABASE MODIFIERS ──
+        function addOrUpdateWiFiAP(ap) {
+            if (!ap.bssid) return;
+            const idx = wifiAPs.findIndex(item => item.bssid.toLowerCase() === ap.bssid.toLowerCase());
+            if (idx !== -1) {
+                wifiAPs[idx] = { ...wifiAPs[idx], ...ap };
+            } else {
+                wifiAPs.push(ap);
+            }
+            wifiAPs.sort((a, b) => b.rssi - a.rssi);
+            renderWiFiAPs();
+        }
+
+        function stopAPScan() {
+            simTimers.forEach(t => { clearInterval(t); clearTimeout(t); });
+            simTimers = [];
+            const wifiLoader = document.getElementById('wifiLoader');
+            const wifiTxt   = document.getElementById('wifiEmptyText');
+            if (wifiLoader) wifiLoader.style.display = 'none';
+            if (wifiTxt && wifiAPs.length === 0) wifiTxt.textContent = 'Scan stopped.';
+            toast('AP scan stopped', 'wa');
+            triggerCmd('stopscan');
+        }
+
+        function stopSTAScan() {
+            simTimers.forEach(t => { clearInterval(t); clearTimeout(t); });
+            simTimers = [];
+            const staLoader = document.getElementById('staLoader');
+            const staTxt    = document.getElementById('staEmptyText');
+            if (staLoader) staLoader.style.display = 'none';
+            if (staTxt && wifiStations.length === 0) staTxt.textContent = 'Scan stopped.';
+            else if (staTxt) staTxt.textContent = `${wifiStations.length} clients captured`;
+            toast('Station scan stopped', 'wa');
+            triggerCmd('stopscan');
+        }
+
+        function stopAllScans() {
+            // Immediately kill all loaders and sim timers
+            simTimers.forEach(t => { clearInterval(t); clearTimeout(t); });
+            simTimers = [];
+
+            // Hide WiFi scan loader
+            const wifiLoader = document.getElementById('wifiLoader');
+            const wifiTxt   = document.getElementById('wifiEmptyText');
+            if (wifiLoader) wifiLoader.style.display = 'none';
+
+            // Hide station scan loader
+            const staLoader = document.getElementById('staLoader');
+            const staTxt    = document.getElementById('staEmptyText');
+            if (staLoader) staLoader.style.display = 'none';
+            if (staTxt && staTxt.textContent.includes('running'))
+                staTxt.textContent = `Scan stopped — ${wifiStations.length} clients found`;
+
+            // Hide BLE loader
+            const bleLoader = document.getElementById('bleLoader');
+            const bleTxt    = document.getElementById('bleEmptyText');
+            if (bleLoader) bleLoader.style.display = 'none';
+            if (bleTxt && bleTxt.textContent.includes('scan'))
+                bleTxt.textContent = `Scan stopped — ${bleDevices.length} devices found`;
+
+            toast('Scan stopped', 'wa');
+            triggerCmd('stopscan');
+        }
+
+        function selectAP(idx, ssid) {
+            selectedAPIndex = idx;
+            toast(`[${idx}] ${ssid} selected`, 'ok');
+            triggerCmd(`select -a ${idx}`);
+            renderWiFiAPs(); // re-render to show SELECTED badge + green border
+        }
+
+        function setScanState(scanning, count) {
+            const loader = document.getElementById('wifiLoader');
+            const txt = document.getElementById('wifiEmptyText');
+            const emptyState = document.getElementById('wifiEmptyState');
+            if (scanning) {
+                if (loader) loader.style.display = 'inline-block';
+                if (txt) txt.textContent = 'Scanning... please wait';
+                if (emptyState) emptyState.style.display = 'flex';
+            } else {
+                if (loader) loader.style.display = 'none';
+                if (txt) txt.textContent = `Scan complete — ${count || wifiAPs.length} network${count !== '1' ? 's' : ''} found`;
+            }
+        }
+
+        function renderWiFiAPs() {
+            const el = document.getElementById('panelAPs');
+            if (wifiAPs.length === 0) {
+                return;
+            }
+            const emptyState = document.getElementById('wifiEmptyState');
+            if (emptyState) emptyState.style.display = 'none';
+
+            el.querySelectorAll('.net-card').forEach(c => c.remove());
+
+            wifiAPs.forEach((ap, i) => {
+                const bars = getSignalBarsHTML(ap.rssi);
+                const isSelected = i === selectedAPIndex;
+                const lockSvg = ap.secure
+                    ? `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" style="color:var(--dim);flex-shrink:0"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`
+                    : `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" style="color:var(--warn);flex-shrink:0"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>`;
+                const vendorLabel = ap.vendor ? `<span class="badge badge-sys">${esc(ap.vendor)}</span>` : '';
+                const selBadge = isSelected ? `<span class="sel-badge">SELECTED</span>` : '';
+                const card = document.createElement('div');
+                card.className = 'net-card' + (isSelected ? ' selected' : '');
+                card.innerHTML = `
+                    <div class="net-info">
+                        <div class="net-ssid">${lockSvg}<span style="margin-left:6px">${esc(ap.ssid)}</span>${vendorLabel ? '<span style="margin-left:6px">' + vendorLabel + '</span>' : ''}${selBadge}</div>
+                        <div class="net-meta">
+                            <span>[${i}]</span>
+                            <span>${esc(ap.bssid)}</span>
+                            <span>CH&nbsp;${ap.ch}</span>
+                            <span>${esc(ap.sec)}</span>
+                        </div>
+                    </div>
+                    ${bars}
+                    <button class="btn-act" data-idx="${i}">${isSelected ? 'DEAUTH' : 'SELECT'}</button>`;
+                // Clicking the card body selects; clicking DEAUTH launches attack
+                card.querySelector('.btn-act').addEventListener('click', e => {
+                    e.stopPropagation();
+                    if (isSelected) {
+                        launchTargetDeauth(i, ap.bssid, ap.ssid);
+                    } else {
+                        selectAP(i, ap.ssid);
+                    }
+                });
+                card.addEventListener('click', () => selectAP(i, ap.ssid));
+                el.appendChild(card);
+            });
+        }
+
+        function addOrUpdateWiFiStation(sta) {
+            const idx = wifiStations.findIndex(item => item.stationMac.toLowerCase() === sta.stationMac.toLowerCase());
+            if (idx !== -1) {
+                wifiStations[idx] = { ...wifiStations[idx], ...sta };
+            } else {
+                wifiStations.push(sta);
+            }
+            renderWiFiStations();
+        }
+
+        function renderWiFiStations() {
+            const el = document.getElementById('panelSTAs');
+            const emptyState = document.getElementById('staEmptyState');
+            if (wifiStations.length === 0) { return; }
+            if (emptyState) emptyState.style.display = 'none';
+            el.querySelectorAll('.net-card').forEach(c => c.remove());
+
+            wifiStations.forEach((sta, i) => {
+                const bars = getSignalBarsHTML(sta.rssi);
+                const vendorBadge = sta.staVendor && sta.staVendor !== 'Unknown'
+                    ? `<span class="badge badge-wifi">${esc(sta.staVendor)}</span>` : '';
+                const apInfo = sta.apSSID ? `<span>${esc(sta.apSSID)}</span>` : '';
+                const card = document.createElement('div');
+                card.className = 'net-card';
+                card.innerHTML = `
+                    <div class="net-info">
+                        <div class="net-ssid" style="color:var(--info)">
+                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+                            <span style="margin-left:5px">${esc(sta.stationMac)}</span>
+                        </div>
+                        <div class="net-meta">
+                            ${apInfo}
+                            <span>${esc(sta.apBssid)}</span>
+                            ${vendorBadge}
+                        </div>
+                    </div>
+                    ${bars}
+                    <button class="btn-act" data-idx="${i}">DEAUTH</button>`;
+                card.querySelector('.btn-act').addEventListener('click', () => launchClientDeauth(i, sta.stationMac, sta.apSSID || 'client'));
+                el.appendChild(card);
+            });
+        }
+
+        function addOrUpdateBLE(ble) {
+            const idx = bleDevices.findIndex(item => item.mac.toLowerCase() === ble.mac.toLowerCase());
+            if (idx !== -1) {
+                bleDevices[idx] = { ...bleDevices[idx], ...ble };
+            } else {
+                bleDevices.push(ble);
+            }
+            bleDevices.sort((a, b) => b.rssi - a.rssi);
+            renderBLE();
+        }
+
+        function renderBLE() {
+            // Separate devices by type
+            const flippers = bleDevices.filter(b => b.type === 'Flipper Zero' || b.type === 'Black Flipper' || b.type === 'White Flipper');
+            const airtags  = bleDevices.filter(b => b.type !== 'Flipper Zero' && b.type !== 'Black Flipper' && b.type !== 'White Flipper');
+
+            function renderCards(list) {
+                return list.map(ble => {
+                    const bars = getSignalBarsHTML(ble.rssi);
+                    const isFlipper = ble.type.toLowerCase().includes('flipper');
+                    const badgeClass = isFlipper ? 'badge-atk' : (ble.type === 'AirTag' ? 'badge-ble' : 'badge-wifi');
+                    // SVG icon per type
+                    const iconSvg = isFlipper
+                        ? `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="var(--g)" stroke-width="2"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9" stroke-width="3" stroke-linecap="round"/><line x1="15" y1="9" x2="15.01" y2="9" stroke-width="3" stroke-linecap="round"/></svg>`
+                        : `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="var(--info)" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`;
+                    return `<div class="net-card">
+                        <div class="net-info">
+                            <div class="net-ssid" style="display:flex;align-items:center;gap:6px">${iconSvg}${esc(ble.name)}</div>
+                            <div class="net-meta">
+                                <span>${esc(ble.mac)}</span>
+                                <span class="badge ${badgeClass}">${ble.type.toUpperCase()}</span>
+                                <span style="color:var(--dim);font-size:.65rem">${ble.rssi} dBm</span>
+                            </div>
+                        </div>
+                        ${bars}
+                    </div>`;
+                }).join('');
+            }
+
+            // Render into Flipper panel
+            const flipEl = document.getElementById('bleFlipperResults');
+            if (flipEl) {
+                if (flippers.length === 0) {
+                    const emptyEl = document.getElementById('bleFlipperEmpty');
+                    if (emptyEl) emptyEl.style.display = 'flex';
+                } else {
+                    const emptyEl = document.getElementById('bleFlipperEmpty');
+                    if (emptyEl) emptyEl.style.display = 'none';
+                    // Remove old cards, keep empty-state div
+                    flipEl.querySelectorAll('.net-card').forEach(c => c.remove());
+                    flipEl.insertAdjacentHTML('beforeend', renderCards(flippers));
+                }
+            }
+
+            // Render into AirTag panel
+            const tagEl = document.getElementById('bleAirtagResults');
+            if (tagEl) {
+                if (airtags.length === 0) {
+                    const emptyEl = document.getElementById('bleAirtagEmpty');
+                    if (emptyEl) emptyEl.style.display = 'flex';
+                } else {
+                    const emptyEl = document.getElementById('bleAirtagEmpty');
+                    if (emptyEl) emptyEl.style.display = 'none';
+                    tagEl.querySelectorAll('.net-card').forEach(c => c.remove());
+                    tagEl.insertAdjacentHTML('beforeend', renderCards(airtags));
+                }
+            }
+        }
+
+        function startBleScan(type) {
+            activeBLEScan = type;
+            bleDevices = [];
+            renderBLE();
+            if (type === 'flipper') {
+                const loader = document.getElementById('bleFlipperLoader');
+                const txt    = document.getElementById('bleFlipperText');
+                if (loader) loader.style.display = 'inline-block';
+                if (txt)    txt.textContent = 'Scanning for Flipper Zeros...';
+                triggerCmd('blescan -f');
+            } else {
+                const loader = document.getElementById('bleAirtagLoader');
+                const txt    = document.getElementById('bleAirtagText');
+                if (loader) loader.style.display = 'inline-block';
+                if (txt)    txt.textContent = 'Scanning for AirTags & Apple devices...';
+                triggerCmd('blescan -a');
+            }
+        }
+
+        function stopBleScan() {
+            simTimers.forEach(t => { clearInterval(t); clearTimeout(t); });
+            simTimers = [];
+            ['bleFlipperLoader','bleAirtagLoader'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = 'none';
+            });
+            toast('BLE scan stopped', 'wa');
+            triggerCmd('blescan -s');
+            activeBLEScan = null;
+        }
+
+        function renderLoot() {
+            const el = document.getElementById('lootResults');
+            if (capturedLoot.length === 0) {
+                el.innerHTML = `<div class="empty-state">No trap exfiltrations collected.</div>`;
+                return;
+            }
+
+            el.innerHTML = capturedLoot.map(loot => {
+                return `<div class="loot-card">
+                    <div class="loot-row">
+                        <span class="loot-k">Timestamp</span>
+                        <span class="loot-v" style="color:var(--dim)">${esc(loot.ts)}</span>
+                    </div>
+                    <div class="loot-row">
+                        <span class="loot-k">Target SSID Portal</span>
+                        <span class="loot-v" style="color:var(--info)">${esc(loot.portal)}</span>
+                    </div>
+                    <div class="loot-row">
+                        <span class="loot-k">trap Associated IP</span>
+                        <span class="loot-v" style="color:var(--dim2)">${esc(loot.ip)}</span>
+                    </div>
+                    <div class="loot-row">
+                        <span class="loot-k">Username / Loot</span>
+                        <span class="loot-v user">${esc(loot.user)}</span>
+                    </div>
+                    <div class="loot-row" style="align-items:center">
+                        <span class="loot-k">Secret Password</span>
+                        <span class="loot-v" style="font-weight:700">${esc(loot.pass)}</span>
+                        <button class="loot-copy" onclick="copyText('${loot.pass.replace(/'/g, "\\'")}')">COPY</button>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function startStaScan() {
+            // Show loader in the STA panel (no segment switching needed — always visible)
+            const staLoader = document.getElementById('staLoader');
+            const staTxt    = document.getElementById('staEmptyText');
+            if (staLoader) staLoader.style.display = 'inline-block';
+            if (staTxt)   staTxt.textContent = 'Station scan running...';
+            triggerCmd('scansta');
+        }
+
+        function launchCampaign(cmd, type, target, style) {
+            goPage('attack');
+
+            // Immediate visual feedback — don't wait for serial
+            activeAttack.running = true;
+            activeAttack.type = type;
+            activeAttack.target = target;
+            activeAttack.packets = 0;
+            activeAttack.rate = 0;
+
+            const isRed = style === 'red';
+            document.getElementById('attackRadar').className = 'radar-container active' + (isRed ? '' : ' ble');
+            updateThreatUI();
+
+            // Light up the indicator on the campaign card
+            document.querySelectorAll('.camp-indicator').forEach(el => { el.style.background = 'var(--b2)'; el.style.boxShadow = 'none'; });
+            const indMap = { 'attack -d': 'deauth', 'beaconspam -r': 'beacon', 'blespam -apple': 'apple', 'blespam -samsung': 'samsung' };
+            const indEl = document.getElementById('ind-' + (indMap[cmd] || 'deauth'));
+            if (indEl) {
+                const c = isRed ? 'var(--red)' : 'var(--g)';
+                indEl.style.background = c;
+                indEl.style.boxShadow = `0 0 8px ${c}`;
+            }
+
+            toast(`Campaign engaged: ${type}`, isRed ? 'er' : 'wa');
+            triggerCmd(cmd);
+        }
+
+        function launchClientDeauth(staIdx, mac, apSSID) {
+            goPage('attack');
+
+            activeAttack.running = true;
+            activeAttack.type = 'CLIENT DEAUTH';
+            activeAttack.target = mac;
+            activeAttack.packets = 0;
+            activeAttack.rate = 0;
+            updateThreatUI();
+
+            document.getElementById('attackRadar').className = 'radar-container active';
+            toast(`Deauthing client [${staIdx}] ${mac}`, 'wa');
+
+            // Firmware: select station by index, then attack
+            triggerCmd(`select -s ${staIdx}`);
+            setTimeout(() => triggerCmd('attack -d'), 700);
+        }
+
+        function launchTargetDeauth(apIdx, bssid, ssid) {
+            goPage('attack');
+
+            activeAttack.running = true;
+            activeAttack.type = 'WIFI DEAUTH';
+            activeAttack.target = ssid;
+            activeAttack.packets = 0;
+            activeAttack.rate = 0;
+            updateThreatUI();
+
+            document.getElementById('attackRadar').className = 'radar-container active';
+            toast(`Selecting [${apIdx}] ${ssid} → launching deauth`, 'wa');
+
+            // Correct firmware flow: select the AP by index, then attack
+            triggerCmd(`select -a ${apIdx}`);
+            setTimeout(() => triggerCmd('attack -d'), 700);
+        }
+
+        function abortActiveAttack() {
+            activeAttack = { running: false, type: 'NONE', packets: 0, target: '—', rate: 0 };
+            updateThreatUI();
+
+            document.getElementById('attackRadar').className = 'radar-container';
+            // Reset all campaign indicators
+            document.querySelectorAll('.camp-indicator').forEach(el => { el.style.background = 'var(--b2)'; el.style.boxShadow = 'none'; });
+            toast('Wireless campaign disengaged.', 'ok');
+
+            triggerCmd('stop deauth');
+            triggerCmd('stop spam');
+        }
+
+        function updateThreatUI() {
+            document.getElementById('activeAttackType').textContent = activeAttack.type;
+            document.getElementById('attackPacketCount').textContent = activeAttack.packets;
+            document.getElementById('attackTargetSSID').textContent = activeAttack.target;
+            document.getElementById('attackPacketRate').textContent = activeAttack.rate + ' pkts/s';
+
+            const label = document.getElementById('threatStatusLabel');
+            label.textContent = activeAttack.running ? `ENGAGED: ${activeAttack.type}` : 'Threat Modules Offline';
+            label.className = 'threat-lbl' + (activeAttack.running ? (activeAttack.type.includes('BLE') || activeAttack.type.includes('BEACON') ? ' active ble' : ' active') : '');
+        }
+
+        function getSignalBarsHTML(rssi) {
+            let litCount = 0;
+            if (rssi >= -55) litCount = 4;
+            else if (rssi >= -68) litCount = 3;
+            else if (rssi >= -79) litCount = 2;
+            else if (rssi >= -90) litCount = 1;
+
+            const h = [4, 7, 10, 14];
+            return `<div class="net-signal" title="${rssi} dBm">` +
+                h.map((height, idx) =>
+                    `<span style="height:${height}px" class="${idx < litCount ? 'lit' : ''}"></span>`
+                ).join('') +
+                `</div>`;
+        }
+
+        // ── COMMAND TRIGGER WRAPPER ──
+        async function triggerCmd(cmd) {
+            if (!connected) {
+                toast('Establish connection first', 'wa');
+                return;
+            }
+
+            outLine(cmd);
+            addHistory(cmd);
+
+            if (simulationMode) {
+                handleSimCommand(cmd);
+                return;
+            }
+
+            if (!writer) return;
+            const encoded = new TextEncoder().encode(cmd + lineEndMode);
+            try {
+                await writer.write(encoded);
+            } catch (e) {
+                errLine('USB Write error: ' + e.message);
+            }
+        }
+
+        // ── OFFLINE SIMULATION ──
+        function enterSimulation() {
+            simulationMode = true;
+            connected = true;
+            setConnectedState(true, true);
+
+            sysLine('VIRTUAL SANDBOX ACTIVE');
+            sysLine('[SIM] ESP32-S3 firmware simulator connected.');
+            sysLine('CLI listener online. Send commands or use dashboard panels.');
+        }
+
+        function exitSimulation() {
+            simTimers.forEach(clearInterval);
+            simTimers = [];
+            simulationMode = false;
+            connected = false;
+            setConnectedState(false);
+            sysLine('Simulator sandbox closed.');
+        }
+
+        function handleSimCommand(cmd) {
+            const cleaned = cmd.trim().toLowerCase();
+            simTimers.forEach(clearInterval);
+            simTimers = [];
+
+            if (cleaned.startsWith('scanap')) {
+                toast('Virtual AP scan requested...', 'ok');
+
+                // Show loader
+                document.getElementById('wifiLoader').style.display = 'inline-block';
+                document.getElementById('wifiEmptyText').textContent = 'Stretching scan lines... Please wait 5 Seconds...';
+
+                wifiAPs = [];
+                renderWiFiAPs();
+
+                // Simulate exact firmware multiline output with indented fields
+                const lines = [
+                    'Stopping Wi-Fi...',
+                    'WiFi Scan started',
+                    'Please wait 5 Seconds...',
+                    'Found 4 access points',
+                    '[0] SSID: Akash_2.4Ghz,',
+                    '     BSSID: 3C:6A:D2:4F:D8:16,',
+                    '     RSSI: -39,',
+                    '     Channel: 4,',
+                    '     Vendor: Tp-Link Systems Inc.',
+                    '[1] SSID: ZTE-ZhXZD7,',
+                    '     BSSID: E4:47:B3:8D:A3:8E,',
+                    '     RSSI: -78,',
+                    '     Channel: 4,',
+                    '[2] SSID: Free WiFi ,',
+                    '     BSSID: 2A:EA:D0:A7:8A:44,',
+                    '     RSSI: -85,',
+                    '     Channel: 10,',
+                    '[3] SSID: Airtel_elan_5747,',
+                    '     BSSID: F4:27:56:95:EC:70,',
+                    '     RSSI: -87,',
+                    '     Channel: 7,'
+                ];
+
+                let lineIdx = 0;
+                const timer = setInterval(() => {
+                    if (lineIdx < lines.length) {
+                        const line = lines[lineIdx];
+                        inLine(line);
+                        parseSerialLine(line);
+                        lineIdx++;
+                    } else {
+                        clearInterval(timer);
+                    }
+                }, 380);
+
+                simTimers.push(timer);
+            }
+            else if (cleaned.startsWith('scansta')) {
+                toast('Sniffing client stations...', 'ok');
+                wifiStations = [];
+
+                // Emit exact real-firmware scansta output
+                const staLines = [
+                    'ghost-cli> scansta',
+                    'No APs scanned previously. Performing initial scan...',
+                    'Stopping Wi-Fi...',
+                    'Initial scan found 4 access points',
+                    'Found 4 access points',
+                    '--- Known AP BSSIDs for Station Scan ---',
+                    '[0] BSSID: 3C:6A:D2:4F:D8:16, SSID: Akash_2.4Ghz',
+                    '[1] BSSID: E4:47:B3:8D:A3:8E, SSID: ZTE-ZhXZD7',
+                    '[2] BSSID: 2A:EA:D0:A7:8A:44, SSID: Free WiFi',
+                    '[3] BSSID: F4:27:56:95:EC:70, SSID: Airtel_elan_5747',
+                    '----------------------------------------',
+                    'Started Station Scan (Channel Hopping Enabled)...'
+                ];
+
+                // Stations arrive after a delay (simulating real sniff)
+                const staBlocks = [
+                    ['New Station:', 'Station: E0:D4:E8:4D:53:73,', 'STA Vendor: Intel Corporate,', 'Associated AP: ZTE-ZhXZD7,', 'AP BSSID: E4:47:B3:8D:A3:8E,', 'AP Vendor: Unknown'],
+                    ['New Station:', 'Station: 12:40:52:59:6B:43,', 'STA Vendor: Unknown,', 'Associated AP: Free WiFi ,', 'AP BSSID: 2A:EA:D0:A7:8A:44,', 'AP Vendor: Unknown'],
+                    ['New Station:', 'Station: 3E:6A:D2:0F:D8:16,', 'STA Vendor: Unknown,', 'Associated AP: ZTE-ZhXZD7,', 'AP BSSID: E4:47:B3:8D:A3:8E,', 'AP Vendor: Unknown'],
+                    ['New Station:', 'Station: FA:A9:CE:D0:6B:13,', 'STA Vendor: Unknown,', 'Associated AP: Akash_2.4Ghz,', 'AP BSSID: 3C:6A:D2:4F:D8:16,', 'AP Vendor: Tp-Link Systems Inc.']
+                ];
+
+                // Stream header lines first
+                let li = 0;
+                const headerTimer = setInterval(() => {
+                    if (li < staLines.length) {
+                        inLine(staLines[li]);
+                        parseSerialLine(staLines[li]);
+                        li++;
+                    } else {
+                        clearInterval(headerTimer);
+                        // Then stream station blocks with realistic timing
+                        let bi = 0;
+                        const stationTimer = setInterval(() => {
+                            if (bi < staBlocks.length) {
+                                staBlocks[bi].forEach(l => { inLine(l); parseSerialLine(l); });
+                                bi++;
+                            } else {
+                                const doneLines = ['Station Scan Stopped. Found 4 stations.'];
+                                doneLines.forEach(l => { inLine(l); parseSerialLine(l); });
+                                clearInterval(stationTimer);
+                            }
+                        }, 1800);
+                        simTimers.push(stationTimer);
+                    }
+                }, 300);
+                simTimers.push(headerTimer);
+            }
+            else if (cleaned.startsWith('blescan')) {
+                const isFlipper = cleaned.includes('-f');
+                const isAirtag  = cleaned.includes('-a');
+                toast(isFlipper ? 'Scanning for Flipper Zeros...' : 'Scanning for AirTags...', 'ok');
+                bleDevices = [];
+                renderBLE();
+
+                // Show loader in correct panel
+                const loaderId = isFlipper ? 'bleFlipperLoader' : 'bleAirtagLoader';
+                const textId   = isFlipper ? 'bleFlipperText'   : 'bleAirtagText';
+                const loaderEl = document.getElementById(loaderId);
+                const textEl   = document.getElementById(textId);
+                if (loaderEl) loaderEl.style.display = 'inline-block';
+                if (textEl)   textEl.textContent = isFlipper ? 'Scanning...' : 'Scanning for AirTags...';
+
+                // Emit real firmware-format BLE output
+                const bleHeader = isFlipper ? ['Starting Find the Flippers.'] : ['Starting BLE scan...'];
+                const bleBlocks = isFlipper ? [
+                    ['[0] White Flipper Found:', 'MAC: 47:61:6d:26:e1:80,', 'Name: Gamkers,', 'RSSI: -57 dBm'],
+                    ['[1] Black Flipper Found:', 'MAC: 3c:71:bf:9a:cc:11,', 'Name: GhostFlip,', 'RSSI: -72 dBm']
+                ] : [
+                    ['[0] AirTag Found:', 'MAC: aa:bb:cc:dd:ee:ff,', 'Name: AirTag,', 'RSSI: -65 dBm'],
+                    ['[1] Apple Device Found:', 'MAC: f1:22:33:44:55:66,', 'Name: iPhone Steve,', 'RSSI: -70 dBm']
+                ];
+
+                bleHeader.forEach(l => { inLine(l); parseSerialLine(l); });
+
+                let bi = 0;
+                const timer = setInterval(() => {
+                    if (bi < bleBlocks.length) {
+                        bleBlocks[bi].forEach(l => { inLine(l); parseSerialLine(l); });
+                        bi++;
+                    } else {
+                        if (loaderEl) loaderEl.style.display = 'none';
+                        const count = isFlipper
+                            ? bleDevices.filter(b => b.type.toLowerCase().includes('flipper')).length
+                            : bleDevices.filter(b => !b.type.toLowerCase().includes('flipper')).length;
+                        if (textEl) textEl.textContent = `Found ${count} device${count !== 1 ? 's' : ''}`;
+                        clearInterval(timer);
+                    }
+                }, 1200);
+                simTimers.push(timer);
+            }
+            else if (cleaned.startsWith('stopscan') || cleaned.startsWith('stop scan')) {
+                // Kill all running sim scan timers immediately
+                simTimers.forEach(t => { clearInterval(t); clearTimeout(t); });
+                simTimers = [];
+                // Echo real firmware stop messages
+                inLine('Stopping scan...');
+                inLine('Station Scan Stopped.');
+                parseSerialLine('Station Scan Stopped.');
+                inLine('Scan halted.');
+                parseSerialLine('Scan halted.');
+            }
+            else if (cleaned.startsWith('select -a')) {
+                // Simulate AP selection response
+                const idxStr = cleaned.replace('select -a', '').trim();
+                const idx = parseInt(idxStr) || 0;
+                const ap = wifiAPs[idx];
+                if (ap) {
+                    inLine(`Selected Access Point: SSID: ${ap.ssid}, BSSID: ${ap.bssid}`);
+                    inLine('Selected Access Point Successfully');
+                    parseSerialLine('Selected Access Point Successfully');
+                } else {
+                    inLine(`Selected AP index ${idx}`);
+                    inLine('Selected Access Point Successfully');
+                    parseSerialLine('Selected Access Point Successfully');
+                }
+            }
+            else if (cleaned.startsWith('attack -d')) {
+                toast('WiFi Deauth simulation engaged!', 'er');
+
+                // Emit real firmware-style output so the parser picks it up
+                inLine('Deauthentication starting...');
+                parseSerialLine('Deauthentication starting...');
+                inLine(`Starting deauth attack on 1 selected APs:`);
+                const tgt = activeAttack.target !== '—' ? activeAttack.target : 'Akash_2.4Ghz';
+                inLine(`  [0] ${tgt}`);
+
+                let pkts = 0;
+                const timer = setInterval(() => {
+                    pkts += 15;
+                    // Emit real packet-rate line: "N packets/sec"
+                    const rateLine = `${pkts} packets/sec`;
+                    inLine(rateLine);
+                    parseSerialLine(rateLine);
+                }, 500);
+                simTimers.push(timer);
+            }
+            else if (cleaned.startsWith('blespam')) {
+                toast('Apple BLE proximity spam simulation engaged!', 'wa');
+                switchTab('attack');
+
+                let pkts = 0;
+                const timer = setInterval(() => {
+                    pkts += 40;
+                    const line = `[BLE_SPAM] Spoof proximity dispatch. Packets Sent: ${pkts}, Speed: 40`;
+                    inLine(line);
+                    parseSerialLine(line);
+                }, 1000);
+                simTimers.push(timer);
+            }
+            else if (cleaned.startsWith('beaconspam')) {
+                toast('Rickroll SSID beacon spam engaged!', 'wa');
+                switchTab('attack');
+
+                let pkts = 0;
+                const timer = setInterval(() => {
+                    pkts += 80;
+                    const line = `[SPAM] Flood beacon dispatch. Target: RICKROLL, Packets Sent: ${pkts}, Speed: 80`;
+                    inLine(line);
+                    parseSerialLine(line);
+                }, 1000);
+                simTimers.push(timer);
+            }
+            else if (cleaned.startsWith('startportal')) {
+                toast('Evil Portal deployed on 192.168.4.1!', 'ok');
+                goPage('portal');
+
+                const trapTimer = setTimeout(() => {
+                    const line = '[PORTAL] trap connection established! IP: 192.168.4.24';
+                    inLine(line);
+                    sysLine(line);
+                    toast('Portal trap triggered! Associated: 192.168.4.24', 'wa');
+                }, 3000);
+
+                const exfilTimer = setTimeout(() => {
+                    const line = '[PORTAL] Captured: User: "steve@gamkers.com", Pass: "Gamer9922!", IP: 192.168.4.24, SSID: "Free WiFi"';
+                    inLine(line);
+                    parseSerialLine(line);
+                }, 7500);
+
+                simTimers.push(trapTimer, exfilTimer);
+            }
+            else if (cleaned.startsWith('capture')) {
+                toast('Monitoring 802.11 sniffer frames...', 'ok');
+                goPage('portal');
+
+                const timer = setInterval(() => {
+                    const frame = Math.random() > 0.5 ? '[CAP] Sniffed frame: probe request' : '[CAP] Sniffed frame: WPS request';
+                    inLine(frame);
+                    parseSerialLine(frame);
+                }, 1000);
+                simTimers.push(timer);
+            }
+            else if (cleaned.includes('stop') || cleaned.includes('-s')) {
+                abortActiveAttack();
+            }
+        }
+
+        // ── CLI WRITING CONTROLS ──
+        function sendInput() {
+            const v = cmdInput.value.trim();
+            if (!v) return;
+            triggerCmd(v);
+            cmdInput.value = '';
+            histIdx = -1;
+        }
+
+        cmdInput.addEventListener('keydown', e => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                sendInput();
+            }
+        });
+
+        // History
+        function addHistory(c) {
+            cmdHistory.unshift(c);
+            if (cmdHistory.length > 10) cmdHistory.pop();
+            renderHistory();
+        }
+
+        function renderHistory() { }
+
+        // Log display
+        function stamp() {
+            const n = new Date();
+            return [n.getHours(), n.getMinutes(), n.getSeconds()].map(x => x.toString().padStart(2, '0')).join(':');
+        }
+
+        function appendLine(type, msg) {
+            const l = document.createElement('div');
+            l.className = 'line';
+            l.innerHTML = `<span class="ts">${stamp()}</span><span class="ltype ${type}">${type.toUpperCase()}</span><span class="lmsg ${type}">${esc(msg)}</span>`;
+            term.appendChild(l);
+            term.scrollTop = term.scrollHeight;
+        }
+
+        function outLine(m) { appendLine('out', m); }
+        function inLine(m) { appendLine('in', m); }
+        function sysLine(m) { appendLine('sys', m); }
+        function errLine(m) { appendLine('err', m); }
+
+        function esc(s) {
+            return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
+        function clearTerm() {
+            term.innerHTML = '';
+            wifiAPs = [];
+            wifiStations = [];
+            bleDevices = [];
+            capturedLoot = [];
+            sniffStats = { probes: 0, beacons: 0, deauths: 0, wps: 0 };
+
+            renderWiFiAPs();
+            renderWiFiStations();
+            renderBLE();
+            renderLoot();
+
+            document.getElementById('sniffCountProbes').textContent = 0;
+            document.getElementById('sniffCountWPS').textContent = 0;
+
+            toast('Dashboard cache cleared', 'wa');
+        }
+
+        function saveLog() {
+            const lines = [...term.querySelectorAll('.line')].map(l => {
+                const ts = l.querySelector('.ts')?.textContent || '';
+                const type = l.querySelector('.ltype')?.textContent || '';
+                const msg = l.querySelector('.lmsg')?.textContent || '';
+                return `[${ts}] [${type}] ${msg}`;
+            }).join('\n');
+            const blob = new Blob([lines], { type: 'text/plain' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `ghostesp_log_${Date.now()}.txt`;
+            a.click();
+            toast('Logs saved successfully ✓', 'ok');
+        }
+
+        function toast(msg, type = 'ok') {
+            const n = document.getElementById('notif');
+            const t = document.createElement('div');
+            t.className = `toast ${type}`;
+            t.textContent = msg;
+            n.appendChild(t);
+            setTimeout(() => {
+                t.style.opacity = '0';
+                t.style.transform = 'translateY(-10px)';
+                setTimeout(() => t.remove(), 250);
+            }, 3000);
+        }
+
+        function copyText(str) {
+            navigator.clipboard.writeText(str).then(() => {
+                toast('Password copied!', 'ok');
+            });
+        }
+
+        boot();
+    </script>
+</body>
+
+</html>
