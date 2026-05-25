@@ -604,18 +604,68 @@
     @media (max-width: 1024px) {
       .container {
         grid-template-columns: 1fr;
-        padding: 20px;
+        padding: 20px 16px;
+        gap: 20px;
       }
       header {
         padding: 16px 20px;
       }
     }
+    @media (max-width: 768px) {
+      header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 16px;
+        text-align: center;
+        padding: 20px 16px;
+      }
+      .header-left {
+        justify-content: center;
+      }
+      .back-btn {
+        justify-content: center;
+        width: 100%;
+      }
+      .card {
+        padding: 18px !important;
+        gap: 16px;
+      }
+      .card-title {
+        font-size: 1.15rem;
+      }
+    }
     @media (max-width: 480px) {
+      .container {
+        padding: 12px 8px;
+        gap: 16px;
+      }
       .brand {
-        font-size: 1.3rem;
+        font-size: 1.25rem;
+        letter-spacing: 2px;
+      }
+      .subtitle {
+        font-size: 0.65rem;
+        letter-spacing: 1px;
       }
       .setup-grid {
         grid-template-columns: 1fr;
+        gap: 12px;
+      }
+      .btn-scan, .btn-primary {
+        padding: 12px;
+        font-size: 0.85rem;
+      }
+      .terminal {
+        height: 250px;
+        font-size: 0.72rem;
+      }
+      .rec-item {
+        padding: 10px;
+      }
+      .rec-icon {
+        width: 24px;
+        height: 24px;
+        font-size: 0.8rem;
       }
     }
   </style>
