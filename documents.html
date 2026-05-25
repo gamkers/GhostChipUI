@@ -700,6 +700,7 @@
           <span class="sub-link active" id="link-setup-init" onclick="loadPage('setup-init', this)">Physical Power-Up</span>
           <span class="sub-link" id="link-setup-limits" onclick="loadPage('setup-limits', this)">MicroSD Format Limits</span>
           <span class="sub-link" id="link-setup-arch" onclick="loadPage('setup-arch', this)">Hardware Specs</span>
+          <span class="sub-link" id="link-setup-flashing" onclick="loadPage('setup-flashing', this)">USB Flashing & Recovery</span>
         </div>
       </div>
 
@@ -884,6 +885,78 @@
 
           <h3 style="margin:20px 0 10px; font-weight:700;">Technical Electrical Tolerances:</h3>
           <p>Operating voltage requirements: <strong>5V DC</strong> via USB connector. Idle power draw ranges around <strong>90mA</strong>, whereas active RF scanning or high-speed typing bursts pull up to <strong>310mA</strong> peak current. Avoid routing through unpowered USB splitter units.</p>
+        </div>
+      </section>
+
+      <!-- Subtopic 3.5: setup-flashing -->
+      <section class="doc-page" id="page-setup-flashing">
+        <div class="card">
+          <h2 class="card-title">⚡ USB Firmware Flashing & Recovery Guide</h2>
+          <p>Reload your GhostChip with the official core binaries, re-partition the flash layout, or recover a bricked/bootlooping device over physical USB Web Serial.</p>
+
+          <div class="alert-box note">
+            <strong>💡 Web Serial Advantage:</strong>
+            Using the Web Serial protocol, you can program your ESP32-S3 chip directly from your browser without installing the Arduino IDE, Python, drivers, or standard command-line flashing suites.
+          </div>
+
+          <h3 style="margin-top: 24px; margin-bottom: 12px; font-weight: 700; color: var(--white);">📥 Step-by-Step Flashing Procedure</h3>
+          <div class="steps">
+            <div class="step-item">
+              <div class="step-num">1</div>
+              <div class="step-content">
+                <h3>Launch the Flasher Interface</h3>
+                <p>Open the native <strong><a href="flasher.html" style="color: var(--g); font-weight: bold; text-decoration: underline;">Web Serial Flasher Utility</a></strong> inside a Chromium-based browser (Chrome, Edge, or Opera).</p>
+              </div>
+            </div>
+            <div class="step-item">
+              <div class="step-num">2</div>
+              <div class="step-content">
+                <h3>Connect USB Data Cable</h3>
+                <p>Plug one end of a standard USB-C data cable into the GhostChip module and connect the other end directly to a computer's high-speed USB port.</p>
+              </div>
+            </div>
+            <div class="step-item">
+              <div class="step-num">3</div>
+              <div class="step-content">
+                <h3>Establish Serial Connection</h3>
+                <p>Select your desired Baud Rate speed (Default <strong>921600</strong> is recommended for low-latency flashing). Click <strong>Connect Device</strong> and choose the appropriate serial port interface (e.g., <code>ESP32-S3 USB Node</code> or <code>COM3</code>) from the pop-up browser interface.</p>
+              </div>
+            </div>
+            <div class="step-item">
+              <div class="step-num">4</div>
+              <div class="step-content">
+                <h3>Load Firmware Segments</h3>
+                <p>Choose your binary source type:</p>
+                <ul style="margin-left: 20px; margin-top: 8px; font-size: 0.82rem; color: var(--dim); list-style-type: square; display: flex; flex-direction: column; gap: 6px;">
+                  <li><strong>Auto-Flash (Preset Firmware)</strong>: Click <strong>Fetch Preset Firmware Files</strong> to automatically download the official factory binaries from the remote repository.</li>
+                  <li><strong>Manual Files (Custom Upload)</strong>: Upload custom-compiled binaries into their dedicated memory offsets:
+                    <ul style="margin-left: 20px; margin-top: 4px; list-style-type: circle;">
+                      <li><code>0x0</code> -> <code>GhostChip.ino.bootloader.bin</code> (Boot Sequence)</li>
+                      <li><code>0x8000</code> -> <code>GhostChip.ino.partitions.bin</code> (Partition Layout)</li>
+                      <li><code>0x10000</code> -> <code>GhostChip.ino-4.bin</code> (Core Application code)</li>
+                    </ul>
+                  </li>
+                </ul>
+              </div>
+            </div>
+            <div class="step-item">
+              <div class="step-num">5</div>
+              <div class="step-content">
+                <h3>Trigger Flashing Process</h3>
+                <p>Select <strong>Erase all flash partitions before writing</strong> if performing a clean install to wipe active settings. Click <strong>Start Flashing Firmware</strong> and watch the real-time progress indicators. Once complete, unplug and reconnect the USB port to power cycle and boot the new code!</p>
+              </div>
+            </div>
+          </div>
+
+          <h3 style="margin-top: 30px; margin-bottom: 12px; font-weight: 700; color: var(--white);">⚠️ Hard Recovery Mode (ROM Bootloader)</h3>
+          <p style="font-size: 0.85rem; color: var(--dim); margin-bottom: 16px;">If your device fails to sync, is bootlooping continuously, or is completely bricked, you can manually override the active program execution and force the ESP32-S3 processor to initialize its internal read-only ROM bootloader:</p>
+          
+          <div style="background: var(--s2); border: 1px solid var(--b1); border-radius: var(--radius-sm); padding: 18px 24px; display: flex; flex-direction: column; gap: 12px; font-size: 0.85rem; color: var(--dim);">
+            <div><strong>1.</strong> Press and hold down the physical, miniature <strong>BOOT</strong> button on the GhostChip board.</div>
+            <div><strong>2.</strong> While keeping the BOOT button pressed, insert the USB cable into your computer's USB port to power up the module.</div>
+            <div><strong>3.</strong> Release the <strong>BOOT</strong> button. The ESP32-S3's hardware core will now sit in idle ROM Bootloader mode waiting for commands.</div>
+            <div><strong>4.</strong> Click <strong>Connect Device</strong> inside the Flasher page to establish a secure link and reload your firmware.</div>
+          </div>
         </div>
       </section>
 
