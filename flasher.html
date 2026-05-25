@@ -697,6 +697,7 @@
 
         <div class="tabs">
           <button id="tabAuto" class="tab active" onclick="switchTab('auto')">Auto-Flash (Preset Firmware)</button>
+          <button id="tabThirdParty" class="tab" onclick="switchTab('thirdparty')">Third-Party (GhostESP)</button>
           <button id="tabManual" class="tab" onclick="switchTab('manual')">Manual Files (Custom Upload)</button>
         </div>
 
@@ -732,6 +733,29 @@
           </div>
 
           <button id="fetchFwBtn" class="btn btn-secondary">Fetch Preset Firmware Files</button>
+        </div>
+
+        <!-- TAB C: THIRDPARTY GHOSTESP -->
+        <div id="contentThirdParty" class="tab-content">
+          <p style="font-size: 0.85rem; color: var(--dim);">Download and flash the third-party <strong>GhostESP</strong> firmware for generic ESP32-S3 devices. Unzips and flashes automatically:</p>
+          
+          <div class="firmware-list">
+            <!-- GhostESP ZIP Preset -->
+            <div class="fw-item">
+              <div class="fw-info">
+                <div class="fw-name">GhostESP Firmware Package</div>
+                <div class="fw-meta">URL: esp32s3-generic.zip | Target Options: DIO, 80MHz, 8MB Flash, 115200 Baud</div>
+              </div>
+              <div id="statusGhostESP" class="fw-status-badge">Pending</div>
+            </div>
+          </div>
+
+          <div style="margin: 14px 0; font-size: 0.8rem; color: var(--dim); line-height: 1.4;">
+            ℹ️ Official firmware developed by the <strong>GhostESP</strong> core team. For guides, troubleshooting, and source files, visit the official website: 
+            <a href="https://ghostesp.net/index.html" target="_blank" rel="noopener noreferrer" style="color: var(--g); text-decoration: underline; font-weight: bold; margin-left: 4px;">ghostesp.net</a>
+          </div>
+
+          <button id="fetchThirdPartyBtn" class="btn btn-secondary">Fetch & Extract GhostESP Firmware</button>
         </div>
 
         <!-- TAB B: MANUAL FILE UPLOADS -->
@@ -881,6 +905,9 @@
     let esploader = null;
     let connected = false;
     let activeTab = 'auto';
+    let currentFlashMode = 'dio';
+    let currentFlashFreq = '40m';
+    let currentFlashSize = '4MB';
 
     // File buffer storage
     const fwFiles = {
@@ -898,6 +925,7 @@
     const macVal = document.getElementById('macVal');
     const portVal = document.getElementById('portVal');
     const fetchFwBtn = document.getElementById('fetchFwBtn');
+    const fetchThirdPartyBtn = document.getElementById('fetchThirdPartyBtn');
     const flashBtn = document.getElementById('flashBtn');
     const clearLogsBtn = document.getElementById('clearLogsBtn');
     const baudRateSelect = document.getElementById('baudRate');
@@ -927,20 +955,57 @@
       logToTerminal('❌ CRITICAL ERROR: Web Serial API is NOT supported by your browser. Please switch to Google Chrome or Microsoft Edge.');
     }
 
-    // ─── TABS HANDLING ───
+    function clearFwBuffers() {
+      fwFiles.bootloader.data = null;
+      fwFiles.partitions.data = null;
+      fwFiles.main.data = null;
+      
+      const badges = ['statusBootloader', 'statusPartitions', 'statusMain', 'statusGhostESP'];
+      badges.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.className = 'fw-status-badge';
+          el.textContent = 'Pending';
+        }
+      });
+
+      ['bootloader', 'partitions', 'main'].forEach(type => {
+        const input = document.getElementById(`file${type.charAt(0).toUpperCase() + type.slice(1)}`);
+        const details = document.getElementById(`details${type.charAt(0).toUpperCase() + type.slice(1)}`);
+        if (input) input.value = '';
+        if (details) details.style.display = 'none';
+      });
+    }
+
     window.switchTab = function(tabName) {
       activeTab = tabName;
+      clearFwBuffers();
+
       document.getElementById('tabAuto').classList.remove('active');
+      document.getElementById('tabThirdParty').classList.remove('active');
       document.getElementById('tabManual').classList.remove('active');
       document.getElementById('contentAuto').classList.remove('active');
+      document.getElementById('contentThirdParty').classList.remove('active');
       document.getElementById('contentManual').classList.remove('active');
 
       if (tabName === 'auto') {
         document.getElementById('tabAuto').classList.add('active');
         document.getElementById('contentAuto').classList.add('active');
+        currentFlashMode = 'dio';
+        currentFlashFreq = '40m';
+        currentFlashSize = '4MB';
+      } else if (tabName === 'thirdparty') {
+        document.getElementById('tabThirdParty').classList.add('active');
+        document.getElementById('contentThirdParty').classList.add('active');
+        currentFlashMode = 'dio';
+        currentFlashFreq = '80m';
+        currentFlashSize = '8MB';
       } else {
         document.getElementById('tabManual').classList.add('active');
         document.getElementById('contentManual').classList.add('active');
+        currentFlashMode = 'dio';
+        currentFlashFreq = '40m';
+        currentFlashSize = '4MB';
       }
       checkFlashValidity();
     };
@@ -1071,6 +1136,71 @@
       checkFlashValidity();
     }
 
+    async function fetchGhostEspZip() {
+      const url = 'https://raw.githubusercontent.com/gamkers/GhostChipUI/main/firmware/esp32s3-generic.zip';
+      fetchThirdPartyBtn.disabled = true;
+      logToTerminal('\n⚡ Initiating asynchronous fetching of GhostESP ZIP from GitHub repository...');
+      
+      const badge = document.getElementById('statusGhostESP');
+      badge.className = 'fw-status-badge loading';
+      badge.textContent = 'Downloading...';
+
+      try {
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`HTTP Error Status ${response.status}`);
+        }
+        const zipBuffer = await response.arrayBuffer();
+        logToTerminal(`✓ Loaded ZIP archive (${zipBuffer.byteLength} bytes)`);
+        logToTerminal(`⚡ Extracting firmware binary segments from ZIP...`);
+
+        const { default: JSZip } = await import('https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm');
+        const zip = await JSZip.loadAsync(zipBuffer);
+
+        const bootloaderFileZip = zip.file('bootloader.bin');
+        const partitionsFileZip = zip.file('partitions.bin');
+        const firmwareFileZip = zip.file('firmware.bin');
+
+        if (!bootloaderFileZip || !partitionsFileZip || !firmwareFileZip) {
+          throw new Error('ZIP archive is missing bootloader.bin, partitions.bin, or firmware.bin');
+        }
+
+        const bootloaderBytes = await bootloaderFileZip.async('uint8array');
+        const partitionsBytes = await partitionsFileZip.async('uint8array');
+        const firmwareBytes = await firmwareFileZip.async('uint8array');
+
+        fwFiles.bootloader.data = bootloaderBytes;
+        fwFiles.partitions.data = partitionsBytes;
+        fwFiles.main.data = firmwareBytes;
+
+        badge.className = 'fw-status-badge loaded';
+        badge.textContent = 'Ready ✓';
+        logToTerminal(`✓ Successfully extracted binary segments:`);
+        logToTerminal(`  - bootloader.bin (${bootloaderBytes.byteLength} bytes)`);
+        logToTerminal(`  - partitions.bin (${partitionsBytes.byteLength} bytes)`);
+        logToTerminal(`  - firmware.bin (${firmwareBytes.byteLength} bytes)`);
+
+        currentFlashMode = 'dio';
+        currentFlashFreq = '80m';
+        currentFlashSize = '8MB';
+        baudRateSelect.value = '115200';
+
+        logToTerminal(`\n⚙️ GhostESP Flash Profile configured:`);
+        logToTerminal(`  - Flash Mode: DIO`);
+        logToTerminal(`  - Flash Freq: 80 MHz`);
+        logToTerminal(`  - Flash Size: 8 MB`);
+        logToTerminal(`  - Baud Rate : 115200 bps`);
+
+        checkFlashValidity();
+      } catch (err) {
+        badge.className = 'fw-status-badge';
+        badge.textContent = 'Failed';
+        logToTerminal(`❌ FAILED to load/unzip GhostESP: ${err.message}`);
+      } finally {
+        fetchThirdPartyBtn.disabled = false;
+      }
+    }
+
     // ─── MANUAL FILE UPLOADS HANDLING ───
     window.handleManualFileUpload = function(input, type, offset) {
       const file = input.files[0];
@@ -1142,9 +1272,9 @@
 
         const flashOptions = {
           fileArray: fileArray,
-          flashMode: 'dio',
-          flashFreq: '40m',
-          flashSize: '4MB',
+          flashMode: currentFlashMode,
+          flashFreq: currentFlashFreq,
+          flashSize: currentFlashSize,
           eraseAll: eraseAll,
           compress: true,
           reportProgress: (fileIndex, written, total) => {
@@ -1199,6 +1329,7 @@
     connectBtn.addEventListener('click', connectDevice);
     disconnectBtn.addEventListener('click', disconnectDevice);
     fetchFwBtn.addEventListener('click', fetchPresetFiles);
+    fetchThirdPartyBtn.addEventListener('click', fetchGhostEspZip);
     flashBtn.addEventListener('click', startFlashing);
     clearLogsBtn.addEventListener('click', cleanTerminal);
   </script>
