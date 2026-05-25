@@ -365,6 +365,10 @@
       <div class="tool-panel" id="tool-firmware">
         <div class="tool-panel-head"><h3>Firmware</h3><button class="tool-back" onclick="closeTool('firmware')">Back</button></div>
         <form method="POST" action="/update" enctype="multipart/form-data" id="otaForm"><div class="dropzone" id="dropzone" onclick="document.getElementById('fwFile').click()"><div class="dz-icon">^</div><div>Drop or tap .bin file</div><input type="file" id="fwFile" name="update" accept=".bin" style="display:none" onchange="fwPick(this)"></div><div id="fwInfo" class="fw-info" style="display:none"></div><div class="ota-bar-wrap" id="otaBarWrap" style="display:none"><div class="ota-bar" id="otaBar"></div></div><button type="submit" class="btn btn-primary full" id="flashBtn" disabled>Flash Firmware</button></form>
+        <div style="margin-top: 15px; border-top: 1px dashed var(--b2); padding-top: 15px; text-align: center;">
+          <div style="font-size: 0.72rem; color: var(--dim); margin-bottom: 8px;">For physical USB recovery / factory flash:</div>
+          <a href="flasher.html" style="display: block; text-decoration: none; font-size: 0.78rem; text-align: center; border: 1px solid rgba(0,255,65,0.25); color: #00ff41; background: rgba(0,255,65,0.03); padding: 10px; border-radius: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">⚡ Launch Web Serial Flasher</a>
+        </div>
       </div>
       <div class="tool-panel" id="tool-devinfo">
         <div class="tool-panel-head"><h3>Device Info</h3><button class="tool-back" onclick="closeTool('devinfo')">Back</button></div>
