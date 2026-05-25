@@ -154,6 +154,8 @@ function initApp() {
 function goPage(name, btn) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelectorAll('.tool-panel').forEach(p => p.classList.remove('open'));
+  document.body.classList.remove('tool-drawer-open');
   $('page-' + name).classList.add('active');
   btn.classList.add('active');
   // Scroll to top
@@ -162,6 +164,8 @@ function goPage(name, btn) {
 function showSettings() {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelectorAll('.tool-panel').forEach(p => p.classList.remove('open'));
+  document.body.classList.remove('tool-drawer-open');
   $('page-settings').classList.add('active');
   document.querySelectorAll('.nav-item')[4].classList.add('active');
 }
@@ -818,11 +822,23 @@ $('otaForm')?.addEventListener('submit', () => {
 function openTool(name) {
   document.querySelectorAll('.tool-panel').forEach(p => p.classList.remove('open'));
   const panel = $('tool-' + name);
-  if (panel) panel.classList.add('open');
+  if (panel) {
+    panel.classList.add('open');
+    document.body.classList.add('tool-drawer-open');
+  }
 }
 function closeTool(name) {
   const panel = $('tool-' + name);
-  if (panel) panel.classList.remove('open');
+  if (panel) {
+    panel.classList.remove('open');
+  }
+  if (!document.querySelector('.tool-panel.open')) {
+    document.body.classList.remove('tool-drawer-open');
+  }
+}
+function closeAllTools() {
+  document.querySelectorAll('.tool-panel').forEach(p => p.classList.remove('open'));
+  document.body.classList.remove('tool-drawer-open');
 }
 
 // ═══════════════════════════════════════════════════

@@ -311,6 +311,7 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--w
 .tool-app:active span{color:var(--g)}
 
 /* ══ TOOL PANELS ══ */
+.tool-backdrop{display:none}
 .tool-panel{display:none;position:fixed;inset:0;z-index:9000;background:var(--bg);overflow-y:auto;-webkit-overflow-scrolling:touch;animation:pageIn .3s ease;padding:0 16px 100px}
 .tool-panel.open{display:block}
 .tool-panel-head{display:flex;align-items:center;justify-content:space-between;padding:16px 0 12px;position:sticky;top:0;background:var(--bg);z-index:1;border-bottom:1px solid var(--b1);margin-bottom:16px}
@@ -460,5 +461,326 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--w
 
 .assistant-controls{display:flex;flex-direction:column;align-items:center;gap:15px;padding:10px 0}
 .assist-status{font-family:var(--mono);font-size:.7rem;color:var(--g);text-transform:uppercase;letter-spacing:1px}
+
+/* ══ DESKTOP RESPONSIVE LAYOUT (PC SUITABILITY) ══ */
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+@media (min-width: 1024px) {
+  .app {
+    max-width: 100% !important;
+    height: 100vh !important;
+    display: grid !important;
+    grid-template-columns: 80px 1fr !important;
+    grid-template-rows: 64px 1fr !important;
+    grid-template-areas: 
+      "sidebar topbar"
+      "sidebar pages" !important;
+    background: #050505 !important;
+    margin: 0 !important;
+  }
+  
+  .topbar {
+    grid-area: topbar;
+    width: 100% !important;
+    max-width: 100% !important;
+    position: relative !important;
+    top: 0 !important;
+    height: 64px !important;
+    border-bottom: 1px solid var(--b1) !important;
+    background: rgba(6, 6, 6, 0.95) !important;
+    box-sizing: border-box;
+  }
+  
+  .bottom-nav {
+    grid-area: sidebar;
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    bottom: auto !important;
+    transform: none !important;
+    width: 80px !important;
+    height: 100% !important;
+    flex-direction: column !important;
+    justify-content: flex-start !important;
+    padding: 24px 0 !important;
+    gap: 16px !important;
+    border-top: none !important;
+    border-right: 1px solid var(--b1) !important;
+    background: #080808 !important;
+    box-sizing: border-box;
+    z-index: 1000 !important;
+    overflow: hidden !important;
+  }
+
+  .nav-item {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 10px 0 !important;
+    width: 64px !important;
+    height: 64px !important;
+    margin: 0 auto !important;
+    border-radius: var(--radius-sm) !important;
+    gap: 4px !important;
+    box-sizing: border-box;
+    background: transparent !important;
+    transition: all 0.2s ease !important;
+    overflow: hidden !important;
+  }
+  
+  .nav-item svg {
+    margin: 0 !important;
+    width: 20px !important;
+    height: 20px !important;
+    flex-shrink: 0 !important;
+  }
+  
+  .nav-item span {
+    font-size: 0.65rem !important;
+    font-weight: 600 !important;
+    opacity: 0.6 !important;
+    display: block !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+    transition: opacity 0.2s ease !important;
+  }
+  
+  .nav-item:hover {
+    background: rgba(255, 255, 255, 0.03) !important;
+    color: var(--white) !important;
+  }
+
+  .nav-item:hover span {
+    opacity: 1 !important;
+  }
+  
+  .nav-item.active {
+    background: rgba(0, 255, 65, 0.08) !important;
+    color: #00ff41 !important;
+  }
+
+  .pages {
+    grid-area: pages;
+    padding: 30px !important;
+    padding-bottom: 50px !important;
+    overflow-y: auto !important;
+    height: 100% !important;
+    box-sizing: border-box;
+    margin-left: 0 !important;
+  }
+  
+  .pages::-webkit-scrollbar {
+    display: block !important;
+    width: 6px;
+  }
+  
+  .pages::-webkit-scrollbar-thumb {
+    background: var(--b2);
+    border-radius: 3px;
+  }
+
+  .page {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  /* Make script builder and other tools display perfectly side-by-side */
+  #page-scripts.page.active {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    grid-template-rows: auto auto auto !important;
+    grid-template-areas:
+      "presets presets"
+      "editor terminal"
+      "exec exec" !important;
+    gap: 20px !important;
+  }
+
+  .presets-drawer {
+    grid-area: presets;
+    position: relative !important;
+    max-height: none !important;
+    display: block !important;
+    opacity: 1 !important;
+    margin-bottom: 0px !important;
+    background: var(--s1) !important;
+    border: 1px solid var(--b1) !important;
+    border-radius: var(--radius) !important;
+    padding: 16px !important;
+  }
+  
+  #page-scripts .section-head {
+    grid-area: presets;
+    margin-bottom: 10px;
+  }
+  
+  #page-scripts .section-head button.chip {
+    display: none !important;
+  }
+
+  .editor-card {
+    grid-area: editor;
+    height: 350px !important;
+    margin: 0 !important;
+  }
+
+  .terminal-card {
+    grid-area: terminal;
+    height: 350px !important;
+    margin: 0 !important;
+  }
+
+  .exec-row {
+    grid-area: exec;
+    margin: 0 !important;
+    display: flex;
+    gap: 15px;
+  }
+
+  /* Scanner page wide layout grid */
+  #page-scan.page.active {
+    display: block !important;
+  }
+
+  .scan-panel {
+    display: none;
+  }
+
+  .scan-panel.active {
+    display: block !important;
+  }
+
+  /* Centered and compact WiFi/BLE scan buttons on desktop */
+  #scan-wifi.scan-panel.active .btn-scan,
+  #scan-ble.scan-panel.active .btn-scan {
+    max-width: 320px !important;
+    height: 48px !important;
+    margin: 0 auto 24px auto !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 0.9rem !important;
+    border-radius: var(--radius-sm) !important;
+  }
+
+  .scan-panel .results-list {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)) !important;
+    gap: 20px !important;
+    margin: 0 !important;
+    width: 100% !important;
+  }
+
+  /* Dual column layout for active deauth monitoring log */
+  #scan-deauth.scan-panel.active {
+    display: grid !important;
+    grid-template-columns: 300px 1fr !important;
+    gap: 24px !important;
+    align-items: start !important;
+  }
+
+  #scan-deauth .deauth-controls {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    width: 100% !important;
+  }
+
+  #scan-deauth .deauth-status {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    padding: 14px !important;
+    background: var(--s1) !important;
+    border: 1px solid var(--b1) !important;
+    border-radius: var(--radius-sm) !important;
+    margin-top: 16px !important;
+  }
+
+  #scan-deauth .deauth-log {
+    margin: 0 !important;
+    height: 400px !important;
+  }
+
+  .seg-control {
+    max-width: 450px !important;
+    margin: 0 auto 24px auto !important;
+  }
+
+  /* AI Generator desktop */
+  #page-ai.page.active {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    max-width: 800px !important;
+    margin: 0 auto !important;
+    gap: 20px !important;
+  }
+
+  /* Tools list grid */
+  #page-tools.page.active {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 20px !important;
+  }
+
+  .tool-grid {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)) !important;
+    gap: 24px !important;
+  }
+  
+  .tool-app {
+    min-height: 120px !important;
+  }
+
+  /* Settings grid */
+  #page-settings.page.active {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)) !important;
+    gap: 24px !important;
+  }
+  
+  /* In-drawer panels should slide in/out beautifully */
+  .tool-panel {
+    display: none !important;
+    position: fixed !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    left: auto !important;
+    right: 0 !important;
+    width: 100% !important;
+    max-width: 500px !important;
+    border-left: 1px solid var(--b1) !important;
+    box-shadow: -10px 0 30px rgba(0, 0, 0, 0.5) !important;
+    z-index: 9000 !important;
+    padding: 0 24px 50px 24px !important;
+  }
+  
+  .tool-panel.open {
+    display: block !important;
+    animation: slideInRight 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  }
+
+  .tool-backdrop {
+    display: none;
+  }
+  
+  body.tool-drawer-open .tool-backdrop {
+    display: block !important;
+    position: fixed !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    left: 80px !important;
+    right: 0 !important;
+    background: rgba(0, 0, 0, 0.6) !important;
+    backdrop-filter: blur(4px) !important;
+    z-index: 8999 !important;
+    animation: fadeIn 0.2s ease !important;
+  }
+}
 
 
