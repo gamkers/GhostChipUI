@@ -1591,7 +1591,7 @@ function kbKey(key) {
   if (kbActiveMods.gui) mods.push('GUI');
 
   if (mods.length > 0) {
-    script = mods.join(' ') + ' ' + key.toUpperCase();
+    script = mods.join(' ') + ' ' + (key.length === 1 ? key.toLowerCase() : key.toUpperCase());
   } else {
     if (key.length === 1) {
       script = 'STRING ' + key;
@@ -1960,7 +1960,7 @@ async function processAssistantRequest(query) {
             1. If the user asks a general question (e.g. "what is python", "who are you"), answer briefly as an expert. Set "script" to null.
             2. If the user asks for a technical action or HID payload (e.g. "open notepad", "extract wifi"), provide a short text response AND the DuckyScript for ${assistOS}.
             You MUST respond in JSON: {"text": "verbal reply", "script": "duckyscript or null"}.
-            Use proper DuckyScript syntax: DELAY, STRING, ENTER, GUI, ALT, CTRL, SHIFT, TAB, SPACE, UP, DOWN, LEFT, RIGHT, REM, F1-F12, CAPSLOCK, etc. for windows use GUI for windows key.
+            Use proper DuckyScript syntax: DELAY, STRING, ENTER, GUI, ALT, CTRL, SHIFT, TAB, SPACE, UP, DOWN, LEFT, RIGHT, REM, F1-F12, CAPSLOCK, etc. for windows use GUI for windows key and for mac spotlight use GUI SPACE there is no CMD.
             *NOTE: always add DELAY 2000 for each line*,
             Text replies must be under 100 words.`
           },

@@ -1,0 +1,1900 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#060606">
+  <title>GhostChip ESP32-S3 - Technical Operations Manual</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    :root {
+      --bg: #060606;
+      --s1: #0c0c0c;
+      --s2: #121212;
+      --s3: #1a1a1a;
+      --b1: #181818;
+      --b2: #262626;
+      --g: #00ff41;
+      --g2: #00cc33;
+      --g3: rgba(0, 255, 65, 0.12);
+      --g4: rgba(0, 255, 65, 0.03);
+      --g5: rgba(0, 255, 65, 0.25);
+      --red: #ff4444;
+      --warn: #ffaa00;
+      --white: #eaeaea;
+      --dim: #a0a0a0;
+      --dim2: #666;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --font: 'Inter', system-ui, sans-serif;
+      --mono: 'JetBrains Mono', monospace;
+      --shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--white);
+      font-family: var(--font);
+      min-height: 100vh;
+      line-height: 1.7;
+      overflow-x: hidden;
+    }
+
+    /* ══ HEADER ══ */
+    header {
+      background: linear-gradient(180deg, rgba(12, 12, 12, 0.95) 0%, rgba(6, 6, 6, 0.95) 100%);
+      border-bottom: 1px solid var(--b1);
+      padding: 24px 40px;
+      position: relative;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    header::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--g5), transparent);
+    }
+    .header-left {
+      text-align: left;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .brand {
+      font-size: 1.8rem;
+      font-weight: 800;
+      letter-spacing: 4px;
+      color: var(--white);
+      text-transform: uppercase;
+      margin-bottom: 2px;
+    }
+    .brand span {
+      color: var(--g);
+      text-shadow: 0 0 15px var(--g5);
+    }
+    .subtitle {
+      font-size: 0.78rem;
+      color: var(--dim);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+    .version-tag {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: var(--g);
+      background: var(--g3);
+      padding: 4px 10px;
+      border-radius: 20px;
+      border: 1px solid rgba(0, 255, 65, 0.2);
+    }
+
+    /* ══ HAMBURGER MENU BUTTON ══ */
+    .hamburger-btn {
+      display: none;
+      background: transparent;
+      border: 1px solid var(--b2);
+      border-radius: var(--radius-sm);
+      color: var(--white);
+      padding: 10px;
+      cursor: pointer;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+    .hamburger-btn:hover {
+      border-color: var(--g);
+      color: var(--g);
+    }
+    .hamburger-btn svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    /* ══ BACKDROP OVERLAY ══ */
+    .backdrop {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(4px);
+      z-index: 999;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    .backdrop.active {
+      display: block;
+      opacity: 1;
+    }
+
+    /* ══ FULL SCREEN CONTAINER ══ */
+    .container {
+      max-width: 100%;
+      margin: 0;
+      padding: 24px 40px 80px;
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 40px;
+    }
+
+    /* ══ SIDEBAR TABS & GROUPS ══ */
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      position: sticky;
+      top: 40px;
+      height: fit-content;
+    }
+    .sidebar-section-title {
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: var(--dim2);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-top: 10px;
+      margin-bottom: 2px;
+      padding-left: 8px;
+    }
+    .sidebar-section-title:first-child {
+      margin-top: 0;
+    }
+    .sidebar-group {
+      display: flex;
+      flex-direction: column;
+    }
+    .tab-btn {
+      background: var(--s1);
+      border: 1px solid var(--b1);
+      border-radius: var(--radius-sm);
+      color: var(--dim);
+      font-family: var(--font);
+      font-size: 0.82rem;
+      font-weight: 600;
+      text-align: left;
+      padding: 14px 18px;
+      cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+    }
+    .tab-btn:hover {
+      background: var(--s2);
+      color: var(--white);
+      border-color: var(--b2);
+    }
+    .tab-btn.active {
+      background: var(--g3);
+      color: var(--g);
+      border-color: var(--g2);
+      box-shadow: 0 0 15px rgba(0, 255, 65, 0.03);
+    }
+    .tab-btn svg {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+    }
+
+    /* Subtopics Lists - always visible and fully expanded */
+    .subtopics {
+      display: flex;
+      flex-direction: column;
+      padding-left: 16px;
+      margin-left: 26px;
+      border-left: 1px dashed var(--b2);
+      gap: 4px;
+      margin-top: 6px;
+      margin-bottom: 12px;
+    }
+    .sub-link {
+      font-size: 0.74rem;
+      color: var(--dim);
+      padding: 8px 10px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .sub-link:hover {
+      color: var(--g);
+      background: var(--g4);
+    }
+    .sub-link.active {
+      color: var(--g);
+      background: var(--g3);
+      font-weight: 600;
+    }
+    .sub-link::before {
+      content: '○';
+      font-size: 0.5rem;
+      color: var(--dim2);
+      transition: color 0.2s, transform 0.2s;
+    }
+    .sub-link:hover::before, .sub-link.active::before {
+      content: '●';
+      color: var(--g);
+      text-shadow: 0 0 6px var(--g);
+      transform: scale(1.2);
+    }
+
+    /* ══ CONTENT PANELS / PAGES ══ */
+    .content-area {
+      min-width: 0;
+    }
+    .doc-page {
+      display: none;
+      animation: pageIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    .doc-page.active {
+      display: block;
+    }
+    @keyframes pageIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ══ CARDS & LAYOUTS ══ */
+    .card {
+      background: var(--s1);
+      border: 1px solid var(--b1);
+      border-radius: var(--radius);
+      padding: 36px;
+      margin-bottom: 24px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--g5), transparent);
+    }
+    h2.card-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 20px;
+      color: var(--white);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid var(--b1);
+      padding-bottom: 12px;
+      text-align: left;
+    }
+    
+    .tech-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 20px;
+      margin: 20px 0;
+    }
+    .tech-card {
+      background: var(--s2);
+      border: 1px solid var(--b1);
+      border-radius: var(--radius-sm);
+      padding: 24px;
+    }
+    .tech-card h4 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--white);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .tech-card p {
+      font-size: 0.88rem;
+      margin-bottom: 0;
+    }
+
+    p {
+      color: var(--dim);
+      font-size: 0.95rem;
+      margin-bottom: 18px;
+      text-align: left;
+    }
+    strong {
+      color: var(--white);
+      font-weight: 600;
+    }
+    .accent-text {
+      color: var(--g);
+    }
+
+    /* ══ STEPS LIST ══ */
+    .steps {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      margin: 24px 0;
+    }
+    .step-item {
+      display: flex;
+      gap: 20px;
+      background: var(--s2);
+      border: 1px solid var(--b1);
+      padding: 24px;
+      border-radius: var(--radius-sm);
+      align-items: flex-start;
+    }
+    .step-num {
+      width: 32px;
+      height: 32px;
+      background: var(--g);
+      color: #000;
+      border-radius: 50%;
+      font-family: var(--mono);
+      font-size: 0.9rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      box-shadow: 0 0 10px var(--g3);
+    }
+    .step-content {
+      flex: 1;
+      text-align: left;
+    }
+    .step-content h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: var(--white);
+    }
+    .step-content p {
+      font-size: 0.88rem;
+      margin-bottom: 0;
+    }
+
+    /* ══ HIGHLIGHT BOXES ══ */
+    .alert-box {
+      border-left: 4px solid var(--g);
+      background: var(--g4);
+      padding: 18px 24px;
+      border-radius: 4px var(--radius-sm) var(--radius-sm) 4px;
+      margin-bottom: 24px;
+      font-size: 0.88rem;
+      color: var(--dim);
+      text-align: left;
+    }
+    .alert-box.danger {
+      border-left-color: var(--red);
+      background: rgba(255, 68, 68, 0.04);
+    }
+    .alert-box.warn {
+      border-left-color: var(--warn);
+      background: rgba(255, 170, 0, 0.04);
+    }
+    .alert-box strong {
+      color: var(--white);
+      display: block;
+      margin-bottom: 6px;
+      font-size: 0.95rem;
+    }
+    .alert-box.danger strong {
+      color: var(--red);
+    }
+    .alert-box.warn strong {
+      color: var(--warn);
+    }
+    .alert-box ul {
+      margin-top: 8px;
+      margin-left: 20px;
+    }
+    .alert-box li {
+      margin-bottom: 6px;
+    }
+
+    /* ══ CODE BLOCKS ══ */
+    .code-block {
+      background: #030303;
+      border: 1px solid var(--b1);
+      border-radius: var(--radius-sm);
+      padding: 20px;
+      font-family: var(--mono);
+      font-size: 0.82rem;
+      color: #66ff88;
+      overflow-x: auto;
+      margin: 16px 0;
+      text-align: left;
+      line-height: 1.5;
+    }
+    .code-block-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 20px;
+      background: var(--s2);
+      border: 1px solid var(--b1);
+      border-bottom: none;
+      border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+      font-family: var(--font);
+      font-size: 0.75rem;
+      color: var(--dim);
+      font-weight: 500;
+      margin-bottom: -16px;
+    }
+    .code-block-header + .code-block {
+      border-top-left-radius: 0;
+      border-top-right-radius: 0;
+    }
+    .copy-btn {
+      background: transparent;
+      border: 1px solid var(--b2);
+      color: var(--dim);
+      padding: 4px 12px;
+      font-size: 0.68rem;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .copy-btn:hover {
+      border-color: var(--g);
+      color: var(--g);
+    }
+
+    /* ══ BUTTON LINKS ══ */
+    .link-button {
+      background: var(--g);
+      color: #000;
+      font-weight: 700;
+      font-size: 0.8rem;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      text-decoration: none;
+      padding: 14px 24px;
+      border-radius: var(--radius-sm);
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 0 15px var(--g3);
+      transition: all 0.25s;
+      margin: 10px 0;
+    }
+    .link-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0 25px var(--g5);
+    }
+
+    /* ══ TECHNICAL DATA TABLES ══ */
+    .tech-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0 24px;
+      font-size: 0.85rem;
+      text-align: left;
+    }
+    .tech-table th {
+      background: var(--s2);
+      border: 1px solid var(--b1);
+      padding: 12px 16px;
+      color: var(--white);
+      font-weight: 600;
+    }
+    .tech-table td {
+      border: 1px solid var(--b1);
+      padding: 10px 16px;
+      color: var(--dim);
+    }
+    .tech-table tr:nth-child(even) {
+      background: var(--g4);
+    }
+
+    /* ══ FOOTER ══ */
+    footer {
+      border-top: 1px solid var(--b1);
+      padding: 40px 20px;
+      text-align: center;
+      font-size: 0.75rem;
+      color: var(--dim2);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+
+    @media (min-width: 901px) {
+      body {
+        height: 100vh;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+      header {
+        flex-shrink: 0;
+      }
+      .container {
+        flex: 1;
+        height: calc(100vh - 100px);
+        overflow: hidden;
+        padding-bottom: 24px;
+      }
+      .sidebar {
+        height: 100%;
+        overflow-y: auto;
+        padding-right: 12px;
+        position: static;
+      }
+      .content-area {
+        height: 100%;
+        overflow-y: auto;
+        padding-right: 24px;
+      }
+      
+      /* Sleek Webkit Custom Scrollbars */
+      .sidebar::-webkit-scrollbar,
+      .content-area::-webkit-scrollbar {
+        width: 6px;
+      }
+      .sidebar::-webkit-scrollbar-track,
+      .content-area::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .sidebar::-webkit-scrollbar-thumb,
+      .content-area::-webkit-scrollbar-thumb {
+        background: var(--b2);
+        border-radius: 10px;
+      }
+      .sidebar::-webkit-scrollbar-thumb:hover,
+      .content-area::-webkit-scrollbar-thumb:hover {
+        background: var(--g5);
+      }
+    }
+
+    /* ══ RESPONSIVE MEDIA QUERIES ══ */
+    @media (max-width: 1024px) {
+      header {
+        padding: 20px 24px;
+      }
+      .container {
+        padding: 20px 24px 80px;
+        gap: 24px;
+      }
+    }
+    @media (max-width: 900px) {
+      .hamburger-btn {
+        display: inline-flex;
+      }
+      header {
+        padding: 16px 24px;
+      }
+      .brand {
+        font-size: 1.5rem;
+      }
+      .subtitle {
+        font-size: 0.7rem;
+        letter-spacing: 1px;
+      }
+      .version-tag {
+        display: none; /* Hide tag on mobile header to save space */
+      }
+      .container {
+        grid-template-columns: 1fr;
+        padding: 20px 16px 80px;
+      }
+      .sidebar {
+        position: fixed;
+        top: 0;
+        bottom: 0;
+        left: -320px;
+        width: 300px;
+        background: var(--s1);
+        border-right: 1px solid var(--b1);
+        padding: 80px 20px 30px;
+        z-index: 1000;
+        height: 100vh;
+        overflow-y: auto;
+        transition: left 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        display: flex;
+        flex-direction: column;
+      }
+      .sidebar.open {
+        left: 0;
+        box-shadow: 10px 0 40px rgba(0, 0, 0, 0.85);
+      }
+      .sidebar-section-title {
+        display: block !important;
+        margin-top: 15px;
+      }
+      .subtopics {
+        display: flex !important; /* Keep subtopics fully visible in mobile drawer */
+      }
+    }
+    @media (max-width: 480px) {
+      .brand {
+        font-size: 1.3rem;
+      }
+      .subtitle {
+        font-size: 0.65rem;
+      }
+      .container {
+        padding: 16px 12px 60px;
+      }
+      .card {
+        padding: 20px;
+      }
+      h2.card-title {
+        font-size: 1.15rem;
+      }
+      .tech-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ══ BACKDROP OVERLAY ══ -->
+  <div class="backdrop" id="menu-backdrop" onclick="toggleMobileMenu()"></div>
+
+  <!-- ══ HEADER ══ -->
+  <header>
+    <div class="header-left">
+      <button class="hamburger-btn" aria-label="Toggle Navigation Sidebar" onclick="toggleMobileMenu()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div>
+        <div class="brand">GHOST<span>CHIP</span></div>
+        <div class="subtitle">ESP32-S3 Hardware & Software Operations Manual</div>
+      </div>
+    </div>
+    <div class="version-tag">FIRMWARE: GHOST CHIP v2.0</div>
+  </header>
+
+  <!-- ══ MAIN CONTAINER ══ -->
+  <div class="container">
+    
+    <!-- ══ SIDEBAR TABS & GROUPS ══ -->
+    <aside class="sidebar">
+      <div class="sidebar-section-title">Hardware Setup</div>
+      
+      <div class="sidebar-group active" id="group-setup">
+        <button class="tab-btn active" onclick="switchPanel('setup', this)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
+          1. Physical Setup
+        </button>
+        <div class="subtopics">
+          <span class="sub-link active" id="link-setup-init" onclick="loadPage('setup-init', this)">Physical Power-Up</span>
+          <span class="sub-link" id="link-setup-limits" onclick="loadPage('setup-limits', this)">MicroSD Format Limits</span>
+          <span class="sub-link" id="link-setup-arch" onclick="loadPage('setup-arch', this)">Hardware Specs</span>
+        </div>
+      </div>
+
+      <div class="sidebar-group" id="group-connection">
+        <button class="tab-btn" onclick="switchPanel('connection', this)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1"/></svg>
+          2. Control & Access
+        </button>
+        <div class="subtopics">
+          <span class="sub-link" id="link-conn-proto" onclick="loadPage('conn-proto', this)">WiFi Access Credentials</span>
+          <span class="sub-link" id="link-conn-modes" onclick="loadPage('conn-modes', this)">Direct vs PWA App</span>
+          <span class="sub-link" id="link-conn-ai-rules" onclick="loadPage('conn-ai-rules', this)">AI Network Setup</span>
+        </div>
+      </div>
+
+      <div class="sidebar-section-title">Features Guide</div>
+      
+      <div class="sidebar-group" id="group-features">
+        <button class="tab-btn" onclick="switchPanel('features', this)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+          3. Core RF & HID Engines
+        </button>
+        <div class="subtopics">
+          <span class="sub-link" id="link-feat-ducky" onclick="loadPage('feat-ducky', this)">DuckyScript Syntax</span>
+          <span class="sub-link" id="link-feat-sniffer" onclick="loadPage('feat-sniffer', this)">WiFi & BLE Sniffer</span>
+          <span class="sub-link" id="link-feat-ai" onclick="loadPage('feat-ai', this)">Groq Llama-3 AI</span>
+        </div>
+      </div>
+
+      <div class="sidebar-section-title">Utilities Drawer (Tools)</div>
+
+      <div class="sidebar-group" id="group-tools">
+        <button class="tab-btn" onclick="switchPanel('tools', this)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          4. Diagnostic & Audit Tools
+        </button>
+        <div class="subtopics">
+          <span class="sub-link" id="link-tool-file" onclick="loadPage('tool-file', this)">📁 Tool: File Manager</span>
+          <span class="sub-link" id="link-tool-ai" onclick="loadPage('tool-ai', this)">🤖 Tool: AI Assistant</span>
+          <span class="sub-link" id="link-tool-builder" onclick="loadPage('tool-builder', this)">🛠️ Tool: Script Builder</span>
+          <span class="sub-link" id="link-tool-templates" onclick="loadPage('tool-templates', this)">🛡️ Tool: Payload Templates</span>
+          <span class="sub-link" id="link-tool-keyboard" onclick="loadPage('tool-keyboard', this)">🎹 Tool: Live Keyboard</span>
+          <span class="sub-link" id="link-tool-neopixel" onclick="loadPage('tool-neopixel', this)">💡 Tool: NeoPixel LED</span>
+          <span class="sub-link" id="link-tool-info" onclick="loadPage('tool-info', this)">🌐 Tool: Device Info</span>
+          <span class="sub-link" id="link-tool-simulator" onclick="loadPage('tool-simulator', this)">💾 Tool: Payload Simulator</span>
+          <span class="sub-link" id="link-tool-ota" onclick="loadPage('tool-ota', this)">💿 Tool: OTA Flash Updater</span>
+        </div>
+      </div>
+
+      <div class="sidebar-section-title">Diagnostics</div>
+      
+      <div class="sidebar-group" id="group-trouble">
+        <button class="tab-btn" onclick="switchPanel('trouble', this)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          5. Troubleshooting
+        </button>
+        <div class="subtopics">
+          <span class="sub-link" id="link-trouble-sd" onclick="loadPage('trouble-sd', this)">SD Card Mount Fail</span>
+          <span class="sub-link" id="link-trouble-ap" onclick="loadPage('trouble-ap', this)">Invisible "Ghostchip" AP</span>
+          <span class="sub-link" id="link-trouble-ai" onclick="loadPage('trouble-ai', this)">AI Groq API Errors</span>
+          <span class="sub-link" id="link-trouble-keys" onclick="loadPage('trouble-keys', this)">Missed Keystrokes</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ══ CONTENT AREA ══ -->
+    <main class="content-area">
+
+      <!-- ============================================== -->
+      <!-- GROUP 1: PHYSICAL SETUP                        -->
+      <!-- ============================================== -->
+
+      <!-- Subtopic 1: setup-init -->
+      <section class="doc-page active" id="page-setup-init">
+        <div class="card">
+          <h2 class="card-title">🔌 Physical Power-Up Sequence</h2>
+          <p>The <strong>GhostChip ESP32-S3 Security Toolkit</strong> is fully pre-flashed out of the box. You do not need to install local tools, command lines, or compilers to initialize the system hardware. Connect standard 5V USB power to boot the module instantly.</p>
+          
+          <div class="steps">
+            <div class="step-item">
+              <div class="step-num">1</div>
+              <div class="step-content">
+                <h3>Verify SD Card Mounting</h3>
+                <p>Ensure that a formatted MicroSD card (supports up to <strong>32GB</strong>) is inserted fully into the physical slot. (See the MicroSD limits page for partitioning details).</p>
+              </div>
+            </div>
+            <div class="step-item">
+              <div class="step-num">2</div>
+              <div class="step-content">
+                <h3>Plug in USB-A Connector</h3>
+                <p>Plug the module directly into a computer USB-A socket, a portable power bank, or standard 5V USB charging bricks. Avoid using quick charge ports that fluctuate voltages.</p>
+              </div>
+            </div>
+             <div class="step-item">
+              <div class="step-num">3</div>
+              <div class="step-content">
+                <h3>Verify Wireless AP Broadcast</h3>
+                <p>Once powered, the internal ESP32-S3 boots up within 3 seconds. Scan for available wireless networks on your mobile phone or PC, select the network named <strong>Ghostchip</strong>, and enter the password <strong>GhostChip@14</strong>.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="alert-box">
+            <strong>ℹ️ Initial Boot Cycle</strong>
+            Hardware boot enumeration takes exactly <strong>3 seconds</strong>. After this timing threshold passes, the local Wi-Fi radio wakes up and broadcasts its default Access Point gateway.
+          </div>
+        </div>
+      </section>
+
+      <!-- Subtopic 2: setup-limits -->
+      <section class="doc-page" id="page-setup-limits">
+        <div class="card">
+          <h2 class="card-title">💾 MicroSD Card Formatting & Limits</h2>
+          <p>The ESP32-S3 utilizes an SDIO hardware interfacing framework. This places rigid architectural specifications on partition structures and card sizes. GPT configurations or modern partition models are not supported.</p>
+          
+          <div class="alert-box warn">
+            <strong>⚠️ Formatting Parameters & Storage Restrictions</strong>
+            Mounting a card outside these boundaries will cause the local file manager and templates to display mount failure alerts.
+            <ul>
+              <li><strong>Maximum Storage Support:</strong> <strong>32GB</strong>. Larger card volumes (64GB, 128GB, etc.) formatted using exFAT are not compatible.</li>
+              <li><strong>Recommended Stable Capacity:</strong> Top-tier <strong>16GB or 32GB</strong> MicroSD card modules.</li>
+              <li><strong>Partition Map Type:</strong> <strong>MBR (Master Boot Record)</strong> partition style strictly.</li>
+              <li><strong>Filesystem Formatting:</strong> <strong>FAT32</strong> cluster formatting.</li>
+              <li><strong>Optimal Cluster Allocation Size:</strong> <strong>32KB</strong> (32,768 bytes). This parameter guarantees maximum stability during rapid, high-frequency exfiltration logging.</li>
+            </ul>
+          </div>
+
+          <h3 style="margin-bottom:12px;">Formatting Quick Guide:</h3>
+          <table class="tech-table">
+            <thead>
+              <tr>
+                <th>Target Host OS</th>
+                <th>Formatting Utility Tool</th>
+                <th>Required Settings</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Windows 10/11</strong></td>
+                <td>Standard Disk Management or Rufus</td>
+                <td>File System: FAT32 | Cluster Size: 32 Kilobytes | MBR Style</td>
+              </tr>
+              <tr>
+                <td><strong>macOS (Apple Sil.)</strong></td>
+                <td>Disk Utility Console (Terminal `diskutil`)</td>
+                <td>Format Scheme: MS-DOS (FAT) | Scheme: Master Boot Record</td>
+              </tr>
+              <tr>
+                <td><strong>Linux (Ubuntu/Arch)</strong></td>
+                <td>GParted or CLI `mkfs.vfat`</td>
+                <td>`mkfs.vfat -F 32 -s 64 /dev/sdX1` (64 sectors per cluster = 32KB)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Subtopic 3: setup-arch -->
+      <section class="doc-page" id="page-setup-arch">
+        <div class="card">
+          <h2 class="card-title">🔍 Hardware Specs & Architecture</h2>
+          <p>The GhostChip unites high-performance RF computing with physical keyboard HID injection circuitry in a micro form-factor.</p>
+
+          <div class="tech-grid">
+            <div class="tech-card">
+              <h4>Dual-Core 240MHz MCU</h4>
+              <p>ESP32-S3 core engine equipped with vector extension instructions for high-speed cryptography, neural prompt structures, and passive WiFi monitoring.</p>
+            </div>
+            <div class="tech-card">
+              <h4>USB-OTG HID Controller</h4>
+              <p>Direct native USB-HID bus interfaces. Simulates standard USB Boot Keyboard layout models, bypassing operating system driver warning dialogs completely.</p>
+            </div>
+            <div class="tech-card">
+              <h4>WS2812B NeoPixel RGB</h4>
+              <p>Programmable 24-bit color status indicator. Fully controllable via API commands to allow complete stealth modes or visual payload alerts.</p>
+            </div>
+            <div class="tech-card">
+              <h4>SDIO SD Interface</h4>
+              <p>Direct low-latency data lines running to the MicroSD slot, facilitating instant reads/writes of exfiltrated data blocks.</p>
+            </div>
+          </div>
+
+          <h3 style="margin:20px 0 10px; font-weight:700;">Technical Electrical Tolerances:</h3>
+          <p>Operating voltage requirements: <strong>5V DC</strong> via USB connector. Idle power draw ranges around <strong>90mA</strong>, whereas active RF scanning or high-speed typing bursts pull up to <strong>310mA</strong> peak current. Avoid routing through unpowered USB splitter units.</p>
+        </div>
+      </section>
+
+
+      <!-- ============================================== -->
+      <!-- GROUP 2: CONTROL & ACCESS                      -->
+      <!-- ============================================== -->
+
+      <!-- Subtopic 4: conn-proto -->
+      <section class="doc-page" id="page-conn-proto">
+        <div class="card">
+          <h2 class="card-title">📶 Wi-Fi Access Point Credentials</h2>
+          <p>By default, GhostChip initiates its own wireless network immediately upon boot. Connect to this network on any mobile phone, laptop, or tablet to access the controls.</p>
+
+          <table class="tech-table">
+            <thead>
+              <tr>
+                <th>Connection Parameter</th>
+                <th>Assigned Value</th>
+                <th>Notes / Explanations</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>SSID (AP Name)</strong></td>
+                <td><code class="accent-text" style="font-size:1rem; font-weight:700;">Ghostchip</code></td>
+                <td>Broadcasted in the 2.4GHz Wi-Fi spectrum.</td>
+              </tr>
+              <tr>
+                <td><strong>WPA2 Password</strong></td>
+                <td><code class="accent-text" style="font-size:1rem; font-weight:700;">GhostChip@14</code></td>
+                <td>Secured using WPA2-PSK protocol encryption.</td>
+              </tr>
+              <tr>
+                <td><strong>Local Gateway IP</strong></td>
+                <td><code>192.168.4.1</code></td>
+                <td>Hardcoded network gateway of the internal DHCP server.</td>
+              </tr>
+              <tr>
+                <td><strong>mDNS Domain Address</strong></td>
+                <td><code>http://ghostchip.local</code></td>
+                <td>Multicast DNS routing enabled for convenient browser access.</td>
+              </tr>
+              <tr>
+                <td><strong>DHCP Lease Pool</strong></td>
+                <td><code>192.168.4.2 to 192.168.4.10</code></td>
+                <td>Dynamic IP distribution leases for connected control hosts.</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="alert-box">
+            <strong>ℹ️ Connection Step:</strong>
+            Turn on your smartphone's Wi-Fi, select the SSID <strong>Ghostchip</strong>, type <strong>GhostChip@14</strong>, and wait for the connection icon. Some operating systems may show a warning saying "No Internet Access" — this is normal, tap <strong>Keep Connected</strong> to proceed.
+          </div>
+        </div>
+      </section>
+
+      <!-- Subtopic 5: conn-modes -->
+      <section class="doc-page" id="page-conn-modes">
+        <div class="card">
+          <h2 class="card-title">⚡ Control Modes: Direct Web vs PWA App</h2>
+          <p>GhostChip supports two distinct modes of execution to match your operational audit environment.</p>
+
+          <div class="tech-grid">
+            <div class="tech-card" style="border-top: 3px solid var(--g2);">
+              <h4 class="accent-text">Direct Web Server Portal</h4>
+              <p style="margin-bottom:12px;">Pulls web assets directly from the ESP32 SPIFFS partition blocks. Requires no internet or external server hosting.</p>
+              <ol style="margin-left: 20px; font-size: 0.85rem; color: var(--dim); display:flex; flex-direction:column; gap:6px;">
+                <li>Connect to <strong>Ghostchip</strong> Wi-Fi AP.</li>
+                <li>Launch your device's web browser.</li>
+                <li>Navigate to: <code>http://ghostchip.local</code> (or `http://192.168.4.1`).</li>
+              </ol>
+            </div>
+            <div class="tech-card" style="border-top: 3px solid var(--g);">
+              <h4 class="accent-text">Progressive Web App (PWA)</h4>
+              <p style="margin-bottom:12px;">Installs on your mobile screen as a native application with offline service worker caching and fluid UI rendering.</p>
+              <ol style="margin-left: 20px; font-size: 0.85rem; color: var(--dim); display:flex; flex-direction:column; gap:6px;">
+                <li>Bridge your phone and ESP32 to the same local internet router.</li>
+                <li>Visit cloud portal: <a href="https://gamkers.github.io/GhostChipUI/" target="_blank" style="color:var(--g); font-weight:600;">Hosted PWA App Link</a></li>
+                <li>Click your browser drawer -> <strong>Add to Home Screen</strong>.</li>
+              </ol>
+            </div>
+          </div>
+
+          <div class="alert-box" style="margin-top:24px;">
+            <strong>💡 Why use the PWA?</strong>
+            The installed PWA runs inside a standalone app frame, removing browser navigation bars for optimal screen space. It also provides automatic updates and offline caching.
+          </div>
+        </div>
+      </section>
+
+      <!-- Subtopic 6: conn-ai-rules -->
+      <section class="doc-page" id="page-conn-ai-rules">
+        <div class="card">
+          <h2 class="card-title">🤖 Local Wi-Fi Bridging Setup for Groq AI Features</h2>
+          <p>The <strong>Groq AI Llama-3 compiler</strong> and <strong>AI voice assistant</strong> require active internet routing to communicate with cloud APIs. Since the GhostChip's isolated Access Point (`Ghostchip`) does not have an internet path, you must bridge the devices onto your own local Wi-Fi router.</p>
+          
+          <div class="alert-box warn">
+            <strong>⚠️ CRITICAL BRIDGE PROCEDURE (Must Follow Exactly)</strong>
+            To enable the AI capabilities, both the ESP32-S3 module and your control mobile phone/PC must be connected to the <strong>same internet-enabled local Wi-Fi access point (your home/office router)</strong>:
+          </div>
+
+          <div class="steps">
+            <div class="step-item">
+              <div class="step-num">1</div>
+              <div class="step-content">
+                <h3>Initial AP Connection</h3>
+                <p>Connect your mobile phone to the default <strong>Ghostchip</strong> Wi-Fi AP and open the local dashboard at `http://ghostchip.local` in your browser.</p>
+              </div>
+            </div>
+            <div class="step-item">
+              <div class="step-num">2</div>
+              <div class="step-content">
+                <h3>Setup WiFi Station on GhostChip</h3>
+                <p>Navigate to the <strong>Settings</strong> menu page. Find the <strong>WiFi Station Setup</strong> card, click <strong>Scan Networks</strong>, select your home/office internet Wi-Fi network SSID, input its security password, and click <strong>Connect</strong>.</p>
+              </div>
+            </div>
+            <div class="step-item">
+              <div class="step-num">3</div>
+              <div class="step-content">
+                <h3>Switch Phone to the Same Router</h3>
+                <p>Disconnect your mobile phone from the isolated `Ghostchip` AP. Connect your phone to <strong>your own local home/office internet router</strong> (the exact same network you selected for the GhostChip in Step 2).</p>
+              </div>
+            </div>
+            <div class="step-item">
+              <div class="step-num">4</div>
+              <div class="step-content">
+                <h3>Access Bridge Dashboard</h3>
+                <p>Open your mobile web browser and enter: <code>http://ghostchip.local</code>, or simply launch your installed <strong>Hosted PWA App</strong>. Since mDNS resolution broadcasts seamlessly across your local bridged router subnet, both devices talk locally with no IP configurations needed, while having full cloud access for Llama-3 operations!</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="alert-box warn" style="margin-top: 24px;">
+            <strong>📶 Groq API Key Setup Criteria</strong>
+            To configure your Groq key, ensure you have signed up for a free developer key at the official Groq Console. Paste this key (starts with `gsk_`) under the Settings panel inside your bridge dashboard.
+            <div style="margin-top: 14px;">
+              <a href="https://console.groq.com/" target="_blank" class="link-button" style="padding: 10px 16px; font-size: 0.72rem; margin: 0; background: var(--g); color: #000;">
+                🔑 Get Free Groq API Key
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ============================================== -->
+      <!-- GROUP 3: FEATURES GUIDE                        -->
+      <!-- ============================================== -->
+
+      <!-- Subtopic 7: feat-ducky -->
+      <section class="doc-page" id="page-feat-ducky">
+        <div class="card">
+          <h2 class="card-title">⚡ DuckyScript Language Reference & Simulator</h2>
+          <p>DuckyScript is the native programming language of the GhostChip HID injector. It converts human-readable key commands into raw USB keyboard descriptors. Below is an exhaustive language catalog and a step-by-step guide on how to build, test, and deploy custom scripts.</p>
+
+          <h3 style="margin:24px 0 12px; font-weight:700;">1. Complete Syntax Keyword Reference</h3>
+          <p>GhostChip supports the entire classic DuckyScript keyword index along with custom timing configurations:</p>
+          
+          <table class="tech-table">
+            <thead>
+              <tr>
+                <th>Keyword Command</th>
+                <th>Functional Description</th>
+                <th>Code Syntax Example</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>REM</code></td>
+                <td>Remark/Comment block. Lines starting with <code>REM</code> are ignored by the parser. Used to document code steps.</td>
+                <td><code>REM This is a comment</code></td>
+              </tr>
+              <tr>
+                <td><code>DELAY</code></td>
+                <td>Pauses execution for a specified duration in milliseconds (1000ms = 1s). Highly critical for synchronizing actions.</td>
+                <td><code>DELAY 1000</code></td>
+              </tr>
+              <tr>
+                <td><code>DEFAULTDELAY</code></td>
+                <td>Applies a standard delay pause (in ms) after <strong>every</strong> line in the script, pacing inputs safely.</td>
+                <td><code>DEFAULTDELAY 150</code></td>
+              </tr>
+              <tr>
+                <td><code>STRING</code></td>
+                <td>Simulates rapid serial typing of the text string following the keyword. Supports symbols, numbers, and capital letters.</td>
+                <td><code>STRING echo Hello World!</code></td>
+              </tr>
+              <tr>
+                <td><code>ENTER</code></td>
+                <td>Simulates pressing the Standard Enter/Return key. Often used to submit entered command strings.</td>
+                <td><code>ENTER</code></td>
+              </tr>
+              <tr>
+                <td><code>ESCAPE</code> / <code>ESC</code></td>
+                <td>Presses the Escape key. Useful for dismissing active system popups or exiting full-screen applications.</td>
+                <td><code>ESCAPE</code></td>
+              </tr>
+              <tr>
+                <td><code>TAB</code></td>
+                <td>Presses the Tab key. Critical for navigating field focus when command-line consoles are unavailable.</td>
+                <td><code>TAB</code></td>
+              </tr>
+              <tr>
+                <td><code>SPACE</code></td>
+                <td>Presses the Spacebar.</td>
+                <td><code>SPACE</code></td>
+              </tr>
+              <tr>
+                <td><code>BACKSPACE</code></td>
+                <td>Simulates hitting the Backspace key to delete a preceding character.</td>
+                <td><code>BACKSPACE</code></td>
+              </tr>
+              <tr>
+                <td><code>DELETE</code></td>
+                <td>Simulates hitting the Forward Delete key.</td>
+                <td><code>DELETE</code></td>
+              </tr>
+              <tr>
+                <td><code>INSERT</code></td>
+                <td>Toggles the standard Insert cursor mode.</td>
+                <td><code>INSERT</code></td>
+              </tr>
+              <tr>
+                <td><code>PAGEUP</code> / <code>PAGEDOWN</code></td>
+                <td>Scrolls page text blocks up or down.</td>
+                <td><code>PAGEUP</code></td>
+              </tr>
+              <tr>
+                <td><code>HOME</code> / <code>END</code></td>
+                <td>Jumps the editing cursor to the absolute start or end of the current line.</td>
+                <td><code>HOME</code></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3 style="margin:24px 0 12px; font-weight:700;">2. Arrow & Directional Controls</h3>
+          <p>Directional arrow keys are indispensable when navigating administrative menus, custom windows, or text lists:</p>
+          <table class="tech-table">
+            <thead>
+              <tr>
+                <th>Keyword Option</th>
+                <th>Alternative Syntax</th>
+                <th>Operation details</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>UPARROW</code></td>
+                <td><code>UP</code></td>
+                <td>Simulates pressing the Up Arrow.</td>
+              </tr>
+              <tr>
+                <td><code>DOWNARROW</code></td>
+                <td><code>DOWN</code></td>
+                <td>Simulates pressing the Down Arrow.</td>
+              </tr>
+              <tr>
+                <td><code>LEFTARROW</code></td>
+                <td><code>LEFT</code></td>
+                <td>Simulates pressing the Left Arrow.</td>
+              </tr>
+              <tr>
+                <td><code>RIGHTARROW</code></td>
+                <td><code>RIGHT</code></td>
+                <td>Simulates pressing the Right Arrow.</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3 style="margin:24px 0 12px; font-weight:700;">3. Keyboard Lock Toggles</h3>
+          <p>These commands simulate toggling hardware lock configurations on host machines:</p>
+          <ul style="margin-left: 24px; color: var(--dim); display:flex; flex-direction:column; gap:8px; margin-bottom:24px; font-size:0.92rem;">
+            <li><code>CAPSLOCK</code>: Toggles Caps Lock (all subsequent alphabetic typed inputs will shift case states).</li>
+            <li><code>NUMLOCK</code>: Toggles the Numeric Keypad lock state.</li>
+            <li><code>SCROLLLOCK</code>: Toggles Scroll Lock.</li>
+          </ul>
+
+          <h3 style="margin:24px 0 12px; font-weight:700;">4. System Modifiers & Complex Combos</h3>
+          <p>Modifiers are keys held down in combination with other characters to trigger special operating system shortcuts. You can define modifiers on their own line with a trailing key:</p>
+          
+          <table class="tech-table">
+            <thead>
+              <tr>
+                <th>Modifier Key</th>
+                <th>Alternative Keywords</th>
+                <th>Common Combo Examples</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>GUI</strong></td>
+                <td><code>WINDOWS</code>, <code>COMMAND</code></td>
+                <td><code>GUI r</code> (Opens Run menu on Windows) <br> <code>GUI SPACE</code> (Opens Spotlight search on macOS)</td>
+              </tr>
+              <tr>
+                <td><strong>ALT</strong></td>
+                <td><code>ALT</code></td>
+                <td><code>ALT F4</code> (Closes active application) <br> <code>ALT SPACE</code> (Opens window configurations)</td>
+              </tr>
+              <tr>
+                <td><strong>CTRL</strong></td>
+                <td><code>CONTROL</code></td>
+                <td><code>CTRL ESCAPE</code> (Opens Windows Start Menu) <br> <code>CTRL c</code> (Copy shortcut)</td>
+              </tr>
+              <tr>
+                <td><strong>SHIFT</strong></td>
+                <td><code>SHIFT</code></td>
+                <td><code>SHIFT ENTER</code> (Newline indicator) <br> <code>SHIFT INSERT</code> (Paste combo on classic terminals)</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="alert-box">
+            <strong>🔥 Triple Modifier Key Combinations:</strong>
+            You can chain multiple modifiers sequentially on a single line to simulate complex administrative key sequences:
+            <div class="code-block" style="margin-top:10px;">
+              CTRL ALT DELETE (Launches security options screen)<br>
+              CTRL SHIFT ESCAPE (Launches Windows Task Manager directly)<br>
+              GUI SHIFT ENTER (Launches administrative terminals on pre-configured layouts)
+            </div>
+          </div>
+
+          <h3 style="margin:24px 0 12px; font-weight:700;">5. The Repeater Block Command</h3>
+          <p>To avoid copy-pasting the same instruction multiple times, the <code>REPEAT</code> keyword duplicates the <strong>exact action from the immediately preceding line</strong>:</p>
+          <div class="code-block">
+            DOWNARROW<br>
+            REPEAT 4 (Presses the Down Arrow 4 more times, leading to 5 total presses)
+          </div>
+
+          <!-- How to Build Section -->
+          <h3 style="margin:36px 0 16px; font-weight:800; border-top: 1px solid var(--b1); padding-top:24px; color:var(--white);">🏗️ How to Build & Deploy Your DuckyScript Payload</h3>
+          <p>Designing an effective BadUSB payload requires a structured methodology to ensure reliable execution across different target host machines. Follow these structured operational steps:</p>
+
+          <div class="steps">
+            <div class="step-item">
+              <div class="step-num">1</div>
+              <div class="step-content">
+                <h3>Determine Target OS Shortcuts</h3>
+                <p>Verify the operating system of the target computer (Windows, macOS, or Linux). Identify the correct shortcut sequence to open a command terminal. For example, use <code>GUI r</code> followed by <code>cmd</code> on Windows, or <code>GUI SPACE</code> followed by <code>terminal</code> on macOS.</p>
+              </div>
+            </div>
+            <div class="step-item">
+              <div class="step-num">2</div>
+              <div class="step-content">
+                <h3>Establish initial Driver Delay</h3>
+                <p>Always start your payloads with an initial delay buffer (e.g. <code>DELAY 3000</code>). When the hardware is plugged in, the victim operating system requires exactly 2 to 3 seconds to scan, load, and configure standard USB keyboard HID drivers. Typing before this window finishes results in missed keystrokes.</p>
+              </div>
+            </div>
+            <div class="step-item">
+              <div class="step-num">3</div>
+              <div class="step-content">
+                <h3>Configure typing Pace (Pacing Delay)</h3>
+                <p>Add a <code>DEFAULTDELAY 150</code> statement directly below your initial setup delay. This instructs the injector core to pause for 150ms between every line, giving slower computers time to parse incoming USB key descriptors without losing keystroke data.</p>
+              </div>
+            </div>
+            <div class="step-item">
+              <div class="step-num">4</div>
+              <div class="step-content">
+                <h3>Compose Payloads: Code vs Visual vs AI</h3>
+                <p>Choose your preferred authoring method:
+                  <ul style="margin-left: 20px; font-size: 0.85rem; color: var(--dim); margin-top:8px; display:flex; flex-direction:column; gap:4px;">
+                    <li><strong>Manual Coding:</strong> Write clean, standard DuckyScript commands directly into the dynamic text editor panel.</li>
+                    <li><strong>Visual Builder:</strong> Drag and drop modular blocks (DELAY, STRING, ENTER) using the <strong>Script Builder Tool</strong> in the utilities drawer.</li>
+                    <li><strong>AI Compiler:</strong> Tell the <strong>Groq AI Assistant</strong> what you want in plain English (e.g., <em>"Write a Windows script to query IP configurations"</em>) to let it compile standard DuckyScript code instantly.</li>
+                  </ul>
+                </p>
+              </div>
+            </div>
+            <div class="step-item">
+              <div class="step-num">5</div>
+              <div class="step-content">
+                <h3>Verify in the Sandbox Simulator</h3>
+                <p>Before executing the script on a physical machine, toggle the <strong>SIM (Simulator)</strong> panel switch. This parses your commands line-by-line in a sandboxed browser terminal, displaying exactly what will be typed, key pause delays, and loop structures. This allows you to verify script logic safely.</p>
+              </div>
+            </div>
+            <div class="step-item">
+              <div class="step-num">6</div>
+              <div class="step-content">
+                <h3>Save to MicroSD & Run</h3>
+                <p>Click <strong>Save</strong> in the File Manager tool to write the completed script directly into the `/payloads/` directory on the FAT32 MicroSD card. Finally, select the target payload in your file manager explorer and click the <strong>Run (Play)</strong> button to physically inject the keystrokes.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="alert-box warn" style="margin-top:24px;">
+            <strong>⚠️ Keyboard Layout Profiles Warning:</strong>
+            Standard BadUSB key injections are mapped to standard <strong>US English</strong> keyboard layout configurations. If your target computer is set to a different regional layout (e.g., AZERTY, QWERTZ, UK English), some typed characters (like slashes, backslashes, colon, or quotes) will map incorrectly. Ensure the host is set to a US layout or design payloads to handle character deviations accordingly.
+          </div>
+        </div>
+      </section>
+
+      <!-- Subtopic 8: feat-sniffer -->
+      <section class="doc-page" id="page-feat-sniffer">
+        <div class="card">
+          <h2 class="card-title">📡 RF Sniffer Stack (WiFi, BLE, & Deauth Warnings)</h2>
+          <p>The ESP32-S3 is equipped with a passive radio monitor framework, allowing diagnostic site evaluations and wireless audits.</p>
+
+          <div class="tech-grid">
+            <div class="tech-card">
+              <h4 class="accent-text">WiFi Diagnostic Scanner</h4>
+              <p style="margin-bottom:8px;">Sweeps channels 1-14 to discover local access points. Gathers detailed infrastructure metadata:</p>
+              <ul style="margin-left: 20px; font-size: 0.82rem; color: var(--dim); display:flex; flex-direction:column; gap:4px;">
+                <li>Network SSID name and hardware BSSID.</li>
+                <li>Signal RSSI value (measured in dBm).</li>
+                <li>Encryption protocols (WEP, WPA2, WPA3).</li>
+              </ul>
+            </div>
+            <div class="tech-card">
+              <h4 class="accent-text">BLE Proximity Sniffer</h4>
+              <p style="margin-bottom:8px;">Passively parses the 2.4GHz spectrum for Bluetooth Low Energy advertising packets. Monitors physical beacons:</p>
+              <ul style="margin-left: 20px; font-size: 0.82rem; color: var(--dim); display:flex; flex-direction:column; gap:4px;">
+                <li>Broadcast beacon names and UUID indicators.</li>
+                <li>GATT service profiles.</li>
+                <li>RSSI distance tracking.</li>
+              </ul>
+            </div>
+          </div>
+
+          <h3 style="margin:24px 0 10px; font-weight:700;">802.11 Deauthentication Monitor</h3>
+          <p>Legacy wireless protocols transmit management frames (such as deauth or disassociation packets) without cryptographic signing. The sniffer scans targeted radio channels and logs deauth attacks instantly:</p>
+          <div class="code-block" style="color:var(--red); font-size:0.78rem;">
+            [ALERT] 802.11 Deauth frame caught on CH 11 | Source: AA:BB:CC:11:22:33 -> Target: DD:EE:FF:44:55:66 | Packets/sec: 84
+          </div>
+          <p>This serves as an excellent security alert indicator. When active Wi-Fi jamming or client disruption events occur, warning logs are generated inside the live log console pane and trigger high-visibility alerts on your browser web console instantly.</p>
+        </div>
+      </section>
+
+      <!-- Subtopic 9: feat-ai -->
+      <section class="doc-page" id="page-feat-ai">
+        <div class="card">
+          <h2 class="card-title">🤖 Groq Llama-3 AI Engine & Voice Controls</h2>
+          <p>The GhostChip features real-time neural payload compilation, translating plain English prompts into standard executable DuckyScript payloads instantly.</p>
+
+          <div class="steps">
+            <div class="step-item">
+              <div class="step-num">1</div>
+              <div class="step-content">
+                <h3>Groq Llama-3 API Compilation</h3>
+                <p>Input descriptive prompts (e.g. <em>"Open command prompt on Windows, query IP details, and output results"</em>). The neural compiler processes the prompt and builds formatted DuckyScript code blocks. Select targeted operating systems (Windows, macOS, Linux) to optimize modifier sequences automatically.</p>
+              </div>
+            </div>
+            <div class="step-item">
+              <div class="step-num">2</div>
+              <div class="step-content">
+                <h3>Voice Recognition Interface</h3>
+                <p>Tap the <strong>Microphone</strong> icon to initiate active voice controls. The dashboard leverages the browser's Web Speech API to capture speech queries, translate your intent, and compile scripts hands-free.</p>
+              </div>
+            </div>
+            <div class="step-item">
+              <div class="step-num">3</div>
+              <div class="step-content">
+                <h3>EEPROM Credentials Isolation</h3>
+                <p>Your custom Groq API key is written directly to physical EEPROM sectors on the ESP32-S3. Keys remain securely isolated on the device hardware and are transmitted strictly via HTTPS directly to Groq endpoints, completely safeguarding your developer credentials.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="alert-box warn" style="margin-top:24px;">
+            <strong>📶 Setup Check & Groq API Console</strong>
+            To successfully execute Llama-3 compiler logic, verify that you have registered a developer account and copied your key from the official Groq Console. Make sure both the ESP32 and your control phone are bridged onto the <strong>same Wi-Fi router with active internet connectivity</strong> (See the AI Network Setup page).
+            <div style="margin-top: 14px;">
+              <a href="https://console.groq.com/" target="_blank" class="link-button" style="padding: 10px 16px; font-size: 0.72rem; margin: 0; background: var(--g); color: #000;">
+                🔑 Get Free Groq API Key
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ============================================== -->
+      <!-- GROUP 4: UTILITIES DRAWER (Detailed Tools)      -->
+      <!-- ============================================== -->
+
+      <!-- Tool 1: File Manager -->
+      <section class="doc-page" id="page-tool-file">
+        <div class="card">
+          <h2 class="card-title">📁 Tool: File Manager</h2>
+          <p>The <strong>File Manager</strong> tool provides a robust explorer interface to manage partitions, view exfiltrated data captures, and deploy custom script binaries on the MicroSD card filesystem.</p>
+
+          <div class="tech-grid">
+            <div class="tech-card">
+              <h4>Wireless File Uploads</h4>
+              <p>Drag and drop or select `.txt` or `.bin` script files directly from your phone's browser cache. The ESP32 writes them to the MicroSD `/payloads/` directory in milliseconds.</p>
+            </div>
+            <div class="tech-card">
+              <h4>Real-time Exfiltration Viewer</h4>
+              <p>When payload scripts output keys or logs, they are written to `/exfil/` logs. You can browse, read raw text in-browser, or download log sheets directly to your device.</p>
+            </div>
+            <div class="tech-card">
+              <h4>Run Payload Trigger</h4>
+              <p>Click the <strong>"Run" (Play)</strong> icon next to any script. This loads it directly into the active keyboard emulator and starts injection operations instantly.</p>
+            </div>
+          </div>
+
+          <div class="alert-box">
+            <strong>📂 Folder Mappings:</strong>
+            Keep all compiled DuckyScript files in the <code>/payloads/</code> root folder and exfiltrated payloads under the <code>/exfil/</code> folder for correct dashboard indexing.
+          </div>
+        </div>
+      </section>
+
+      <!-- Tool 2: AI Assistant -->
+      <section class="doc-page" id="page-tool-ai">
+        <div class="card">
+          <h2 class="card-title">🤖 Tool: AI Assistant</h2>
+          <p>A conversational dialog system driven by the Groq Llama-3 compiler, translating verbal instructions into working payloads.</p>
+
+          <div class="steps">
+            <div class="step-item">
+              <div class="step-num">1</div>
+              <div class="step-content">
+                <h3>Voice Capture Module</h3>
+                <p>Click the <strong>Microphone</strong> icon to initiate web speech recognition. Speak your target instructions clearly (e.g. <em>"Open Notepad, type 'System Audited', and save it"</em>).</p>
+              </div>
+            </div>
+            <div class="step-item">
+              <div class="step-num">2</div>
+              <div class="step-content">
+                <h3>Automatic Payload Compiling</h3>
+                <p>The system passes the voice transcript to the Llama-3 API, which generates properly formatted DuckyScript code blocks automatically.</p>
+              </div>
+            </div>
+            <div class="step-item">
+              <div class="step-num">3</div>
+              <div class="step-content">
+                <h3>Deploy to Active Editor</h3>
+                <p>Click <strong>Load Script</strong> to paste the generated code directly into your active workspace for visual validation or timing adjustment edits.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="alert-box warn" style="margin-top: 24px;">
+            <strong>📶 Cloud Requirement Indicator:</strong>
+            This tool requires active router bridging and a valid key from the <a href="https://console.groq.com/" target="_blank" style="color:var(--g); text-decoration:underline;">Groq Console</a>.
+            <div style="margin-top: 14px;">
+              <a href="https://console.groq.com/" target="_blank" class="link-button" style="padding: 10px 16px; font-size: 0.72rem; margin: 0; background: var(--g); color: #000;">
+                🔑 Get Free Groq API Key
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tool 3: Script Builder -->
+      <section class="doc-page" id="page-tool-builder">
+        <div class="card">
+          <h2 class="card-title">🛠️ Tool: Script Builder</h2>
+          <p>Construct payloads visually using block components, eliminating the need to write raw code manually.</p>
+
+          <div class="tech-grid">
+            <div class="tech-card">
+              <h4>Command Block Library</h4>
+              <p>Select from blocks like <code>DELAY</code>, <code>STRING</code>, <code>ENTER</code>, <code>GUI modifier</code>, and <code>REPEAT</code>.</p>
+            </div>
+            <div class="tech-card">
+              <h4>Visual Parameter Forms</h4>
+              <p>Type your strings directly into visual fields and drag sliders to easily adjust delay timers.</p>
+            </div>
+            <div class="tech-card">
+              <h4>Syntax compiler</h4>
+              <p>Click <strong>Compile</strong> to merge all visual block components into standard, valid DuckyScript text blocks.</p>
+            </div>
+          </div>
+
+          <div class="alert-box" style="margin-top:20px;">
+            <strong>💡 Pro-Tip:</strong>
+            Use the <strong>Script Builder</strong> to construct the initial outline of your script, and then load it into the main editor to make fine-tuned timing adjustments.
+          </div>
+        </div>
+      </section>
+
+      <!-- Tool 4: Payload Templates -->
+      <section class="doc-page" id="page-tool-templates">
+        <div class="card">
+          <h2 class="card-title">🛡️ Tool: Payload Templates</h2>
+          <p>Quickly deploy pre-configured DuckyScript templates designed for common network diagnostics and security audits.</p>
+
+          <table class="tech-table">
+            <thead>
+              <tr>
+                <th>Auditing Template</th>
+                <th>Payload Operation Details</th>
+                <th>Standard Target OS</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Network Diagnostics</strong></td>
+                <td>Gathers IP information, traceroutes DNS configs, and writes output details to local files.</td>
+                <td>Windows / macOS / Linux</td>
+              </tr>
+              <tr>
+                <td><strong>Webhook Exfiltrator</strong></td>
+                <td>Leverages `curl` to transmit environment parameters straight to custom HTTP endpoints.</td>
+                <td>macOS / Linux</td>
+              </tr>
+              <tr>
+                <td><strong>Stealth Reverse Shell</strong></td>
+                <td>Spawns background listener interfaces to deploy automated local shells.</td>
+                <td>Windows PowerShell</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="alert-box warn">
+            <strong>⚙️ Webhook Endpoint Substitution:</strong>
+            Paste your custom exfiltration URL (e.g. from `ntfy.sh` or `webhook.site`) into the visual configurator card. The template engine automatically substitutes this URL into the payload variables before deployment.
+          </div>
+        </div>
+      </section>
+
+      <!-- Tool 5: Live Keyboard -->
+      <section class="doc-page" id="page-tool-keyboard">
+        <div class="card">
+          <h2 class="card-title">🎹 Tool: Live Keyboard</h2>
+          <p>Transform your mobile phone interface into a real-time remote keyboard controller that types directly onto the target computer.</p>
+
+          <div class="tech-grid">
+            <div class="tech-card">
+              <h4>Modifier Key Combinations</h4>
+              <p>Visual toggle controls for keys like `CTRL`, `ALT`, `SHIFT`, and `GUI (Win/CMD)`. Tap them to simulate hold-key actions.</p>
+            </div>
+            <div class="tech-card">
+              <h4>Real-time Keystrokes</h4>
+              <p>Type text into the visual input form. Characters are immediately transmitted over native USB descriptors with zero delay.</p>
+            </div>
+            <div class="tech-card">
+              <h4>System Quick Macros</h4>
+              <p>Dedicated buttons to trigger shortcuts: open Windows Run dialog (`GUI+R`), open macOS Terminal, or close active application (`ALT+F4`).</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tool 6: NeoPixel LED -->
+      <section class="doc-page" id="page-tool-neopixel">
+        <div class="card">
+          <h2 class="card-title">💡 Tool: NeoPixel LED</h2>
+          <p>Customize the onboard WS2812B RGB diagnostic LED to change light modes or enable stealth operation.</p>
+
+          <div class="steps">
+            <div class="step-item">
+              <div class="step-num">1</div>
+              <div class="step-content">
+                <h3>Stealth Mode Switch</h3>
+                <p>Toggle the LED off entirely. This hides all diagnostic flashes and makes the hardware blend in during physical USB deployments.</p>
+              </div>
+            </div>
+            <div class="step-item">
+              <div class="step-num">2</div>
+              <div class="step-content">
+                <h3>Diagnostic Color Wheel</h3>
+                <p>Set custom colors for active scanning, keyboard injection states, deauth alarms, and file write loops.</p>
+              </div>
+            </div>
+            <div class="step-item">
+              <div class="step-num">3</div>
+              <div class="step-content">
+                <h3>Brightness Sliders</h3>
+                <p>Fine-tune brightness scales from 0% up to 100% to manage power draw and thermal limits during prolonged audits.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tool 7: Device Info -->
+      <section class="doc-page" id="page-tool-info">
+        <div class="card">
+          <h2 class="card-title">🌐 Tool: Device Info</h2>
+          <p>Access real-time hardware status metrics, networking details, and operating parameters of the ESP32-S3 module.</p>
+
+          <table class="tech-table">
+            <thead>
+              <tr>
+                <th>Diagnostic Parameter</th>
+                <th>Value / Specification</th>
+                <th>System Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Chip Model</strong></td>
+                <td>ESP32-S3 Dual-Core Xtensa</td>
+                <td>Core hardware processor model.</td>
+              </tr>
+              <tr>
+                <td><strong>CPU Frequency</strong></td>
+                <td>240 MHz</td>
+                <td>Active processing clock speed.</td>
+              </tr>
+              <tr>
+                <td><strong>Internal SPIFFS Storage</strong></td>
+                <td>4 Megabytes (MB)</td>
+                <td>Onboard flash memory for the Web UI layout.</td>
+              </tr>
+              <tr>
+                <td><strong>MicroSD Status</strong></td>
+                <td>Mounted (FAT32 filesystem)</td>
+                <td>Indicates MicroSD connection state.</td>
+              </tr>
+              <tr>
+                <td><strong>Station IP Address</strong></td>
+                <td>Dynamic mDNS (`ghostchip.local`)</td>
+                <td>Assigned IP inside the bridged local network.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Tool 8: Payload Simulator -->
+      <section class="doc-page" id="page-tool-simulator">
+        <div class="card">
+          <h2 class="card-title">💾 Tool: Payload Simulator</h2>
+          <p>Safely run and dry-test payloads inside an isolated browser-shell sandbox before physical execution.</p>
+
+          <div class="tech-grid">
+            <div class="tech-card">
+              <h4>Syntax Analyzer</h4>
+              <p>Scans scripts for syntax errors and highlights typos in keywords like <code>STRING</code> or modifier keys.</p>
+            </div>
+            <div class="tech-card">
+              <h4>Virtual Shell Terminal</h4>
+              <p>Shows a simulated terminal screen displaying typing speeds, pauses, and keystroke repeats visually.</p>
+            </div>
+            <div class="tech-card">
+              <h4>Step-by-Step Debugging</h4>
+              <p>Step through lines one by one to verify delay timings and keyboard modifier combos safely.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tool 9: OTA Flash Updater -->
+      <section class="doc-page" id="page-tool-ota">
+        <div class="card">
+          <h2 class="card-title">💿 Tool: OTA Flash Updater</h2>
+          <p>Easily upgrade the GhostChip firmware wirelessly with zero cables or programming interfaces required.</p>
+
+          <div class="steps">
+            <div class="step-item">
+              <div class="step-num">1</div>
+              <div class="step-content">
+                <h3>Drag and Drop Firmware Binary</h3>
+                <p>Drag your updated firmware file (`ghostchip.bin`) directly into the OTA drag-and-drop zone.</p>
+              </div>
+            </div>
+            <div class="step-item">
+              <div class="step-num">2</div>
+              <div class="step-content">
+                <h3>Dynamic Progress Bar</h3>
+                <p>Monitor transmission metrics. The dashboard shows real-time progress bars as the file writes to the OTA partition.</p>
+              </div>
+            </div>
+            <div class="step-item">
+              <div class="step-num">3</div>
+              <div class="step-content">
+                <h3>Automatic Soft Reboot</h3>
+                <p>Once writing is complete, the chip automatically reboots to run the new firmware safely.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="alert-box danger" style="margin-top: 24px;">
+            <strong>⚠️ IMPORTANT:</strong>
+            Do not disconnect USB power or interrupt the connection during the OTA flash write cycle. Doing so will corrupt the partition and require physical flashing.
+          </div>
+        </div>
+      </section>
+
+
+      <!-- ============================================== -->
+      <!-- GROUP 5: TROUBLESHOOTING                       -->
+      <!-- ============================================== -->
+
+      <!-- Subtopic 11: trouble-sd -->
+      <section class="doc-page" id="page-trouble-sd">
+        <div class="card">
+          <h2 class="card-title">💾 Troubleshooting: SD Card Mount Failures</h2>
+          <p><strong>Symptom:</strong> The File Manager or Preset libraries display empty files lists, or show mount failure toasts.</p>
+          
+          <div class="alert-box danger">
+            <strong>Root Cause Analysis:</strong>
+            The ESP32-S3's hardware SDIO driver is restricted to parsing strictly MBR (Master Boot Record) partition tables, FAT32 cluster structures, and volumes up to 32GB maximum. Modern GUID Partition Tables (GPT), exFAT, or NTFS schemes are not recognized.
+          </div>
+
+          <h3 style="margin-bottom:12px;">Diagnostic & Action Steps:</h3>
+          <ol style="margin-left:20px; display:flex; flex-direction:column; gap:10px; font-size:0.92rem; color:var(--dim);">
+            <li>Connect your card reader to a PC/macOS host. Open your Disk Utility or Disk Management dashboard.</li>
+            <li>Confirm the capacity of the MicroSD card does not exceed <strong>32GB</strong>. (16GB or 32GB cards are highly recommended).</li>
+            <li>Re-partition the card, changing the partition scheme explicitly from <strong>GPT (GUID)</strong> to <strong>MBR (Master Boot Record)</strong>.</li>
+            <li>Format the volume as <strong>FAT32</strong> with the <strong>Allocation Unit (Cluster) Size set to 32KB</strong> (32,768 bytes).</li>
+            <li>Ensure the MicroSD card is completely seated inside the physical card slot before plugging in USB power. The card reader is mounted strictly during the early boot sequence.</li>
+          </ol>
+        </div>
+      </section>
+
+      <!-- Subtopic 12: trouble-ap -->
+      <section class="doc-page" id="page-trouble-ap">
+        <div class="card">
+          <h2 class="card-title">📶 Troubleshooting: Invisible AP Gateway</h2>
+          <p><strong>Symptom:</strong> The local wireless AP `Ghostchip` SSID does not appear in your smartphone's Wi-Fi network sweep.</p>
+
+          <div class="alert-box danger">
+            <strong>Root Cause Analysis:</strong>
+            Insufficient power supply, local radio frequency interference (specifically surrounding Wi-Fi channel overlaps), or active loop anomalies.
+          </div>
+
+          <h3 style="margin-bottom:12px;">Diagnostic & Action Steps:</h3>
+          <ol style="margin-left:20px; display:flex; flex-direction:column; gap:10px; font-size:0.92rem; color:var(--dim);">
+            <li>Verify the ESP32 receives standard <strong>5V USB power</strong> (minimum 500mA output threshold). Avoid powering the device via high-voltage fast chargers that lack standard legacy 5V fallbacks.</li>
+            <li>Ensure the onboard status RGB LED flashes or illuminates during power-up, indicating the chip is booted.</li>
+            <li>If the AP is still missing, trigger a system clear: Disconnect USB power. Hold down the physical <strong>BOOT button</strong> on the ESP32 chip module. Reconnect USB power while holding the button, then release it to clear loop state anomalies.</li>
+            <li>Ensure the device is not sitting directly next to high-power RF sources (routers, microwaves) that can degrade the local AP signal.</li>
+          </ol>
+        </div>
+      </section>
+
+      <!-- Subtopic 13: trouble-ai -->
+      <section class="doc-page" id="page-trouble-ai">
+        <div class="card">
+          <h2 class="card-title">🤖 Troubleshooting: Groq AI & Assistant Compile Errors</h2>
+          <p><strong>Symptom:</strong> The AI prompts page or assistant display API communication errors, or generation hangs indefinitely.</p>
+
+          <div class="alert-box danger">
+            <strong>Root Cause Analysis:</strong>
+            The ESP32 module or control mobile device lack active internet connectivity, or your saved API Key is invalid or expired.
+          </div>
+
+          <h3 style="margin-bottom:12px;">Diagnostic & Action Steps:</h3>
+          <ol style="margin-left:20px; display:flex; flex-direction:column; gap:10px; font-size:0.92rem; color:var(--dim);">
+            <li><strong>Network Verification:</strong> Confirm that both your control mobile phone and the GhostChip are connected to <strong>your own local Wi-Fi router (access point) with active internet</strong>. If your phone is connected to your home router but the GhostChip is still connected only to its default `Ghostchip` local network, API calls will fail. (See the AI Network Setup page).</li>
+            <li>Ensure you can load `http://ghostchip.local` on your browser while connected to the router network. If the name fails to resolve on legacy devices, use the router IP shown on the connections dashboard.</li>
+            <li>Confirm your saved <strong>Groq API Key</strong> is active. Retrieve a free key (starts with `gsk_`) from the official Groq Console and re-save it inside Settings.</li>
+            <li>Check if your Groq request limits have been exceeded.</li>
+          </ol>
+
+          <div style="margin-top: 24px; text-align: center;">
+            <a href="https://console.groq.com/" target="_blank" class="link-button" style="background: var(--g); color: #000;">
+              🔑 Open Groq Console Website
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <!-- Subtopic 14: trouble-keys -->
+      <section class="doc-page" id="page-trouble-keys">
+        <div class="card">
+          <h2 class="card-title">⌨️ Troubleshooting: Missed Keystrokes & Timings</h2>
+          <p><strong>Symptom:</strong> The HID injector types too fast, misses opening target windows, or types incorrect characters.</p>
+
+          <div class="alert-box danger">
+            <strong>Root Cause Analysis:</strong>
+            The host operating system requires a few seconds to configure USB keyboard drivers. Fast keystrokes can also exceed target keyboard buffer limits, and incorrect layout profiles map physical keys differently.
+          </div>
+
+          <h3 style="margin-bottom:12px;">Diagnostic & Action Steps:</h3>
+          <ol style="margin-left:20px; display:flex; flex-direction:column; gap:10px; font-size:0.92rem; color:var(--dim);">
+            <li>Insert a <strong><code>DELAY 3000</code></strong> command at the very beginning of your DuckyScript payloads. This gives the host OS time to enumerate the USB keyboard driver before keystrokes are typed.</li>
+            <li>Insert a <strong><code>DEFAULTDELAY 150</code></strong> statement as the second line in your script. This adds a short delay after each keystroke, helping slower target systems process the inputs correctly.</li>
+            <li>Ensure the target host's input language layout is set to <strong>US English</strong>. Different regional keyboard layouts (such as UK, AZERTY) map characters to different physical keys and will result in character mapping errors.</li>
+          </ol>
+        </div>
+      </section>
+
+    </main>
+
+  </div>
+
+  <!-- ══ FOOTER ══ -->
+  <footer>
+    &copy; 2026 GAMKERS WORKSHOP &bull; WORLD'S FIRST AI-POWERED BADUSB PLATFORM &bull; TECHNICAL AUDIT SERVICES ONLY
+  </footer>
+
+  <!-- ══ JAVASCRIPT FOR INTERACTION ══ -->
+  <script>
+    // Tab switching for main panels (Auto-activates first subtopic of that group)
+    function switchPanel(panelId, btnEl) {
+      // Hide all panels & deactivate all tab buttons
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.sidebar-group').forEach(g => g.classList.remove('active'));
+      
+      // Set active status on current button & parent group
+      if (btnEl) {
+        btnEl.classList.add('active');
+        const parentGroup = btnEl.closest('.sidebar-group');
+        if (parentGroup) {
+          parentGroup.classList.add('active');
+          // Auto-select and load the first sub-link inside this active group
+          const firstSub = parentGroup.querySelector('.sub-link');
+          if (firstSub) {
+            firstSub.click();
+          }
+        }
+      }
+    }
+
+    // SPA Page Swapper (Loads individual subtopic documentation page)
+    function loadPage(pageId, subEl) {
+      // Deactivate all sub-links
+      document.querySelectorAll('.sub-link').forEach(link => link.classList.remove('active'));
+      // Hide all doc pages
+      document.querySelectorAll('.doc-page').forEach(page => page.classList.remove('active'));
+
+      // Close mobile menu if active
+      const sidebar = document.querySelector('.sidebar');
+      const backdrop = document.getElementById('menu-backdrop');
+      if (sidebar.classList.contains('open')) {
+        sidebar.classList.remove('open');
+        backdrop.classList.remove('active');
+      }
+
+      // Activate clicked sub-link & show corresponding doc page
+      if (subEl) {
+        subEl.classList.add('active');
+        // Ensure its parent group remains active
+        const parentGroup = subEl.closest('.sidebar-group');
+        if (parentGroup && !parentGroup.classList.contains('active')) {
+          document.querySelectorAll('.sidebar-group').forEach(g => g.classList.remove('active'));
+          parentGroup.classList.add('active');
+          const tabBtn = parentGroup.querySelector('.tab-btn');
+          document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+          if (tabBtn) tabBtn.classList.add('active');
+        }
+      }
+
+      const targetPage = document.getElementById('page-' + pageId);
+      if (targetPage) {
+        targetPage.classList.add('active');
+        // Scroll main viewport back to top smoothly
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
+
+    // Dynamic Mobile Hamburger Drawer Toggle
+    function toggleMobileMenu() {
+      const sidebar = document.querySelector('.sidebar');
+      const backdrop = document.getElementById('menu-backdrop');
+      const isOpen = sidebar.classList.contains('open');
+
+      if (isOpen) {
+        sidebar.classList.remove('open');
+        backdrop.classList.remove('active');
+      } else {
+        sidebar.classList.add('open');
+        backdrop.classList.add('active');
+      }
+    }
+
+    // Dynamic Deep Linking helper (Used to jump directly to specific pages)
+    function jumpTo(pageId) {
+      const subLink = document.getElementById('link-' + pageId);
+      if (subLink) {
+        subLink.click();
+      }
+    }
+
+    // Dynamic Deep Linking for Troubleshooting Accordions
+    function jumpToTrouble(pageId) {
+      const subLink = document.getElementById('link-' + pageId);
+      if (subLink) {
+        subLink.click();
+      }
+    }
+
+    // Inner feature sub-tabs toggler
+    function switchFeat(featId, btnEl) {
+      document.querySelectorAll('.feat-panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.feat-tab').forEach(b => b.classList.remove('active'));
+
+      const targetFeat = document.getElementById(featId);
+      if (targetFeat) targetFeat.classList.add('active');
+      if (btnEl) btnEl.classList.add('active');
+    }
+
+    // Toggle Accordion Panels inside the manual sub-pages
+    function toggleAcc(headerEl) {
+      const parent = headerEl.parentElement;
+      const isOpen = parent.classList.contains('open');
+      
+      document.querySelectorAll('.acc-item').forEach(item => {
+        item.classList.remove('open');
+      });
+
+      if (!isOpen) {
+        parent.classList.add('open');
+      }
+    }
+
+    // Copy to clipboard helper
+    function copyText(elementId) {
+      const code = document.getElementById(elementId).textContent;
+      navigator.clipboard.writeText(code).then(() => {
+        const btn = document.querySelector(`#${elementId}`).previousElementSibling.querySelector('.copy-btn');
+        const origText = btn.textContent;
+        btn.textContent = 'Copied ✓';
+        btn.style.color = 'var(--g)';
+        btn.style.borderColor = 'var(--g2)';
+        setTimeout(() => {
+          btn.textContent = origText;
+          btn.style.color = '';
+          btn.style.borderColor = '';
+        }, 1500);
+      }).catch(err => {
+        console.error('Failed to copy: ', err);
+      });
+    }
+  </script>
+</body>
+</html>
