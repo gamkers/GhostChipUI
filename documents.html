@@ -663,6 +663,101 @@
         grid-template-columns: 1fr;
       }
     }
+
+    /* Custom video play link card styling */
+    .video-link-card {
+      position: relative;
+      width: 100%;
+      padding-bottom: 56.25%; /* 16:9 Aspect Ratio */
+      height: 0;
+      border-radius: var(--radius);
+      border: 1px solid var(--b1);
+      background-image: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url('https://img.youtube.com/vi/THLGpJImUwI/maxresdefault.jpg');
+      background-size: cover;
+      background-position: center;
+      cursor: pointer;
+      display: block;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .video-link-card:hover {
+      transform: translateY(-4px) scale(1.01);
+      border-color: var(--g);
+      box-shadow: 0 15px 45px rgba(0, 255, 65, 0.15);
+    }
+    .video-link-card::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: radial-gradient(circle, rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0.8) 100%);
+      pointer-events: none;
+    }
+    .video-play-btn {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 80px;
+      height: 80px;
+      background: rgba(0, 0, 0, 0.6);
+      border: 2px solid var(--g);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2;
+      box-shadow: 0 0 30px rgba(0, 255, 65, 0.3);
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .video-link-card:hover .video-play-btn {
+      background: var(--g);
+      transform: translate(-50%, -50%) scale(1.1);
+      box-shadow: 0 0 40px var(--g);
+    }
+    .video-play-btn svg {
+      width: 32px;
+      height: 32px;
+      fill: var(--g);
+      margin-left: 4px; /* offset slightly to center triangle visually */
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .video-link-card:hover .video-play-btn svg {
+      fill: #000;
+    }
+    .video-card-badge {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      z-index: 2;
+      background: rgba(12, 12, 12, 0.85);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--b2);
+      padding: 10px 18px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: all 0.3s;
+    }
+    .video-link-card:hover .video-card-badge {
+      border-color: var(--g);
+      background: rgba(0, 0, 0, 0.95);
+    }
+    .video-card-badge span {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--white);
+      letter-spacing: 0.5px;
+    }
+    .video-card-badge svg {
+      width: 16px;
+      height: 16px;
+      color: var(--g);
+    }
   </style>
 </head>
 <body>
@@ -727,6 +822,7 @@
           <span class="sub-link" id="link-feat-ducky" onclick="loadPage('feat-ducky', this)">DuckyScript Syntax</span>
           <span class="sub-link" id="link-feat-sniffer" onclick="loadPage('feat-sniffer', this)">WiFi & BLE Sniffer</span>
           <span class="sub-link" id="link-feat-ai" onclick="loadPage('feat-ai', this)">Groq Llama-3 AI</span>
+          <span class="sub-link" id="link-feat-ghostesp" onclick="loadPage('feat-ghostesp', this)">GhostESP Firmware</span>
         </div>
       </div>
 
@@ -779,6 +875,23 @@
           <h2 class="card-title">🔌 Physical Power-Up Sequence</h2>
           <p>The <strong>GhostChip ESP32-S3 Security Toolkit</strong> is fully pre-flashed out of the box. You do not need to install local tools, command lines, or compilers to initialize the system hardware. Connect standard 5V USB power to boot the module instantly.</p>
           
+          <!-- Setup Video Link Card -->
+          <div class="video-section" style="margin: 24px 0 30px 0;">
+            <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--white); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; text-align: left;">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="var(--g)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 0 4px var(--g3));"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+              Quick Start Video Guide
+            </h3>
+            <a href="https://youtu.be/THLGpJImUwI?si=Mar7WBbFaK8yqw0q" target="_blank" rel="noopener noreferrer" class="video-link-card" title="Watch Setup Guide on YouTube">
+              <div class="video-play-btn">
+                <svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              </div>
+              <div class="video-card-badge">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                <span>Watch on YouTube</span>
+              </div>
+            </a>
+          </div>
+
           <div class="steps">
             <div class="step-item">
               <div class="step-num">1</div>
@@ -1425,6 +1538,160 @@
               </a>
             </div>
           </div>
+        </div>
+      </section>
+
+      <!-- Subtopic 10: feat-ghostesp -->
+      <section class="doc-page" id="page-feat-ghostesp">
+        <div class="card">
+          <h2 class="card-title" style="display: flex; align-items: center; gap: 8px;">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="var(--g)" stroke-width="2" style="filter: drop-shadow(0 0 4px var(--g3));"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+            GhostESP Third-Party Firmware & Command Center
+          </h2>
+          <p style="font-size: 1.05rem; line-height: 1.7; color: var(--white); margin-bottom: 24px; font-weight: 400; letter-spacing: 0.2px;">
+            Unleash the full capability of the <strong>GhostESP</strong> firmware—a state-of-the-art, third-party operational suite custom-tailored for ESP32-S3 architectures. This specialized toolkit transforms your device into an advanced wireless audit station, providing precision diagnostics for <strong>Wi-Fi networks</strong>, active <strong>client station sniffing</strong>, real-time <strong>Bluetooth Low Energy (BLE)</strong> tracking, and custom <strong>RF transmission analysis</strong>.
+          </p>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin: 24px 0 32px 0;">
+            <div style="background: rgba(0, 255, 65, 0.03); border: 1px solid rgba(0, 255, 65, 0.15); border-radius: var(--radius-sm); padding: 16px; display: flex; align-items: flex-start; gap: 12px; transition: border-color 0.3s; text-align: left;" onmouseover="this.style.borderColor='var(--g)'" onmouseout="this.style.borderColor='rgba(0, 255, 65, 0.15)'">
+              <div style="background: var(--g3); border-radius: 8px; padding: 8px; display: flex; align-items: center; justify-content: center; color: var(--g); flex-shrink: 0;">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1"/></svg>
+              </div>
+              <div>
+                <h4 style="font-size: 0.9rem; font-weight: 700; color: var(--white); margin: 0 0 4px 0;">Wi-Fi Diagnostics</h4>
+                <p style="font-size: 0.76rem; color: var(--dim); line-height: 1.45; margin: 0;">Scan wireless spectrums, identify channels, resolve AP conflicts, and map physical beacons.</p>
+              </div>
+            </div>
+
+            <div style="background: rgba(0, 255, 65, 0.03); border: 1px solid rgba(0, 255, 65, 0.15); border-radius: var(--radius-sm); padding: 16px; display: flex; align-items: flex-start; gap: 12px; transition: border-color 0.3s; text-align: left;" onmouseover="this.style.borderColor='var(--g)'" onmouseout="this.style.borderColor='rgba(0, 255, 65, 0.15)'">
+              <div style="background: var(--g3); border-radius: 8px; padding: 8px; display: flex; align-items: center; justify-content: center; color: var(--g); flex-shrink: 0;">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+              </div>
+              <div>
+                <h4 style="font-size: 0.9rem; font-weight: 700; color: var(--white); margin: 0 0 4px 0;">Client Sniffing</h4>
+                <p style="font-size: 0.76rem; color: var(--dim); line-height: 1.45; margin: 0;">Track client device associations, capture active probe requests, and monitor network usage.</p>
+              </div>
+            </div>
+
+            <div style="background: rgba(0, 255, 65, 0.03); border: 1px solid rgba(0, 255, 65, 0.15); border-radius: var(--radius-sm); padding: 16px; display: flex; align-items: flex-start; gap: 12px; transition: border-color 0.3s; text-align: left;" onmouseover="this.style.borderColor='var(--g)'" onmouseout="this.style.borderColor='rgba(0, 255, 65, 0.15)'">
+              <div style="background: var(--g3); border-radius: 8px; padding: 8px; display: flex; align-items: center; justify-content: center; color: var(--g); flex-shrink: 0;">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
+              </div>
+              <div>
+                <h4 style="font-size: 0.9rem; font-weight: 700; color: var(--white); margin: 0 0 4px 0;">BLE & Beacon Audits</h4>
+                <p style="font-size: 0.76rem; color: var(--dim); line-height: 1.45; margin: 0;">Sniff Bluetooth advertisements, discover nearby Flipper Zero signals, and track AirTags.</p>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin: 20px 0; padding: 16px; background: rgba(12, 12, 12, 0.6); border: 1px solid var(--b2); border-radius: var(--radius-sm);">
+            <div style="font-size: 0.85rem; color: var(--dim); line-height: 1.6;">
+              <strong style="color: var(--white);">🙏 Credits & Licensing:</strong><br>
+              GhostESP is an independent open-source toolkit developed by the <strong>GhostESP Core Team</strong>. All copyrights, branding, and binary ownership belong entirely to their respective authors. You can find source files, developer notes, and community updates on the official website:
+            </div>
+            <div style="margin-top: 12px;">
+              <a href="https://ghostesp.net" target="_blank" rel="noopener noreferrer" class="link-button" style="padding: 8px 14px; font-size: 0.72rem; margin: 0; background: var(--s2); border: 1px solid var(--b1); color: var(--white); display: inline-flex; align-items: center; gap: 6px;">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="var(--g)" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                Official GhostESP Website (ghostesp.net)
+              </a>
+            </div>
+          </div>
+
+          <h3 style="font-size: 1.1rem; color: var(--white); margin: 24px 0 12px 0;">🎮 Web Command Center Dashboard</h3>
+          <p>
+            The toolkit includes a high-fidelity <strong>GhostESP Command Center Dashboard</strong> that connects directly to the flashed hardware over physical Web Serial, providing an interactive mobile-ready dashboard for field audits.
+          </p>
+
+          <div style="margin-top: 15px; display: flex; gap: 12px; flex-wrap: wrap;">
+            <a href="ghostesp.html" class="link-button" style="padding: 12px 20px; font-size: 0.8rem; font-weight: 700; margin: 0; background: var(--g); color: #000; display: inline-flex; align-items: center; gap: 8px;">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/></svg>
+              Open GhostESP Command Center
+            </a>
+          </div>
+
+          <h3 style="font-size: 1.1rem; color: var(--white); margin: 28px 0 12px 0;">⚡ How to Use the Command Center</h3>
+          <div class="steps">
+            <div class="step-item">
+              <div class="step-num">1</div>
+              <div class="step-content">
+                <h3>Flash the GhostESP Firmware</h3>
+                <p>Go to the <a href="flasher.html" style="color: var(--g); text-decoration: underline;">Web Flasher</a>, click on the <strong>Third-Party (GhostESP)</strong> tab, select the GhostESP Firmware package, connect your ESP32-S3, and click flash. The flash process automatically partitions and uploads the segment binaries.</p>
+              </div>
+            </div>
+            <div class="step-item">
+              <div class="step-num">2</div>
+              <div class="step-content">
+                <h3>Initialize Web Serial Connection</h3>
+                <p>Open the <strong>Command Center</strong> dashboard page (<code>ghostesp.html</code>). Select <strong>115200 Baud</strong> (standard connection speed for the GhostESP CLI), click the <strong>Connect</strong> button, and select your ESP32-S3 device port from the browser prompt. You can also select <strong>DEMO SIMULATOR</strong> to explore the dashboard offline.</p>
+              </div>
+            </div>
+            <div class="step-item">
+              <div class="step-num">3</div>
+              <div class="step-content">
+                <h3>Run Scans and Audits Visually</h3>
+                <p>Use the panel tabs at the bottom of the interface to trigger device routines: scan local access points in the <strong>WiFi</strong> panel, sniff Apple AirTags or Flipper Zero packets in the <strong>BLE</strong> panel, or launch deauth campaigns in the <strong>Threat Console</strong>.</p>
+              </div>
+            </div>
+            <div class="step-item">
+              <div class="step-num">4</div>
+              <div class="step-content">
+                <h3>Utilize the Advanced CLI Drawer</h3>
+                <p>Click the <strong>Advanced CLI</strong> drawer at the bottom of the screen to open a raw terminal emulator interface. You can input command strings manually, view logs, and monitor serial output directly.</p>
+              </div>
+            </div>
+          </div>
+
+          <h3 style="font-size: 1.1rem; color: var(--white); margin: 28px 0 12px 0;">💻 Core CLI Command Reference</h3>
+          <p>
+            When interacting with the GhostESP CLI (either via a terminal program or the Command Center drawer), use the following basic commands:
+          </p>
+
+          <table class="tech-table">
+            <thead>
+              <tr>
+                <th>Command</th>
+                <th>Arguments / Options</th>
+                <th>Functional Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>scanap</code></td>
+                <td>None</td>
+                <td>Scans for nearby Wi-Fi Access Points (APs) and prints BSSID, SSID, RSSI, channel, and vendor info.</td>
+              </tr>
+              <tr>
+                <td><code>stopscan</code></td>
+                <td>None</td>
+                <td>Stops any active Wi-Fi AP or station sniffing scans.</td>
+              </tr>
+              <tr>
+                <td><code>select</code></td>
+                <td><code>-a [index]</code><br><code>-s [index]</code></td>
+                <td>Selects a target AP index (<code>-a</code>) or a client station index (<code>-s</code>) to target for subsequent actions (like deauth attacks).</td>
+              </tr>
+              <tr>
+                <td><code>scansta</code></td>
+                <td>None</td>
+                <td>Sniffs and maps active client stations connected to the currently selected Wi-Fi Access Point.</td>
+              </tr>
+              <tr>
+                <td><code>blescan</code></td>
+                <td><code>-f</code> (Flipper)<br><code>-a</code> (AirTag)<br><code>-s</code> (Stop)</td>
+                <td>Initiates BLE sniffing to scan for Flipper Zero devices (<code>-f</code>), Apple AirTag locator beacons (<code>-a</code>), or stops the scan (<code>-s</code>).</td>
+              </tr>
+              <tr>
+                <td><code>attack</code></td>
+                <td><code>-d</code> (Deauth)</td>
+                <td>Starts a deauthentication packet injection campaign (<code>-d</code>) targeting the selected Access Point or client device.</td>
+              </tr>
+              <tr>
+                <td><code>stop</code></td>
+                <td><code>deauth</code><br><code>spam</code></td>
+                <td>Stops the active deauthentication campaign (<code>deauth</code>) or ceases BLE beacon/Wi-Fi SSID advertising spam (<code>spam</code>).</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </section>
 
