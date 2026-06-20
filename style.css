@@ -91,7 +91,7 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--w
 .fav-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;padding-bottom:14px;max-height:280px;overflow-y:auto}
 @media(max-width:550px){.fav-grid{grid-template-columns:1fr}}
 .fav-empty{grid-column:1/-1;text-align:center;padding:20px;font-size:.78rem;color:var(--dim2)}
-.fav-card{background:var(--s1);border:1px solid var(--b1);border-radius:var(--radius-sm);padding:12px;display:flex;flex-direction:column;gap:6px;position:relative;transition:.2s;animation:fadeIn .25s}
+.fav-card{background:var(--s1);border:1px solid var(--b1);border-radius:var(--radius-sm);padding:12px;display:flex;flex-direction:column;gap:6px;position:relative;transition:.2s;animation:fadeIn .25s;min-width:0;box-sizing:border-box}
 .fav-card:active{transform:scale(.97)}
 .fav-card.tag-attack{border-top:2px solid #ff4444;background:linear-gradient(160deg,rgba(255,68,68,.06),var(--s1))}
 .fav-card.tag-recon{border-top:2px solid #6699ff;background:linear-gradient(160deg,rgba(102,153,255,.06),var(--s1))}
@@ -103,17 +103,17 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--w
 .fav-tag-badge.tag-recon{background:rgba(102,153,255,.15);color:#88aaff}
 .fav-tag-badge.tag-utility{background:rgba(0,204,136,.15);color:#00cc88}
 .fav-tag-badge.tag-custom{background:rgba(255,204,0,.15);color:#ffcc00}
-.fav-card-name{font-size:.8rem;font-weight:700;color:var(--white);cursor:pointer;line-height:1.3;padding-right:4px}
+.fav-card-name{font-size:.8rem;font-weight:700;color:var(--white);cursor:pointer;line-height:1.3;padding-right:4px;word-break:break-all;overflow-wrap:break-word}
 .fav-card-name:hover{color:var(--g)}
-.fav-card-meta{font-size:.62rem;color:var(--dim2);font-family:var(--mono)}
+.fav-card-meta{font-size:.62rem;color:var(--dim2);font-family:var(--mono);word-break:break-all;overflow-wrap:break-word}
 .fav-card-btns{display:flex;gap:6px;margin-top:2px}
 .fav-load-btn{flex:1;background:var(--s2);border:1px solid var(--b1);border-radius:6px;padding:7px;font-size:.7rem;font-weight:700;color:var(--white);cursor:pointer;transition:.2s;text-align:center}
 .fav-load-btn:active{background:var(--g);color:#000;border-color:var(--g)}
 .fav-sync-btn{background:rgba(0,255,65,.06);border:1px solid var(--g5);border-radius:6px;padding:7px 9px;font-size:.68rem;font-weight:700;color:var(--g);cursor:pointer;transition:.2s;white-space:nowrap}
 .fav-sync-btn:active{background:var(--g4);border-color:var(--g)}
-.fav-device-path{display:flex;align-items:center;gap:5px;background:rgba(0,0,0,.25);border:1px solid var(--b1);border-radius:5px;padding:4px 8px;margin:2px 0;overflow:hidden}
+.fav-device-path{display:flex;align-items:center;gap:5px;background:rgba(0,0,0,.25);border:1px solid var(--b1);border-radius:5px;padding:4px 8px;margin:2px 0;overflow:hidden;min-width:0}
 .fav-path-icon{font-size:.7rem;flex-shrink:0;opacity:.7}
-.fav-path-text{font-family:var(--mono);font-size:.6rem;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fav-path-text{font-family:var(--mono);font-size:.6rem;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .fav-del-btn{background:none;border:none;color:var(--dim2);cursor:pointer;font-size:.75rem;padding:2px 5px;border-radius:4px;line-height:1;transition:.15s}
 .fav-del-btn:hover{color:var(--red);background:rgba(255,68,68,.1)}
 .fav-modal-card{text-align:left;max-width:400px}
