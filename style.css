@@ -89,6 +89,7 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--w
 .fav-action-btn{background:var(--s2);border:1px solid var(--b1);border-radius:8px;padding:6px 10px;font-size:.65rem;font-weight:600;color:var(--dim);cursor:pointer;transition:.2s;font-family:var(--font)}
 .fav-action-btn:hover{border-color:var(--g2);color:var(--g)}
 .fav-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;padding-bottom:14px;max-height:280px;overflow-y:auto}
+@media(max-width:550px){.fav-grid{grid-template-columns:1fr}}
 .fav-empty{grid-column:1/-1;text-align:center;padding:20px;font-size:.78rem;color:var(--dim2)}
 .fav-card{background:var(--s1);border:1px solid var(--b1);border-radius:var(--radius-sm);padding:12px;display:flex;flex-direction:column;gap:6px;position:relative;transition:.2s;animation:fadeIn .25s}
 .fav-card:active{transform:scale(.97)}
