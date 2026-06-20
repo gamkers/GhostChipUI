@@ -34,6 +34,32 @@ function BASE() {
 }
 function isRemote() { return BASE() !== ''; }
 
+var useProxy = false;
+async function checkProxy() {
+  if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+    try {
+      const r = await fetch('/proxy?url=' + encodeURIComponent('http://ghostchip.local/')).catch(() => null);
+      if (r && r.status !== 404) {
+        useProxy = true;
+        console.log('[GhostChip] CORS Proxy detected and enabled.');
+      } else {
+        console.log('[GhostChip] CORS Proxy not running. Falling back to direct requests.');
+      }
+    } catch (e) {
+      useProxy = false;
+      console.log('[GhostChip] CORS Proxy check failed. Falling back to direct requests.', e);
+    }
+  }
+}
+checkProxy();
+
+function getProxyUrl(url) {
+  if (useProxy) {
+    return '/proxy?url=' + encodeURIComponent(url);
+  }
+  return url;
+}
+
 // ─── Device Fetch Helper ───
 // Handles CORS transparently: same-origin uses normal fetch, cross-origin uses no-cors
 async function deviceFetch(path, opts = {}) {
@@ -48,7 +74,7 @@ async function deviceFetch(path, opts = {}) {
 // Same as deviceFetch but for GET requests that need JSON response
 // Falls back to XMLHttpRequest which works on some ESP32 setups with CORS headers
 async function deviceGet(path) {
-  const url = BASE() + path;
+  const url = getProxyUrl(BASE() + path);
   try {
     const r = await fetch(url);
     return await r.json();
@@ -267,7 +293,466 @@ function clearEditor() {
   updateLines();
   $('fileName').textContent = 'untitled.txt';
   localStorage.removeItem('gc_script');
+  clearEditorEditMode();
 }
+
+// ═══════════════════════════════════════════════════
+//  ⭐ FAVOURITES
+// ═══════════════════════════════════════════════════
+
+var favSelectedTag = 'custom';
+var favCurrentFilter = 'all';
+
+async function fetchFolderList(path) {
+  const url = getProxyUrl(fmBase() + '/fm/list?path=' + encodeURIComponent(path));
+  try {
+    const r = await fetch(url, { headers: { 'Accept': '*/*', 'Referer': fmBase() + '/file-manager' } });
+    const text = await r.text();
+    try { return JSON.parse(text); } catch { return []; }
+  } catch (e) {
+    // XHR fallback
+    return await new Promise((res) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('GET', url, true);
+      xhr.setRequestHeader('Accept', '*/*');
+      xhr.onload = () => { try { res(JSON.parse(xhr.responseText)); } catch { res([]); } };
+      xhr.onerror = () => res([]);
+      xhr.timeout = 5000; xhr.ontimeout = () => res([]);
+      xhr.send();
+    });
+  }
+}
+
+async function loadFavsFromDeviceDirectories(filter = 'all') {
+  let categories = [];
+  if (filter === 'all') {
+    categories = ['Attack', 'Recon', 'Utility', 'Custom'];
+  } else {
+    categories = [filter.charAt(0).toUpperCase() + filter.slice(1)];
+  }
+  let allFavs = [];
+  const promises = categories.map(async (cat) => {
+    const path = '/' + cat;
+    try {
+      const r = await fmFetch('/fm/list?path=' + encodeURIComponent(path));
+      const text = await r.text();
+      let items = [];
+      try { items = JSON.parse(text); } catch { items = []; }
+      const files = Array.isArray(items) ? items : (items.files || items.entries || []);
+      files.forEach(item => {
+        const isDir = item.dir === true || item.type === 'dir' || item.isDir || item.directory;
+        if (!isDir) {
+          const name = item.name || item.filename || '';
+          allFavs.push({
+            id: cat + '-' + name,
+            tag: cat.toLowerCase(),
+            saved: 'Device File',
+            devicePath: path + '/' + name
+          });
+        }
+      });
+    } catch (e) {
+      console.warn('Could not load folder', path, e);
+    }
+  });
+  await Promise.all(promises);
+  return allFavs;
+}
+
+// ─── Drawer toggle ───
+function toggleFavs() {
+  const drawer = $('favsDrawer');
+  const isOpen = drawer.classList.contains('open');
+  // Close presets when opening favs
+  if (!isOpen) $('presetsDrawer').classList.remove('open');
+  drawer.classList.toggle('open');
+  renderFavGrid();
+}
+
+// ─── Modal: open ───
+function showAddFavModal() {
+  const script = $('editor').value.trim();
+  if (!script) { toast('Editor is empty — nothing to star', 'warn'); return; }
+
+  const lines = script.split('\n').length;
+  $('favModalSub').textContent = lines + ' line' + (lines !== 1 ? 's' : '');
+  // Auto-suggest name from first REM line
+  const rem = script.match(/^REM (.+)/m);
+  $('favName').value = rem ? rem[1].trim().slice(0, 40) : '';
+
+  $('addFavModal').style.display = 'flex';
+  $('favSavePrompt').style.display = 'none';
+  $('favMainForm').style.display = 'block';
+
+  // Reset tag to custom and select it (which updates the preview)
+  selectFavTag('custom', document.querySelector('.fav-tag-opt.custom'));
+
+  setTimeout(() => $('favName') && $('favName').focus(), 100);
+}
+
+// Live path preview helper
+function updateFavPathPreview() {
+  const name = ($('favName') ? $('favName').value : '').trim();
+  const catName = favSelectedTag.charAt(0).toUpperCase() + favSelectedTag.slice(1);
+  const folder = '/' + catName;
+  let safeName = name.replace(/[^a-zA-Z0-9_\-\. ]/g, '');
+  if (!safeName) safeName = 'script';
+  if (!safeName.match(/\.[a-zA-Z0-9]+$/)) {
+    safeName += '.txt';
+  }
+  const fullPath = folder + '/' + safeName;
+  const pathEl = $('favLinkedPath');
+  const pathTextEl = $('favLinkedPathText');
+  if (pathEl && pathTextEl) {
+    pathTextEl.textContent = 'Saving to: ' + fullPath;
+    pathEl.style.display = 'flex';
+  }
+}
+
+function hideAddFavModal() {
+  $('addFavModal').style.display = 'none';
+  window._pendingFavScript = null;
+  window._pendingFavDevicePath = null;
+}
+
+function selectFavTag(tag, btn) {
+  favSelectedTag = tag;
+  document.querySelectorAll('.fav-tag-opt').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  updateFavPathPreview();
+}
+
+// ─── Modal: confirm save ───
+async function confirmAddFav() {
+  const name = $('favName').value.trim();
+  if (!name) { toast('Enter a name for this favourite', 'warn'); return; }
+  const script = ($('editor').value).trim();
+  if (!script) { toast('No script content to save', 'warn'); return; }
+
+  const btn = $('addFavConfirmBtn');
+  const oldText = btn.innerHTML;
+  btn.innerHTML = '<span class="spin"></span> Saving…';
+  btn.disabled = true;
+
+  const catName = favSelectedTag.charAt(0).toUpperCase() + favSelectedTag.slice(1);
+  const folder = '/' + catName;
+  let safeName = name.replace(/[^a-zA-Z0-9_\-\. ]/g, '');
+  if (!safeName) safeName = 'script';
+  if (!safeName.match(/\.[a-zA-Z0-9]+$/)) {
+    safeName += '.txt';
+  }
+  const fullPath = folder + '/' + safeName;
+
+  try {
+    // Try to create the category folder on the device first
+    try {
+      await fmFetchPost('/fm/mkdir?path=' + encodeURIComponent(folder));
+    } catch (err) {
+      console.log('[GhostChip] Folder creation complete or handled:', folder, err);
+    }
+
+    const uploadUrl = fmBase() + '/fm/upload?path=' + encodeURIComponent(folder);
+    const crossOrigin = new URL(uploadUrl).origin !== location.origin;
+    const blob = new Blob([script], { type: 'text/plain' });
+    const file = new File([blob], safeName, { type: 'text/plain' });
+    const fd = new FormData();
+    fd.append('file', file, safeName);
+    const opts = crossOrigin
+      ? { method: 'POST', mode: 'no-cors', body: fd }
+      : { method: 'POST', headers: { 'Accept': '*/*' }, body: fd };
+
+    await fetch(uploadUrl, opts);
+
+    // Set editor edit mode for the saved path
+    fmEditingPath = fullPath;
+    setEditorEditMode(safeName, fullPath);
+    $('fileName').textContent = safeName;
+    localStorage.setItem('gc_script', script);
+
+    // Animate star button
+    const star = $('starBtn');
+    if (star) {
+      star.classList.add('starred');
+      setTimeout(() => star.classList.remove('starred'), 1200);
+    }
+
+    hideAddFavModal();
+    toast('⭐ Saved to favourites & uploaded to ' + fullPath + ' ✓');
+
+    // If drawer is open, re-render
+    if ($('favsDrawer').classList.contains('open')) renderFavGrid();
+  } catch (e) {
+    toast('Save sent — verify in File Manager', 'warn', 4000);
+    hideAddFavModal();
+  } finally {
+    btn.innerHTML = oldText;
+    btn.disabled = false;
+  }
+}
+
+
+// ─── Render the grid ───
+const TAG_META = {
+  attack:  { emoji: '⚔',  label: 'Attack',  cls: 'tag-attack'  },
+  recon:   { emoji: '🔍', label: 'Recon',   cls: 'tag-recon'   },
+  utility: { emoji: '🔧', label: 'Utility', cls: 'tag-utility' },
+  custom:  { emoji: '✦',  label: 'Custom',  cls: 'tag-custom'  },
+};
+
+async function renderFavGrid() {
+  const grid = $('favGrid');
+  if (!grid) return;
+  
+  grid.innerHTML = '<div class="fav-empty"><span class="spin"></span> Loading...</div>';
+  
+  const list = await loadFavsFromDeviceDirectories(favCurrentFilter);
+  
+  if (!list.length) {
+    grid.innerHTML = '<div class="fav-empty">' +
+      (favCurrentFilter === 'all' ? 'No favourites yet on device.' : 'No ' + favCurrentFilter + ' favourites yet.') +
+      '</div>';
+    return;
+  }
+  
+  grid.innerHTML = list.map(fav => {
+    const m = TAG_META[fav.tag] || TAG_META.custom;
+    const fileName = fav.devicePath ? fav.devicePath.split('/').pop() : (fav.name || 'script.txt');
+    const pathHtml = fav.devicePath
+      ? `<div class="fav-device-path" title="${escHtml(fav.devicePath)}"><span class="fav-path-icon">📁</span><span class="fav-path-text">${escHtml(fav.devicePath)}</span></div>`
+      : '';
+    const metaText = `Device File`;
+    return `<div class="fav-card ${m.cls}" id="fav-${fav.id}">
+      <div class="fav-card-top">
+        <span class="fav-tag-badge ${m.cls}">${m.emoji} ${m.label}</span>
+      </div>
+      <div class="fav-card-name" onclick="runFavDirectly('${fav.id}')">${escHtml(fileName)}</div>
+      <div class="fav-card-meta">${metaText}</div>
+      ${pathHtml}
+      <div style="display:flex;gap:6px;margin-top:auto;">
+        <button class="fav-sync-btn" onclick="event.stopPropagation();runFavDirectly('${fav.id}')" style="flex:1" title="Execute directly from memory card">⚡ Run</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ─── Filter ───
+function filterFavs(tag, btn) {
+  favCurrentFilter = tag;
+  document.querySelectorAll('.fav-filter-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderFavGrid();
+}
+
+// ─── Run fav directly from device memory card ───
+async function runFavDirectly(id) {
+  const list = await loadFavsFromDeviceDirectories();
+  const fav = list.find(f => f.id === id);
+  if (!fav || !fav.devicePath) return;
+  const fileName = fav.devicePath.split('/').pop();
+  toast('Running ' + fileName + '…', 'warn', 3000);
+  try {
+    await fmFetchPost('/fm/run?path=' + encodeURIComponent(fav.devicePath));
+    toast('Script running: ' + fileName + ' ✓');
+  } catch (e) {
+    toast('Run sent. Check device status.', 'warn');
+  }
+}
+
+// ─── Sync fav content from device ───
+function favsLoad() {
+  return [];
+}
+function favsSave() {}
+function exportFavs() {}
+function importFavs() {}
+function favTouchStart() {}
+function favTouchEnd() {}
+
+// ─── Init: render on load ───
+(function() {
+  function initFavs() {
+    renderFavGrid();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initFavs);
+  else initFavs();
+})();
+
+
+var saveCurrentBrowsePath = '/';
+var saveChosenFolder = '/';
+
+function showSaveModal() {
+  const script = $('editor').value.trim();
+  if (!script) { toast('Editor is empty — nothing to save', 'warn'); return; }
+  // If currently editing a device file, offer a quick save-back
+  if (fmEditingPath) {
+    fmSaveEditBack();
+    return;
+  }
+  // Pre-fill filename from current file name in editor bar
+  const currentName = $('fileName').textContent || 'untitled.txt';
+  const baseName = currentName.endsWith('.txt') ? currentName : currentName.replace(/\.[^.]+$/, '') + '.txt';
+  $('saveFileName').value = baseName === 'untitled.txt' ? '' : baseName;
+  saveCurrentBrowsePath = '/';
+  saveChosenFolder = '/';
+  $('saveSelectedPath').textContent = '/';
+  updateSavePathPreview();
+  $('saveModal').style.display = 'flex';
+  saveFolderLoad('/');
+  setTimeout(() => $('saveFileName') && $('saveFileName').focus(), 300);
+}
+
+function hideSaveModal() {
+  $('saveModal').style.display = 'none';
+}
+
+function updateSavePathPreview() {
+  let folder = saveChosenFolder || '/';
+  let name = ($('saveFileName') ? $('saveFileName').value : '').trim();
+  if (!name) name = 'script';
+  if (!name.match(/\.[a-zA-Z0-9]+$/)) name += '.txt';
+  const full = (folder === '/' ? '' : folder) + '/' + name;
+  if ($('savePathPreview')) $('savePathPreview').textContent = full;
+}
+
+// Wire up live preview updates on filename input
+(function() {
+  function setupSavePreviews() {
+    const fn = $('saveFileName');
+    if (fn) fn.addEventListener('input', updateSavePathPreview);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setupSavePreviews);
+  else setupSavePreviews();
+})();
+
+async function saveFolderLoad(path) {
+  saveCurrentBrowsePath = path;
+  const list = $('saveFolderList');
+  if (!list) return;
+
+  // Render loading state
+  list.innerHTML = '<div class="save-folder-loading"><div class="save-spinner"></div><span>Loading…</span></div>';
+
+  // Update breadcrumb
+  const parts = path.split('/').filter(Boolean);
+  let crumbHtml = '<span class="save-crumb' + (path === '/' ? ' active' : '') + '" onclick="saveFolderSelect(\'/\');saveFolderLoad(\'/\')">⌂ root</span>';
+  let built = '';
+  parts.forEach((p, i) => {
+    built += '/' + p;
+    const isLast = i === parts.length - 1;
+    const sp = built.replace(/'/g, "\\'");
+    crumbHtml += '<span class="save-crumb-sep">›</span><span class="save-crumb' + (isLast ? ' active' : '') + '" onclick="saveFolderSelect(\'' + sp + '\');saveFolderLoad(\'' + sp + '\')">' + escHtml(p) + '</span>';
+  });
+  const bc = $('saveBreadcrumb');
+  if (bc) bc.innerHTML = crumbHtml;
+
+  // Select this folder immediately when navigating
+  saveFolderSelect(path);
+
+  try {
+    const url = getProxyUrl(fmBase() + '/fm/list?path=' + encodeURIComponent(path));
+    let data;
+    try {
+      const r = await fetch(url, { headers: { 'Accept': '*/*' } });
+      const text = await r.text();
+      try { data = JSON.parse(text); } catch { data = []; }
+    } catch {
+      // XHR fallback
+      data = await new Promise((res, rej) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('GET', url, true);
+        xhr.setRequestHeader('Accept', '*/*');
+        xhr.onload = () => { try { res(JSON.parse(xhr.responseText)); } catch { res([]); } };
+        xhr.onerror = () => rej(new Error('Network error'));
+        xhr.timeout = 8000; xhr.ontimeout = () => rej(new Error('Timeout'));
+        xhr.send();
+      });
+    }
+
+    const items = Array.isArray(data) ? data : (data.files || data.entries || []);
+    // Filter only directories
+    const dirs = items.filter(i => i.dir === true || i.type === 'dir' || i.isDir || i.directory);
+    dirs.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+    if (!dirs.length) {
+      list.innerHTML = '<div class="save-folder-empty">No subfolders here.<br><span style="opacity:.6;font-size:.68rem">Files will be saved in the selected folder above.</span></div>';
+      return;
+    }
+
+    list.innerHTML = dirs.map(item => {
+      const name = item.name || item.filename || '';
+      const iPath = (path === '/' ? '' : path) + '/' + name;
+      const sp = iPath.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+      return '<div class="save-folder-item" onclick="saveFolderSelect(\'' + sp + '\');saveFolderLoad(\'' + sp + '\')">' +
+        '<svg class="save-folder-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>' +
+        '<span class="save-folder-name">' + escHtml(name) + '</span>' +
+        '<svg class="save-folder-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>' +
+        '</div>';
+    }).join('');
+  } catch (e) {
+    list.innerHTML = '<div class="save-folder-empty" style="color:var(--red)">Failed to load — check connection</div>';
+  }
+}
+
+function saveFolderSelect(path) {
+  saveChosenFolder = path;
+  const selEl = $('saveSelectedPath');
+  if (selEl) selEl.textContent = path;
+  // Highlight selected
+  document.querySelectorAll('.save-folder-item').forEach(el => el.classList.remove('save-folder-sel'));
+  updateSavePathPreview();
+}
+
+async function confirmSaveToDevice() {
+  const script = $('editor').value.trim();
+  if (!script) { toast('Editor is empty', 'warn'); return; }
+
+  const folder = saveChosenFolder || '/';
+  let name = ($('saveFileName') ? $('saveFileName').value : '').trim();
+  if (!name) name = 'script';
+  if (!name.match(/\.[a-zA-Z0-9]+$/)) name += '.txt';
+
+  const btn = $('saveConfirmBtn');
+  btn.innerHTML = '<span class="spin"></span> Saving…';
+  btn.disabled = true;
+
+  try {
+    const uploadUrl = fmBase() + '/fm/upload?path=' + encodeURIComponent(folder);
+    const crossOrigin = new URL(uploadUrl).origin !== location.origin;
+    const blob = new Blob([script], { type: 'text/plain' });
+    const file = new File([blob], name, { type: 'text/plain' });
+    const fd = new FormData();
+    fd.append('file', file, name);
+    const opts = crossOrigin
+      ? { method: 'POST', mode: 'no-cors', body: fd }
+      : { method: 'POST', headers: { 'Accept': '*/*' }, body: fd };
+    await fetch(uploadUrl, opts);
+    $('fileName').textContent = name;
+    const savedPath = (folder === '/' ? '' : folder) + '/' + name;
+    // Set edit mode so future SAVE goes back to this path
+    fmEditingPath = savedPath;
+    setEditorEditMode(name, savedPath);
+    toast('Saved → ' + savedPath + ' ✓');
+    hideSaveModal();
+    // If the user was trying to star — re-open fav modal now with path linked
+    if (window._afterSaveOpenFav) {
+      window._afterSaveOpenFav = false;
+      window._pendingFavDevicePath = savedPath;
+      setTimeout(() => {
+        $('addFavModal').style.display = 'flex';
+        showFavForm(savedPath);
+      }, 400);
+    }
+  } catch (e) {
+    toast('Save sent — verify in File Manager', 'warn', 4000);
+    hideSaveModal();
+  } finally {
+    btn.innerHTML = '💾 Save Here';
+    btn.disabled = false;
+  }
+}
+
+
 
 // ─── Terminal ───
 function termWrite(msg, cls = 't-dim') {
@@ -408,7 +893,7 @@ async function loadApiKeyFromDevice() {
   if (GROQ_KEY) { console.log('[GhostChip] API key already loaded from localStorage'); return; }
   if (location.protocol === 'https:') { console.log('[GhostChip] On HTTPS — skipping device key fetch. Use Settings to enter key.'); return; }
   try {
-    const url = BASE() + '/aigenerate';
+    const url = getProxyUrl(BASE() + '/aigenerate');
     console.log('[GhostChip] Fetching API key from:', url);
     const r = await fetch(url);
     const html = await r.text();
@@ -1653,7 +2138,7 @@ function fmBase() {
 }
 
 async function fmFetch(path) {
-  const url = fmBase() + path;
+  const url = getProxyUrl(fmBase() + path);
   try {
     return await fetch(url, {
       headers: { 'Accept': '*/*', 'Referer': fmBase() + '/file-manager' }
@@ -1768,7 +2253,7 @@ function fmSelectFile(path, name, isDir, el) {
   actions.className = 'fm-file-actions';
   actions.innerHTML =
     '<button class="fm-inline-btn fm-inline-run" onclick="event.stopPropagation(); fmRunSelected()">Run</button>' +
-    '<button class="fm-inline-btn" onclick="event.stopPropagation(); fmDownloadSelected()">Download</button>';
+    '<button class="fm-inline-btn" onclick="event.stopPropagation(); fmDownloadSelected()">⬇ Save</button>';
   el.appendChild(actions);
 }
 
@@ -1790,6 +2275,89 @@ async function fmRunSelected() {
     fmClearSelection();
   } finally {
     fmRunBusy = false;
+  }
+}
+
+// ─── Edit file from File Manager ───
+var fmEditingPath = null; // tracks currently edited device file path
+
+async function fmEditSelected() {
+  if (!fmSelectedFile) return;
+  const { path, name } = fmSelectedFile;
+  toast('Loading ' + name + '…', 'warn', 3000);
+  try {
+    // Use fmFetch which already handles cross-origin correctly
+    const r = await fmFetch('/fm/download?path=' + encodeURIComponent(path));
+    const text = await r.text();
+    // Load into editor
+    $('editor').value = text;
+    updateLines();
+    localStorage.setItem('gc_script', text);
+    $('fileName').textContent = name;
+    // Track editing path for quick-save
+    fmEditingPath = path;
+    setEditorEditMode(name, path);
+    // Navigate to editor
+    const scriptNav = document.querySelectorAll('.nav-item')[0];
+    if (scriptNav) goPage('scripts', scriptNav);
+    closeTool('filemanager');
+    toast('Editing ' + name + ' — make changes then SAVE ✓');
+  } catch (e) {
+    toast('Could not load file: ' + e.message, 'err');
+  }
+}
+
+function setEditorEditMode(name, path) {
+  // Show edit mode indicator in toolbar
+  let badge = $('editModeBadge');
+  if (!badge) {
+    badge = document.createElement('div');
+    badge.id = 'editModeBadge';
+    badge.className = 'edit-mode-badge';
+    const toolbar = document.querySelector('.editor-toolbar');
+    if (toolbar) toolbar.appendChild(badge);
+  }
+  badge.innerHTML = '<span class="edit-mode-dot"></span><span class="edit-mode-label">EDIT: ' + escHtml(name) + '</span><button class="edit-mode-clear" onclick="clearEditorEditMode()" title="Exit edit mode">✕</button>';
+  badge.style.display = 'flex';
+}
+
+function clearEditorEditMode() {
+  fmEditingPath = null;
+  const badge = $('editModeBadge');
+  if (badge) badge.style.display = 'none';
+}
+
+async function fmSaveEditBack() {
+  if (!fmEditingPath) { showSaveModal(); return; }
+  const script = $('editor').value;
+  if (!script.trim()) { toast('Editor is empty', 'warn'); return; }
+  const name = fmEditingPath.split('/').pop();
+  const folder = fmEditingPath.substring(0, fmEditingPath.lastIndexOf('/')) || '/';
+  const btn = $('runBtn'); // disable execute btn while saving
+  toast('Saving back to ' + fmEditingPath + '…', 'warn', 3000);
+  try {
+    const uploadUrl = fmBase() + '/fm/upload?path=' + encodeURIComponent(folder);
+    const crossOrigin = new URL(uploadUrl).origin !== location.origin;
+    const blob = new Blob([script], { type: 'text/plain' });
+    const file = new File([blob], name, { type: 'text/plain' });
+    const fd = new FormData();
+    fd.append('file', file, name);
+    const opts = crossOrigin
+      ? { method: 'POST', mode: 'no-cors', body: fd }
+      : { method: 'POST', headers: { 'Accept': '*/*' }, body: fd };
+    await fetch(uploadUrl, opts);
+    toast('Saved → ' + fmEditingPath + ' ✓');
+    // If the user was trying to star — re-open fav modal with path linked
+    if (window._afterSaveOpenFav) {
+      window._afterSaveOpenFav = false;
+      window._pendingFavDevicePath = fmEditingPath;
+      setTimeout(() => {
+        $('addFavModal').style.display = 'flex';
+        showFavForm(fmEditingPath);
+      }, 400);
+    }
+  } catch (e) {
+    toast('Save sent — verify in File Manager', 'warn', 4000);
   }
 }
 
@@ -2046,4 +2614,348 @@ function simulateAssistant() {
   if (!s) return;
   $('editor').value = s;
   simulatePayload();
+}
+
+// ─── Favourites Tool App ───
+var toolFavCurrentFilter = 'all';
+
+function filterToolFavs(tag, btn) {
+  toolFavCurrentFilter = tag;
+  document.querySelectorAll('#toolFavsFilter .fav-filter-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderToolFavGrid();
+}
+
+async function renderToolFavGrid() {
+  const grid = $('toolFavGrid');
+  if (!grid) return;
+  
+  grid.innerHTML = '<div class="fav-empty"><span class="spin"></span> Loading...</div>';
+  
+  const list = await loadFavsFromDeviceDirectories(toolFavCurrentFilter);
+  
+  if (!list.length) {
+    grid.innerHTML = '<div class="fav-empty">' +
+      (toolFavCurrentFilter === 'all' ? 'No favourites yet on device.' : 'No ' + toolFavCurrentFilter + ' favourites yet.') +
+      '</div>';
+    return;
+  }
+  
+  grid.innerHTML = list.map(fav => {
+    const m = TAG_META[fav.tag] || TAG_META.custom;
+    const fileName = fav.devicePath ? fav.devicePath.split('/').pop() : (fav.name || 'script.txt');
+    const pathHtml = fav.devicePath
+      ? `<div class="fav-device-path" title="${escHtml(fav.devicePath)}"><span class="fav-path-icon">📁</span><span class="fav-path-text">${escHtml(fav.devicePath)}</span></div>`
+      : '';
+    const metaText = `Device File`;
+    return `<div class="fav-card ${m.cls}" id="tool-fav-${fav.id}">
+      <div class="fav-card-top">
+        <span class="fav-tag-badge ${m.cls}">${m.emoji} ${m.label}</span>
+      </div>
+      <div class="fav-card-name" onclick="runFavDirectly('${fav.id}')">${escHtml(fileName)}</div>
+      <div class="fav-card-meta">${metaText}</div>
+      ${pathHtml}
+      <div style="display:flex;gap:6px;margin-top:auto;">
+        <button class="fav-sync-btn" onclick="event.stopPropagation();runFavDirectly('${fav.id}')" style="flex:1" title="Execute directly from memory card">⚡ Run</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ─── Password Vault Tool App ───
+var vaultEntries = [];
+
+async function initVaultApp() {
+  const grid = $('vaultGrid');
+  if (!grid) return;
+  grid.innerHTML = '<div class="fav-empty"><span class="spin"></span> Loading vault...</div>';
+  
+  try {
+    try {
+      await fmFetchPost('/fm/mkdir?path=%2FVault');
+    } catch(e) {}
+
+    const r = await fmFetch('/fm/list?path=%2FVault');
+    const text = await r.text();
+    let data;
+    try { data = JSON.parse(text); } catch { data = []; }
+    const items = Array.isArray(data) ? data : (data.files || data.entries || []);
+    
+    vaultEntries = [];
+    items.forEach(item => {
+      const isDir = item.dir === true || item.type === 'dir' || item.isDir || item.directory;
+      if (!isDir) {
+        const name = item.name || item.filename || '';
+        if (name.endsWith('.txt')) {
+          vaultEntries.push({
+            name: name.replace(/\.txt$/, ''),
+            path: '/Vault/' + name
+          });
+        }
+      }
+    });
+    
+    renderVaultGrid();
+  } catch (e) {
+    grid.innerHTML = '<div class="fav-empty">Failed to load Vault files.</div>';
+  }
+}
+
+function renderVaultGrid() {
+  const grid = $('vaultGrid');
+  if (!grid) return;
+  
+  const query = ($('vaultSearch') ? $('vaultSearch').value : '').trim().toLowerCase();
+  const filtered = vaultEntries.filter(e => e.name.toLowerCase().includes(query));
+  
+  if (!filtered.length) {
+    grid.innerHTML = '<div class="fav-empty">' + (query ? 'No matching sites found.' : 'Vault is empty. Click + Add to save a password.') + '</div>';
+    return;
+  }
+  
+  grid.innerHTML = filtered.map(item => {
+    return `<div class="fav-card tag-custom" id="vault-card-${item.name}">
+      <div class="fav-card-top">
+        <span class="fav-tag-badge tag-custom">🔐 Password</span>
+        <button class="fav-del-btn" onclick="event.stopPropagation(); deleteVaultEntry('${escHtml(item.name)}')" title="Delete" style="background:none;border:none;color:var(--dim2);cursor:pointer;font-size:0.75rem;">✕</button>
+      </div>
+      <div class="fav-card-name" onclick="runVaultEntry('${escHtml(item.name)}')" style="cursor:pointer;">${escHtml(item.name)}</div>
+      <div class="fav-card-meta">DuckyScript: ${escHtml(item.path)}</div>
+      <div style="display:flex;gap:6px;margin-top:auto;width:100%;">
+        <button class="fav-sync-btn" onclick="event.stopPropagation(); runVaultEntry('${escHtml(item.name)}')" style="flex:1;" title="Type password via USB">⚡ Type</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function filterVaultList() {
+  renderVaultGrid();
+}
+
+function showAddVaultModal() {
+  $('vaultSiteName').value = '';
+  $('vaultPassword').value = '';
+  $('addVaultModal').style.display = 'flex';
+  setTimeout(() => $('vaultSiteName') && $('vaultSiteName').focus(), 100);
+}
+
+function hideAddVaultModal() {
+  $('addVaultModal').style.display = 'none';
+}
+
+async function confirmAddVault() {
+  const site = $('vaultSiteName').value.trim();
+  const password = $('vaultPassword').value.trim();
+  
+  if (!site) { toast('Enter a site name', 'warn'); return; }
+  if (!password) { toast('Enter a password', 'warn'); return; }
+  
+  const safeSite = site.replace(/[^a-zA-Z0-9_\-]/g, '');
+  if (!safeSite) { toast('Invalid site name (use letters, numbers, _ or -)', 'warn'); return; }
+  
+  const btn = $('vaultAddConfirmBtn');
+  const oldText = btn.innerHTML;
+  btn.innerHTML = '<span class="spin"></span> Saving…';
+  btn.disabled = true;
+  
+  try {
+    const content = `DELAY 500\nSTRING ${password}`;
+    
+    try {
+      await fmFetchPost('/fm/mkdir?path=%2FVault');
+    } catch(e) {}
+    
+    const uploadUrl = fmBase() + '/fm/upload?path=%2FVault';
+    const crossOrigin = new URL(uploadUrl).origin !== location.origin;
+    const blob = new Blob([content], { type: 'text/plain' });
+    const file = new File([blob], safeSite + '.txt', { type: 'text/plain' });
+    const fd = new FormData();
+    fd.append('file', file, safeSite + '.txt');
+    
+    const opts = crossOrigin
+      ? { method: 'POST', mode: 'no-cors', body: fd }
+      : { method: 'POST', headers: { 'Accept': '*/*' }, body: fd };
+      
+    await fetch(uploadUrl, opts);
+    
+    toast(`Saved /Vault/${safeSite}.txt ✓`);
+    hideAddVaultModal();
+    initVaultApp();
+  } catch (e) {
+    toast('Save failed', 'err');
+  } finally {
+    btn.innerHTML = oldText;
+    btn.disabled = false;
+  }
+}
+
+async function deleteVaultEntry(site) {
+  if (!confirm(`Delete password for ${site}?`)) return;
+  const path = `/Vault/${site}.txt`;
+  try {
+    await fmFetchPost('/fm/delete?path=' + encodeURIComponent(path));
+    toast(`Deleted ${site} ✓`);
+    initVaultApp();
+  } catch (e) {
+    toast(`Could not delete: ${e.message}`, 'err');
+  }
+}
+
+async function runVaultEntry(site) {
+  const path = `/Vault/${site}.txt`;
+  toast(`Typing password for ${site}…`, 'warn', 3000);
+  try {
+    await fmFetchPost('/fm/run?path=' + encodeURIComponent(path));
+    toast(`Password typed ✓`);
+  } catch (e) {
+    toast(`Typing sent. Check target.`, 'warn');
+  }
+}
+
+// ─── Shortcuts Tool App ───
+var shortcutsEntries = [];
+
+async function initShortcutsApp() {
+  const grid = $('shortcutsGrid');
+  if (!grid) return;
+  grid.innerHTML = '<div class="fav-empty"><span class="spin"></span> Loading shortcuts...</div>';
+  
+  try {
+    try {
+      await fmFetchPost('/fm/mkdir?path=%2FShortcuts');
+    } catch(e) {}
+
+    const r = await fmFetch('/fm/list?path=%2FShortcuts');
+    const text = await r.text();
+    let data;
+    try { data = JSON.parse(text); } catch { data = []; }
+    const items = Array.isArray(data) ? data : (data.files || data.entries || []);
+    
+    shortcutsEntries = [];
+    items.forEach(item => {
+      const isDir = item.dir === true || item.type === 'dir' || item.isDir || item.directory;
+      if (!isDir) {
+        const name = item.name || item.filename || '';
+        if (name.endsWith('.txt')) {
+          shortcutsEntries.push({
+            name: name.replace(/\.txt$/, ''),
+            path: '/Shortcuts/' + name
+          });
+        }
+      }
+    });
+    
+    renderShortcutsGrid();
+  } catch (e) {
+    grid.innerHTML = '<div class="fav-empty">Failed to load Shortcuts.</div>';
+  }
+}
+
+function renderShortcutsGrid() {
+  const grid = $('shortcutsGrid');
+  if (!grid) return;
+  
+  const query = ($('shortcutsSearch') ? $('shortcutsSearch').value : '').trim().toLowerCase();
+  const filtered = shortcutsEntries.filter(e => e.name.toLowerCase().includes(query));
+  
+  if (!filtered.length) {
+    grid.innerHTML = '<div class="fav-empty">' + (query ? 'No matching shortcuts found.' : 'No shortcuts yet. Click + Add to create one.') + '</div>';
+    return;
+  }
+  
+  grid.innerHTML = filtered.map(item => {
+    return `<div class="fav-card tag-recon" id="shortcut-card-${item.name}">
+      <div class="fav-card-top">
+        <span class="fav-tag-badge tag-recon">⚡ Shortcut</span>
+        <button class="fav-del-btn" onclick="event.stopPropagation(); deleteShortcutEntry('${escHtml(item.name)}')" title="Delete" style="background:none;border:none;color:var(--dim2);cursor:pointer;font-size:0.75rem;">✕</button>
+      </div>
+      <div class="fav-card-name" onclick="runShortcutEntry('${escHtml(item.name)}')" style="cursor:pointer;">${escHtml(item.name)}</div>
+      <div class="fav-card-meta">DuckyScript: ${escHtml(item.path)}</div>
+      <div style="display:flex;gap:6px;margin-top:auto;width:100%;">
+        <button class="fav-sync-btn" onclick="event.stopPropagation(); runShortcutEntry('${escHtml(item.name)}')" style="flex:1;" title="Execute shortcut immediately">⚡ Run</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function filterShortcutsList() {
+  renderShortcutsGrid();
+}
+
+function showAddShortcutModal() {
+  $('shortcutName').value = '';
+  $('shortcutScript').value = '';
+  $('addShortcutModal').style.display = 'flex';
+  setTimeout(() => $('shortcutName') && $('shortcutName').focus(), 100);
+}
+
+function hideAddShortcutModal() {
+  $('addShortcutModal').style.display = 'none';
+}
+
+async function confirmAddShortcut() {
+  const name = $('shortcutName').value.trim();
+  const script = $('shortcutScript').value.trim();
+  
+  if (!name) { toast('Enter a shortcut name', 'warn'); return; }
+  if (!script) { toast('Enter DuckyScript body', 'warn'); return; }
+  
+  const safeName = name.replace(/[^a-zA-Z0-9_\-]/g, '');
+  if (!safeName) { toast('Invalid shortcut name (use letters, numbers, _ or -)', 'warn'); return; }
+  
+  const btn = $('shortcutAddConfirmBtn');
+  const oldText = btn.innerHTML;
+  btn.innerHTML = '<span class="spin"></span> Saving…';
+  btn.disabled = true;
+  
+  try {
+    try {
+      await fmFetchPost('/fm/mkdir?path=%2FShortcuts');
+    } catch(e) {}
+    
+    const uploadUrl = fmBase() + '/fm/upload?path=%2FShortcuts';
+    const crossOrigin = new URL(uploadUrl).origin !== location.origin;
+    const blob = new Blob([script], { type: 'text/plain' });
+    const file = new File([blob], safeName + '.txt', { type: 'text/plain' });
+    const fd = new FormData();
+    fd.append('file', file, safeName + '.txt');
+    
+    const opts = crossOrigin
+      ? { method: 'POST', mode: 'no-cors', body: fd }
+      : { method: 'POST', headers: { 'Accept': '*/*' }, body: fd };
+      
+    await fetch(uploadUrl, opts);
+    
+    toast(`Saved /Shortcuts/${safeName}.txt ✓`);
+    hideAddShortcutModal();
+    initShortcutsApp();
+  } catch (e) {
+    toast('Save failed', 'err');
+  } finally {
+    btn.innerHTML = oldText;
+    btn.disabled = false;
+  }
+}
+
+async function deleteShortcutEntry(name) {
+  if (!confirm(`Delete shortcut ${name}?`)) return;
+  const path = `/Shortcuts/${name}.txt`;
+  try {
+    await fmFetchPost('/fm/delete?path=' + encodeURIComponent(path));
+    toast(`Deleted ${name} ✓`);
+    initShortcutsApp();
+  } catch (e) {
+    toast(`Could not delete: ${e.message}`, 'err');
+  }
+}
+
+async function runShortcutEntry(name) {
+  const path = `/Shortcuts/${name}.txt`;
+  toast(`Running shortcut ${name}…`, 'warn', 3000);
+  try {
+    await fmFetchPost('/fm/run?path=' + encodeURIComponent(path));
+    toast(`Shortcut executed ✓`);
+  } catch (e) {
+    toast(`Shortcut sent. Check device.`, 'warn');
+  }
 }
