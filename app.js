@@ -251,6 +251,689 @@ if (edEl) {
   });
 }
 
+// ═══════════════════════════════════════════════════
+//  ⚡ AUTOCOMPLETE & AI COPILOT SUGGESTIONS
+// ═══════════════════════════════════════════════════
+const DUCKY_AUTOCOMPLETE_ITEMS = [
+  { cmd: 'DELAY', desc: 'Delay in ms', sample: 'DELAY 500' },
+  { cmd: 'STRING', desc: 'Type string', sample: 'STRING hello' },
+  { cmd: 'ENTER', desc: 'Press Enter key', sample: 'ENTER' },
+  { cmd: 'GUI', desc: 'GUI / Super key', sample: 'GUI r' },
+  { cmd: 'ALT', desc: 'Alt key modifier', sample: 'ALT F4' },
+  { cmd: 'CTRL', desc: 'Control modifier', sample: 'CTRL c' },
+  { cmd: 'SHIFT', desc: 'Shift modifier', sample: 'SHIFT ENTER' },
+  { cmd: 'TAB', desc: 'Tab key', sample: 'TAB' },
+  { cmd: 'SPACE', desc: 'Space key', sample: 'SPACE' },
+  { cmd: 'REM', desc: 'Comment (Triggers AI Copilot)', sample: 'REM Open terminal' },
+  { cmd: 'REPEAT', desc: 'Repeat last command', sample: 'REPEAT 3' },
+  { cmd: 'DEFAULTDELAY', desc: 'Set default delay', sample: 'DEFAULTDELAY 100' },
+  { cmd: 'ESCAPE', desc: 'Escape key', sample: 'ESCAPE' },
+  { cmd: 'BACKSPACE', desc: 'Backspace key', sample: 'BACKSPACE' },
+  { cmd: 'CAPSLOCK', desc: 'Caps lock key', sample: 'CAPSLOCK' },
+  { cmd: 'UP', desc: 'Up arrow key', sample: 'UP' },
+  { cmd: 'DOWN', desc: 'Down arrow key', sample: 'DOWN' },
+  { cmd: 'LEFT', desc: 'Left arrow key', sample: 'LEFT' },
+  { cmd: 'RIGHT', desc: 'Right arrow key', sample: 'RIGHT' }
+];
+
+var acActiveIdx = 0;
+var acFiltered = [];
+var aiSuggestTimer = null;
+var currentAiSuggestion = '';
+var aiSuggestLineIndex = -1;
+
+function getCursorLineInfo() {
+  const ed = $('editor');
+  if (!ed) return null;
+  const val = ed.value;
+  const pos = ed.selectionStart;
+  const lineStart = val.lastIndexOf('\n', pos - 1) + 1;
+  let lineEnd = val.indexOf('\n', pos);
+  if (lineEnd === -1) lineEnd = val.length;
+  const currentLine = val.slice(lineStart, lineEnd);
+  const textBeforeCursor = val.slice(lineStart, pos);
+  return { val, pos, lineStart, lineEnd, currentLine, textBeforeCursor };
+}
+
+function handleEditorInput() {
+  updateLines();
+  const info = getCursorLineInfo();
+  if (!info) return;
+
+  // Keyword Autocomplete check
+  const wordMatch = info.textBeforeCursor.match(/([a-zA-Z]{1,15})$/);
+  if (wordMatch && !info.textBeforeCursor.trimStart().startsWith('REM')) {
+    const query = wordMatch[1].toUpperCase();
+    acFiltered = DUCKY_AUTOCOMPLETE_ITEMS.filter(item => item.cmd.startsWith(query) && item.cmd !== query);
+    if (acFiltered.length > 0) {
+      showAcDropdown(acFiltered);
+    } else {
+      hideAcDropdown();
+    }
+  } else {
+    hideAcDropdown();
+  }
+}
+
+function showAcDropdown(items) {
+  const dd = $('acDropdown');
+  if (!dd) return;
+  acActiveIdx = 0;
+  dd.innerHTML = items.map((item, i) => `
+    <div class="ac-item ${i === 0 ? 'active' : ''}" onclick="acSelectIndex(${i})">
+      <span class="ac-item-cmd">${item.cmd}</span>
+      <span class="ac-item-desc">${item.desc}</span>
+      <span class="ac-item-hint">↵ Tab</span>
+    </div>
+  `).join('');
+  dd.style.display = 'block';
+  dd.style.bottom = '10px';
+  dd.style.left = '45px';
+}
+
+function hideAcDropdown() {
+  const dd = $('acDropdown');
+  if (dd) dd.style.display = 'none';
+  acFiltered = [];
+}
+
+function acSelectIndex(idx) {
+  if (idx < 0 || idx >= acFiltered.length) return;
+  const item = acFiltered[idx];
+  const info = getCursorLineInfo();
+  if (!info) return;
+  const ed = $('editor');
+  const wordMatch = info.textBeforeCursor.match(/([a-zA-Z]{1,15})$/);
+  if (!wordMatch) return;
+  
+  const replaceLen = wordMatch[1].length;
+  const start = info.pos - replaceLen;
+  ed.value = ed.value.slice(0, start) + item.cmd + ' ' + ed.value.slice(info.pos);
+  ed.selectionStart = ed.selectionEnd = start + item.cmd.length + 1;
+  hideAcDropdown();
+  updateLines();
+  ed.focus();
+}
+
+// Key listener for Tab / Arrow / Enter keys in editor
+function handleEditorKeyDown(e) {
+  const dd = $('acDropdown');
+  const acOpen = dd && dd.style.display === 'block';
+
+  if (acOpen) {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      acActiveIdx = (acActiveIdx + 1) % acFiltered.length;
+      updateAcActiveItem();
+      return;
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      acActiveIdx = (acActiveIdx - 1 + acFiltered.length) % acFiltered.length;
+      updateAcActiveItem();
+      return;
+    }
+    if (e.key === 'Tab' || e.key === 'Enter') {
+      e.preventDefault();
+      acSelectIndex(acActiveIdx);
+      return;
+    }
+    if (e.key === 'Escape') {
+      hideAcDropdown();
+      return;
+    }
+  }
+
+  // Trigger AI Copilot ONLY when Enter key is pressed on a complete REM line
+  if (e.key === 'Enter') {
+    const info = getCursorLineInfo();
+    if (info) {
+      const trimmed = info.currentLine.trim();
+      if (trimmed.startsWith('REM ') && trimmed.length > 5) {
+        // Trigger AI Copilot generation after line commit
+        setTimeout(() => triggerAiCopilot(trimmed), 100);
+      }
+    }
+  }
+
+  // AI Copilot acceptance with Tab key
+  const bar = $('aiSuggestBar');
+  if (bar && bar.style.display !== 'none' && currentAiSuggestion && e.key === 'Tab') {
+    e.preventDefault();
+    acAcceptAiSuggestion();
+    return;
+  }
+}
+
+function updateAcActiveItem() {
+  const items = document.querySelectorAll('.ac-item');
+  items.forEach((it, i) => {
+    if (i === acActiveIdx) it.classList.add('active');
+    else it.classList.remove('active');
+  });
+}
+
+// ─── AI Copilot Inline Engine ───
+async function triggerAiCopilot(remComment) {
+  const apiKey = GROQ_KEY || localStorage.getItem('gc_groq_key') || '';
+  if (!apiKey || apiKey.length < 5) return;
+
+  const bar = $('aiSuggestBar');
+  const loading = $('aiSuggestLoading');
+  const inner = $('aiSuggestInner');
+  const textEl = $('aiSuggestText');
+  if (!bar) return;
+
+  bar.style.display = 'block';
+  if (loading) loading.style.display = 'flex';
+  if (inner) inner.style.display = 'none';
+
+  try {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + apiKey
+      },
+      body: JSON.stringify({
+        model: GROQ_MODEL,
+        messages: [
+          {
+            role: 'system',
+            content: `You are an AI DuckyScript Copilot. User provided a comment line: "${remComment}". Generate concise DuckyScript instructions (3-8 lines max) to perform this request. Output ONLY executable DuckyScript code without markdown fences or comments.`
+          },
+          { role: 'user', content: remComment }
+        ],
+        temperature: 0.1,
+        max_tokens: 300
+      })
+    });
+    if (!res.ok) throw new Error('AI Copilot request failed');
+    const data = await res.json();
+    let script = data.choices?.[0]?.message?.content?.trim() || '';
+    script = script.replace(/```[\w]*\n?/g, '').trim();
+
+    if (script) {
+      currentAiSuggestion = script;
+      if (textEl) textEl.textContent = script.split('\n').join(' ↵ ');
+      if (loading) loading.style.display = 'none';
+      if (inner) inner.style.display = 'flex';
+    } else {
+      acDismissAiSuggestion();
+    }
+  } catch (e) {
+    acDismissAiSuggestion();
+  }
+}
+
+function acAcceptAiSuggestion() {
+  if (!currentAiSuggestion) return;
+  const ed = $('editor');
+  if (!ed) return;
+
+  const info = getCursorLineInfo();
+  if (info) {
+    const insertPos = info.lineEnd;
+    const prefix = ed.value.slice(0, insertPos);
+    const suffix = ed.value.slice(insertPos);
+    const addition = '\n' + currentAiSuggestion;
+    ed.value = prefix + addition + suffix;
+    ed.selectionStart = ed.selectionEnd = insertPos + addition.length;
+  } else {
+    ed.value += '\n' + currentAiSuggestion;
+  }
+
+  acDismissAiSuggestion();
+  updateLines();
+  saveScriptVersion('AI Copilot generated');
+  localStorage.setItem('gc_script', ed.value);
+  toast('AI Copilot applied ✓', 'ok', 1500);
+}
+
+function acDismissAiSuggestion() {
+  currentAiSuggestion = '';
+  const bar = $('aiSuggestBar');
+  if (bar) bar.style.display = 'none';
+}
+
+// ═══════════════════════════════════════════════════
+//  🕒 SCRIPT VERSIONING / AUTO-SAVE HISTORY
+// ═══════════════════════════════════════════════════
+function getScriptHistory() {
+  try {
+    return JSON.parse(localStorage.getItem('gc_script_history') || '[]');
+  } catch (e) {
+    return [];
+  }
+}
+
+var logsFolderCreated = false;
+
+async function saveVersionToDeviceLogs(script, timestampId, label) {
+  try {
+    // 1. First time: create /logs directory on memory card / SD card if not already created
+    if (!logsFolderCreated) {
+      try {
+        await fmFetchPost('/fm/mkdir?path=%2Flogs');
+        logsFolderCreated = true;
+      } catch (e) {
+        logsFolderCreated = true;
+      }
+    }
+
+    // 2. Generate new filename every time using timestamp (e.g. log_20260819_211230.txt)
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const filename = `log_${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}.txt`;
+
+    const uploadUrl = fmBase() + '/fm/upload?path=%2Flogs';
+    const crossOrigin = new URL(uploadUrl).origin !== location.origin;
+    const blob = new Blob([`REM --- GhostChip Log Snapshot --- \nREM Label: ${label}\nREM Created: ${now.toLocaleString()}\n\n${script}`], { type: 'text/plain' });
+    const file = new File([blob], filename, { type: 'text/plain' });
+    const fd = new FormData();
+    fd.append('file', file, filename);
+
+    const opts = crossOrigin
+      ? { method: 'POST', mode: 'no-cors', body: fd }
+      : { method: 'POST', headers: { 'Accept': '*/*' }, body: fd };
+
+    await fetch(uploadUrl, opts);
+  } catch (e) {
+    console.log('[GhostChip] Memory card log write skipped:', e);
+  }
+}
+
+function saveScriptVersion(label = 'Auto snapshot') {
+  const script = $('editor')?.value || '';
+  if (!script.trim()) return;
+
+  const history = getScriptHistory();
+  // Don't duplicate exact same top script
+  if (history.length > 0 && history[0].script === script) return;
+
+  const now = new Date();
+  const timestampId = Date.now();
+  const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' (' + (now.getMonth()+1) + '/' + now.getDate() + ')';
+
+  history.unshift({
+    id: timestampId,
+    timestamp: timeStr,
+    script: script,
+    label: label
+  });
+
+  // Limit to 30 snapshots in local memory
+  if (history.length > 30) history.pop();
+  localStorage.setItem('gc_script_history', JSON.stringify(history));
+
+  // Store new log file on memory card in /logs folder
+  saveVersionToDeviceLogs(script, timestampId, label);
+}
+
+function showHistoryModal() {
+  const modal = $('historyModal');
+  const list = $('historyList');
+  if (!modal || !list) return;
+
+  const history = getScriptHistory();
+  if (history.length === 0) {
+    list.innerHTML = '<div class="empty-state">No saved versions yet</div>';
+  } else {
+    list.innerHTML = history.map((item, index) => `
+      <div class="fav-item" style="padding:8px 10px;margin-bottom:6px;border:1px solid var(--b1);border-radius:6px;background:var(--s2);display:flex;align-items:center;justify-content:space-between;gap:8px" onclick="restoreVersion(${index})">
+        <div style="min-width:0;flex:1">
+          <div style="font-size:0.75rem;font-weight:700;color:var(--white);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(item.label)}</div>
+          <div style="font-size:0.62rem;color:var(--dim2);font-family:var(--mono)">${escHtml(item.timestamp)} • ${item.script.split('\n').length} lines</div>
+        </div>
+        <button class="btn btn-ghost sm" style="padding:2px 8px;font-size:0.65rem">Restore ↵</button>
+      </div>
+    `).join('');
+  }
+
+  modal.style.display = 'flex';
+}
+
+function hideHistoryModal() {
+  const modal = $('historyModal');
+  if (modal) modal.style.display = 'none';
+}
+
+function restoreVersion(index) {
+  const history = getScriptHistory();
+  if (index < 0 || index >= history.length) return;
+  const item = history[index];
+  $('editor').value = item.script;
+  updateLines();
+  localStorage.setItem('gc_script', item.script);
+  hideHistoryModal();
+  toast('Restored version: ' + item.label + ' ✓', 'ok', 2000);
+}
+
+function clearHistoryVersions() {
+  if (!confirm('Clear all version history?')) return;
+  localStorage.removeItem('gc_script_history');
+  showHistoryModal();
+  toast('History cleared', 'ok');
+}
+
+// ═══════════════════════════════════════════════════
+//  🔴 ACTION / MACRO RECORDER
+// ═══════════════════════════════════════════════════
+var isRecordingMacro = false;
+var macroEvents = [];
+var macroLastTime = 0;
+
+function initMacroRecorder() {
+  renderMacroStream();
+}
+
+var recActiveMods = { shift: false, ctrl: false, alt: false, gui: false };
+var recCapsState = 0; // 0 = lowercase, 1 = single shift, 2 = caps lock ON
+var lastRecCapsTapTime = 0;
+
+function recToggleCaps() {
+  const now = Date.now();
+  if (now - lastRecCapsTapTime < 350) {
+    // Instant double tap -> Caps Lock Locked ON
+    recCapsState = 2;
+  } else {
+    // Single tap -> toggle between Shift (1) and Off (0)
+    recCapsState = (recCapsState === 0) ? 1 : 0;
+  }
+  lastRecCapsTapTime = now;
+  updateRecKeyCasing();
+}
+
+function updateRecKeyCasing() {
+  const isCapsOn = recCapsState > 0;
+  const capsEl = $('recCaps');
+  const shiftEl = $('recShift');
+
+  if (capsEl) {
+    capsEl.classList.toggle('active', recCapsState === 2);
+    capsEl.textContent = recCapsState === 2 ? 'CAPS 🔒' : 'CAPS';
+  }
+  if (shiftEl) {
+    shiftEl.classList.toggle('active', recCapsState === 1);
+  }
+
+  // Update visual key labels on Action Recorder letter buttons
+  document.querySelectorAll('.rec-letter').forEach(btn => {
+    const origKey = btn.getAttribute('data-key') || btn.textContent.toLowerCase();
+    btn.textContent = isCapsOn ? origKey.toUpperCase() : origKey.toLowerCase();
+  });
+}
+
+function sendHidAction(action) {
+  if (!action) return;
+  let command = action;
+  if (action.length === 1 && !/\s/.test(action)) {
+    command = 'STRING ' + action;
+  }
+  deviceFetch('/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: 'duckyscript=' + encodeURIComponent(command)
+  }).catch(() => {});
+}
+
+const SHIFT_SYMBOL_MAP = {
+  '`': '~', '1': '!', '2': '@', '3': '#', '4': '$', '5': '%', '6': '^', '7': '&', '8': '*', '9': '(', '0': ')',
+  '-': '_', '=': '+', '[': '{', ']': '}', '\\': '|', ';': ':', "'": '"', ',': '<', '.': '>', '/': '?'
+};
+
+function recordVirtualKey(keyStr) {
+  if (!isRecordingMacro) {
+    return;
+  }
+
+  const modKey = keyStr.toLowerCase();
+  // Check if keyStr is a modifier key (GUI, CTRL, ALT, SHIFT)
+  if (['gui', 'ctrl', 'alt', 'shift'].includes(modKey)) {
+    recActiveMods[modKey] = !recActiveMods[modKey];
+    if (modKey === 'shift') {
+      recCapsState = recActiveMods.shift ? 1 : 0;
+      updateRecKeyCasing();
+    }
+    updateRecModVisuals();
+    return;
+  }
+
+  const now = Date.now();
+  const delay = Math.min(Math.max(now - macroLastTime, 50), 4000);
+  macroLastTime = now;
+
+  const isShiftActive = (recCapsState > 0 || recActiveMods.shift);
+
+  let processedKey = keyStr;
+  if (isShiftActive && SHIFT_SYMBOL_MAP[keyStr]) {
+    processedKey = SHIFT_SYMBOL_MAP[keyStr];
+  } else if (keyStr.length === 1 && /[a-zA-Z]/.test(keyStr)) {
+    processedKey = (recCapsState > 0 || recActiveMods.shift) ? keyStr.toUpperCase() : keyStr.toLowerCase();
+  }
+
+  let mods = [];
+  if (recActiveMods.ctrl) mods.push('CTRL');
+  if (recActiveMods.alt) mods.push('ALT');
+  if (recActiveMods.gui) mods.push('GUI');
+
+  let finalAction = '';
+  if (mods.length > 0) {
+    const mainKey = (processedKey.length === 1 ? processedKey : processedKey.toUpperCase());
+    finalAction = mods.join(' ') + ' ' + mainKey;
+    // Reset modifiers after combo emission
+    recActiveMods = { shift: false, ctrl: false, alt: false, gui: false };
+    updateRecModVisuals();
+  } else {
+    finalAction = processedKey;
+  }
+
+  // Single character shift auto-reverts to lowercase
+  if (recCapsState === 1 && keyStr.length === 1) {
+    recCapsState = 0;
+    recActiveMods.shift = false;
+    updateRecKeyCasing();
+    updateRecModVisuals();
+  }
+
+  macroEvents.push({
+    key: finalAction,
+    delay: delay,
+    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+  });
+
+  renderMacroStream();
+}
+
+function updateRecModVisuals() {
+  const panel = $('tool-recorder');
+  if (!panel) return;
+  ['shift', 'ctrl', 'alt', 'gui'].forEach(m => {
+    panel.querySelectorAll(`.kb-key.mod`).forEach(btn => {
+      if (btn.textContent.toLowerCase().includes(m)) {
+        btn.classList.toggle('active', recActiveMods[m]);
+      }
+    });
+  });
+}
+
+function startMacroRecord() {
+  window.removeEventListener('keydown', captureMacroKey);
+  isRecordingMacro = true;
+  macroEvents = [];
+  macroLastTime = Date.now();
+  $('recStartBtn').disabled = true;
+  $('recStopBtn').disabled = false;
+  $('recPlayBtn').disabled = true;
+  $('recDot').classList.add('run');
+  $('recStatusLabel').textContent = 'Status: Recording...';
+  
+  window.addEventListener('keydown', captureMacroKey);
+  renderMacroStream();
+  toast('Macro recording started 🔴', 'ok');
+}
+
+function stopMacroRecord() {
+  isRecordingMacro = false;
+  window.removeEventListener('keydown', captureMacroKey);
+  $('recStartBtn').disabled = false;
+  $('recStopBtn').disabled = true;
+  $('recPlayBtn').disabled = macroEvents.length === 0;
+  $('recDot').classList.remove('run');
+  $('recStatusLabel').textContent = 'Status: Stopped (' + macroEvents.length + ' events recorded)';
+  toast('Recording stopped ■', 'ok');
+}
+
+function captureMacroKey(e) {
+  if (!isRecordingMacro) return;
+  if (e.repeat) return;
+
+  // Ignore typing inside text inputs / textareas
+  const tag = e.target?.tagName?.toLowerCase();
+  if (tag === 'input' || tag === 'textarea') return;
+
+  // Standalone modifier press - wait for main key
+  if (['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) {
+    return;
+  }
+
+  const now = Date.now();
+  const delay = Math.min(Math.max(now - macroLastTime, 50), 4000);
+  macroLastTime = now;
+
+  let mods = [];
+  if (e.ctrlKey) mods.push('CTRL');
+  if (e.altKey) mods.push('ALT');
+  if (e.shiftKey) mods.push('SHIFT');
+  if (e.metaKey) mods.push('GUI');
+
+  let keyName = e.key;
+  if (keyName === ' ') keyName = 'SPACE';
+  else if (keyName === 'Enter') keyName = 'ENTER';
+  else if (keyName === 'Backspace') keyName = 'BACKSPACE';
+  else if (keyName === 'Tab') keyName = 'TAB';
+  else if (keyName === 'Escape') keyName = 'ESCAPE';
+
+  let finalAction = '';
+  if (mods.length > 0) {
+    const mainKey = (keyName.length === 1 ? keyName.toLowerCase() : keyName.toUpperCase());
+    finalAction = mods.join(' ') + ' ' + mainKey;
+  } else {
+    finalAction = keyName;
+  }
+
+  macroEvents.push({
+    key: finalAction,
+    delay: delay,
+    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+  });
+
+  renderMacroStream();
+}
+
+function renderMacroStream() {
+  const stream = $('recStream');
+  if (!stream) return;
+  if (macroEvents.length === 0) {
+    stream.innerHTML = '<span style="color:var(--dim2)">// Actions will appear here...</span>';
+    return;
+  }
+  stream.innerHTML = macroEvents.map((ev, i) => `
+    <div style="display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid rgba(255,255,255,0.02)">
+      <span><span style="color:var(--dim2)">[${ev.delay}ms]</span> <b style="color:var(--g)">${escHtml(ev.key)}</b></span>
+      <span style="color:var(--dim2);font-size:0.65rem">#${i+1}</span>
+    </div>
+  `).join('');
+  stream.scrollTop = stream.scrollHeight;
+}
+
+async function playMacroRecord() {
+  if (macroEvents.length === 0) return;
+  toast('Replaying recorded macro payload...', 'ok', 2000);
+  let idx = 0;
+  
+  async function step() {
+    if (idx >= macroEvents.length) {
+      toast('Macro playback completed ✓', 'ok', 2000);
+      return;
+    }
+    const ev = macroEvents[idx++];
+    toast(`Executing: ${ev.key}`, 'ok', 1000);
+    
+    // Execute live HID keystroke command on target device
+    sendHidAction(ev.key);
+    
+    const nextDelay = idx < macroEvents.length ? Math.max(macroEvents[idx].delay, 100) : 500;
+    setTimeout(step, Math.min(nextDelay, 3000));
+  }
+  
+  step();
+}
+
+function clearMacroRecord() {
+  macroEvents = [];
+  recActiveMods = { shift: false, ctrl: false, alt: false, gui: false };
+  updateRecModVisuals();
+  renderMacroStream();
+  $('recPlayBtn').disabled = true;
+  $('recStatusLabel').textContent = 'Status: Idle';
+  toast('Recorder cleared');
+}
+
+function exportMacroToEditor() {
+  if (macroEvents.length === 0) {
+    toast('No actions recorded to export', 'warn');
+    return;
+  }
+
+  let dsLines = ['REM --- Recorded Macro Payload ---'];
+  let currentString = '';
+
+  macroEvents.forEach(ev => {
+    if (ev.delay > 300) {
+      if (currentString) {
+        dsLines.push('STRING ' + currentString);
+        currentString = '';
+      }
+      dsLines.push('DELAY ' + ev.delay);
+    }
+
+    const isSingleChar = ev.key.length === 1 && !/\s/.test(ev.key);
+
+    if (isSingleChar) {
+      currentString += ev.key;
+    } else {
+      if (currentString) {
+        dsLines.push('STRING ' + currentString);
+        currentString = '';
+      }
+      dsLines.push(ev.key);
+    }
+  });
+
+  if (currentString) {
+    dsLines.push('STRING ' + currentString);
+  }
+
+  const generatedDs = dsLines.join('\n');
+  $('editor').value = generatedDs;
+  updateLines();
+  saveScriptVersion('Recorded Macro Export');
+  localStorage.setItem('gc_script', generatedDs);
+  
+  closeAllTools();
+  goPage('scripts', document.querySelectorAll('.nav-item')[0]);
+  toast('Macro exported to DuckyScript Editor ✓', 'ok', 2000);
+}
+
+// Wire up events on editor textarea
+const edArea = $('editor');
+if (edArea) {
+  edArea.addEventListener('input', handleEditorInput);
+  edArea.addEventListener('keydown', handleEditorKeyDown);
+  edArea.addEventListener('click', hideAcDropdown);
+}
+
 // ─── Presets ───
 function togglePresets() {
   $('presetsDrawer').classList.toggle('open');
@@ -493,27 +1176,27 @@ async function confirmAddFav() {
 
 // ─── Render the grid ───
 const TAG_META = {
-  attack:  { emoji: '⚔',  label: 'Attack',  cls: 'tag-attack'  },
-  recon:   { emoji: '🔍', label: 'Recon',   cls: 'tag-recon'   },
+  attack: { emoji: '⚔', label: 'Attack', cls: 'tag-attack' },
+  recon: { emoji: '🔍', label: 'Recon', cls: 'tag-recon' },
   utility: { emoji: '🔧', label: 'Utility', cls: 'tag-utility' },
-  custom:  { emoji: '✦',  label: 'Custom',  cls: 'tag-custom'  },
+  custom: { emoji: '✦', label: 'Custom', cls: 'tag-custom' },
 };
 
 async function renderFavGrid() {
   const grid = $('favGrid');
   if (!grid) return;
-  
+
   grid.innerHTML = '<div class="fav-empty"><span class="spin"></span> Loading...</div>';
-  
+
   const list = await loadFavsFromDeviceDirectories(favCurrentFilter);
-  
+
   if (!list.length) {
     grid.innerHTML = '<div class="fav-empty">' +
       (favCurrentFilter === 'all' ? 'No favourites yet on device.' : 'No ' + favCurrentFilter + ' favourites yet.') +
       '</div>';
     return;
   }
-  
+
   grid.innerHTML = list.map(fav => {
     const m = TAG_META[fav.tag] || TAG_META.custom;
     const fileName = fav.devicePath ? fav.devicePath.split('/').pop() : (fav.name || 'script.txt');
@@ -562,14 +1245,14 @@ async function runFavDirectly(id) {
 function favsLoad() {
   return [];
 }
-function favsSave() {}
-function exportFavs() {}
-function importFavs() {}
-function favTouchStart() {}
-function favTouchEnd() {}
+function favsSave() { }
+function exportFavs() { }
+function importFavs() { }
+function favTouchStart() { }
+function favTouchEnd() { }
 
 // ─── Init: render on load ───
-(function() {
+(function () {
   function initFavs() {
     renderFavGrid();
   }
@@ -616,7 +1299,7 @@ function updateSavePathPreview() {
 }
 
 // Wire up live preview updates on filename input
-(function() {
+(function () {
   function setupSavePreviews() {
     const fn = $('saveFileName');
     if (fn) fn.addEventListener('input', updateSavePathPreview);
@@ -778,6 +1461,7 @@ function terminalReset() {
 async function runScript() {
   const script = $('editor').value.trim();
   if (!script) { toast('No script to execute', 'warn'); return; }
+  saveScriptVersion('Before execution');
   if (isRunning) return;
   isRunning = true;
   const btn = $('runBtn');
@@ -2077,31 +2761,105 @@ function tpClear() {
 //  LIVE KEYBOARD
 // ═══════════════════════════════════════════════════
 
+var kbCapsState = 0; // 0 = lowercase, 1 = single shift, 2 = caps lock ON
+var lastCapsTapTime = 0;
+
+function kbToggleCaps() {
+  const now = Date.now();
+  if (now - lastCapsTapTime < 350) {
+    // Instant double tap -> Caps Lock Locked ON
+    kbCapsState = 2;
+  } else {
+    // Single tap -> toggle between Shift (1) and Off (0)
+    kbCapsState = (kbCapsState === 0) ? 1 : 0;
+  }
+  lastCapsTapTime = now;
+  updateKeyboardKeyCasing();
+}
+
+function updateKeyboardKeyCasing() {
+  const isCapsOn = kbCapsState > 0;
+  const capsEl = $('kbCaps');
+  const shiftEl = $('kbShift');
+
+  if (capsEl) {
+    capsEl.classList.toggle('active', kbCapsState === 2);
+    capsEl.textContent = kbCapsState === 2 ? 'CAPS 🔒' : 'CAPS';
+  }
+  if (shiftEl) {
+    shiftEl.classList.toggle('active', kbCapsState === 1);
+  }
+
+  // Update visual key labels on letter buttons
+  document.querySelectorAll('.kb-letter').forEach(btn => {
+    const origKey = btn.getAttribute('data-key') || btn.textContent.toLowerCase();
+    btn.textContent = isCapsOn ? origKey.toUpperCase() : origKey.toLowerCase();
+  });
+}
+
 function kbToggle(mod) {
   kbActiveMods[mod] = !kbActiveMods[mod];
+  if (mod === 'shift') {
+    // Sync kbCapsState with shift state (1 = shift on, 0 = shift off)
+    if (kbActiveMods.shift) {
+      kbCapsState = 1;
+    } else {
+      // Only clear if not in caps lock mode (state 2)
+      if (kbCapsState === 1) kbCapsState = 0;
+    }
+    updateKeyboardKeyCasing();
+  }
   const el = $(`kb${mod.charAt(0).toUpperCase() + mod.slice(1)}`);
   if (el) el.classList.toggle('active', kbActiveMods[mod]);
 }
 
 function kbKey(key) {
   let script = '';
+  // Snapshot shift state at the moment of key press
+  const shiftOn = kbActiveMods.shift || (kbCapsState > 0);
+
+  let processedKey = key;
+  if (shiftOn && SHIFT_SYMBOL_MAP[key]) {
+    // Number/symbol key → shifted symbol
+    processedKey = SHIFT_SYMBOL_MAP[key];
+  } else if (key.length === 1 && /[a-zA-Z]/.test(key)) {
+    // Letter key → uppercase or lowercase
+    processedKey = shiftOn ? key.toUpperCase() : key.toLowerCase();
+  }
+
   let mods = [];
   if (kbActiveMods.ctrl) mods.push('CTRL');
   if (kbActiveMods.alt) mods.push('ALT');
-  if (kbActiveMods.shift) mods.push('SHIFT');
   if (kbActiveMods.gui) mods.push('GUI');
 
   if (mods.length > 0) {
-    script = mods.join(' ') + ' ' + (key.length === 1 ? key.toLowerCase() : key.toUpperCase());
+    script = mods.join(' ') + ' ' + (processedKey.length === 1 ? processedKey : processedKey.toUpperCase());
+    // Reset all modifiers after combo
+    kbActiveMods = { shift: false, ctrl: false, alt: false, gui: false };
+    kbCapsState = 0;
+    updateKeyboardKeyCasing();
+    ['Ctrl', 'Alt', 'Shift', 'Gui'].forEach(m => {
+      const el = $(`kb${m}`);
+      if (el) el.classList.remove('active');
+    });
   } else {
-    if (key.length === 1) {
-      script = 'STRING ' + key;
+    if (processedKey.length === 1) {
+      script = 'STRING ' + processedKey;
     } else {
-      script = key.toUpperCase();
+      script = processedKey.toUpperCase();
     }
   }
 
-  $('kbStatus').textContent = 'Sending: ' + script;
+  // Single-tap shift auto-reverts after one keypress (not caps lock mode=2)
+  if (kbCapsState === 1) {
+    kbCapsState = 0;
+    kbActiveMods.shift = false;
+    updateKeyboardKeyCasing();
+    const el = $('kbShift');
+    if (el) el.classList.remove('active');
+  }
+
+  $('kbStatus').textContent = 'Sending: ' + script + (shiftOn ? ' [SHIFT]' : '');
   deviceFetch('/', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -2629,18 +3387,18 @@ function filterToolFavs(tag, btn) {
 async function renderToolFavGrid() {
   const grid = $('toolFavGrid');
   if (!grid) return;
-  
+
   grid.innerHTML = '<div class="fav-empty"><span class="spin"></span> Loading...</div>';
-  
+
   const list = await loadFavsFromDeviceDirectories(toolFavCurrentFilter);
-  
+
   if (!list.length) {
     grid.innerHTML = '<div class="fav-empty">' +
       (toolFavCurrentFilter === 'all' ? 'No favourites yet on device.' : 'No ' + toolFavCurrentFilter + ' favourites yet.') +
       '</div>';
     return;
   }
-  
+
   grid.innerHTML = list.map(fav => {
     const m = TAG_META[fav.tag] || TAG_META.custom;
     const fileName = fav.devicePath ? fav.devicePath.split('/').pop() : (fav.name || 'script.txt');
@@ -2669,18 +3427,18 @@ async function initVaultApp() {
   const grid = $('vaultGrid');
   if (!grid) return;
   grid.innerHTML = '<div class="fav-empty"><span class="spin"></span> Loading vault...</div>';
-  
+
   try {
     try {
       await fmFetchPost('/fm/mkdir?path=%2FVault');
-    } catch(e) {}
+    } catch (e) { }
 
     const r = await fmFetch('/fm/list?path=%2FVault');
     const text = await r.text();
     let data;
     try { data = JSON.parse(text); } catch { data = []; }
     const items = Array.isArray(data) ? data : (data.files || data.entries || []);
-    
+
     vaultEntries = [];
     items.forEach(item => {
       const isDir = item.dir === true || item.type === 'dir' || item.isDir || item.directory;
@@ -2694,7 +3452,7 @@ async function initVaultApp() {
         }
       }
     });
-    
+
     renderVaultGrid();
   } catch (e) {
     grid.innerHTML = '<div class="fav-empty">Failed to load Vault files.</div>';
@@ -2704,15 +3462,15 @@ async function initVaultApp() {
 function renderVaultGrid() {
   const grid = $('vaultGrid');
   if (!grid) return;
-  
+
   const query = ($('vaultSearch') ? $('vaultSearch').value : '').trim().toLowerCase();
   const filtered = vaultEntries.filter(e => e.name.toLowerCase().includes(query));
-  
+
   if (!filtered.length) {
     grid.innerHTML = '<div class="fav-empty">' + (query ? 'No matching sites found.' : 'Vault is empty. Click + Add to save a password.') + '</div>';
     return;
   }
-  
+
   grid.innerHTML = filtered.map(item => {
     return `<div class="fav-card tag-custom" id="vault-card-${item.name}">
       <div class="fav-card-top">
@@ -2746,38 +3504,38 @@ function hideAddVaultModal() {
 async function confirmAddVault() {
   const site = $('vaultSiteName').value.trim();
   const password = $('vaultPassword').value.trim();
-  
+
   if (!site) { toast('Enter a site name', 'warn'); return; }
   if (!password) { toast('Enter a password', 'warn'); return; }
-  
+
   const safeSite = site.replace(/[^a-zA-Z0-9_\-]/g, '');
   if (!safeSite) { toast('Invalid site name (use letters, numbers, _ or -)', 'warn'); return; }
-  
+
   const btn = $('vaultAddConfirmBtn');
   const oldText = btn.innerHTML;
   btn.innerHTML = '<span class="spin"></span> Saving…';
   btn.disabled = true;
-  
+
   try {
     const content = `DELAY 500\nSTRING ${password}`;
-    
+
     try {
       await fmFetchPost('/fm/mkdir?path=%2FVault');
-    } catch(e) {}
-    
+    } catch (e) { }
+
     const uploadUrl = fmBase() + '/fm/upload?path=%2FVault';
     const crossOrigin = new URL(uploadUrl).origin !== location.origin;
     const blob = new Blob([content], { type: 'text/plain' });
     const file = new File([blob], safeSite + '.txt', { type: 'text/plain' });
     const fd = new FormData();
     fd.append('file', file, safeSite + '.txt');
-    
+
     const opts = crossOrigin
       ? { method: 'POST', mode: 'no-cors', body: fd }
       : { method: 'POST', headers: { 'Accept': '*/*' }, body: fd };
-      
+
     await fetch(uploadUrl, opts);
-    
+
     toast(`Saved /Vault/${safeSite}.txt ✓`);
     hideAddVaultModal();
     initVaultApp();
@@ -2819,18 +3577,18 @@ async function initShortcutsApp() {
   const grid = $('shortcutsGrid');
   if (!grid) return;
   grid.innerHTML = '<div class="fav-empty"><span class="spin"></span> Loading shortcuts...</div>';
-  
+
   try {
     try {
       await fmFetchPost('/fm/mkdir?path=%2FShortcuts');
-    } catch(e) {}
+    } catch (e) { }
 
     const r = await fmFetch('/fm/list?path=%2FShortcuts');
     const text = await r.text();
     let data;
     try { data = JSON.parse(text); } catch { data = []; }
     const items = Array.isArray(data) ? data : (data.files || data.entries || []);
-    
+
     shortcutsEntries = [];
     items.forEach(item => {
       const isDir = item.dir === true || item.type === 'dir' || item.isDir || item.directory;
@@ -2844,7 +3602,7 @@ async function initShortcutsApp() {
         }
       }
     });
-    
+
     renderShortcutsGrid();
   } catch (e) {
     grid.innerHTML = '<div class="fav-empty">Failed to load Shortcuts.</div>';
@@ -2854,15 +3612,15 @@ async function initShortcutsApp() {
 function renderShortcutsGrid() {
   const grid = $('shortcutsGrid');
   if (!grid) return;
-  
+
   const query = ($('shortcutsSearch') ? $('shortcutsSearch').value : '').trim().toLowerCase();
   const filtered = shortcutsEntries.filter(e => e.name.toLowerCase().includes(query));
-  
+
   if (!filtered.length) {
     grid.innerHTML = '<div class="fav-empty">' + (query ? 'No matching shortcuts found.' : 'No shortcuts yet. Click + Add to create one.') + '</div>';
     return;
   }
-  
+
   grid.innerHTML = filtered.map(item => {
     return `<div class="fav-card tag-recon" id="shortcut-card-${item.name}">
       <div class="fav-card-top">
@@ -2896,36 +3654,36 @@ function hideAddShortcutModal() {
 async function confirmAddShortcut() {
   const name = $('shortcutName').value.trim();
   const script = $('shortcutScript').value.trim();
-  
+
   if (!name) { toast('Enter a shortcut name', 'warn'); return; }
   if (!script) { toast('Enter DuckyScript body', 'warn'); return; }
-  
+
   const safeName = name.replace(/[^a-zA-Z0-9_\-]/g, '');
   if (!safeName) { toast('Invalid shortcut name (use letters, numbers, _ or -)', 'warn'); return; }
-  
+
   const btn = $('shortcutAddConfirmBtn');
   const oldText = btn.innerHTML;
   btn.innerHTML = '<span class="spin"></span> Saving…';
   btn.disabled = true;
-  
+
   try {
     try {
       await fmFetchPost('/fm/mkdir?path=%2FShortcuts');
-    } catch(e) {}
-    
+    } catch (e) { }
+
     const uploadUrl = fmBase() + '/fm/upload?path=%2FShortcuts';
     const crossOrigin = new URL(uploadUrl).origin !== location.origin;
     const blob = new Blob([script], { type: 'text/plain' });
     const file = new File([blob], safeName + '.txt', { type: 'text/plain' });
     const fd = new FormData();
     fd.append('file', file, safeName + '.txt');
-    
+
     const opts = crossOrigin
       ? { method: 'POST', mode: 'no-cors', body: fd }
       : { method: 'POST', headers: { 'Accept': '*/*' }, body: fd };
-      
+
     await fetch(uploadUrl, opts);
-    
+
     toast(`Saved /Shortcuts/${safeName}.txt ✓`);
     hideAddShortcutModal();
     initShortcutsApp();

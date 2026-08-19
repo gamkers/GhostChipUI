@@ -43,6 +43,26 @@
   </div>
 </div>
 
+<!-- ══ VERSION HISTORY MODAL ══ -->
+<div id="historyModal" class="modal-overlay" style="display:none" onclick="if(event.target===this)hideHistoryModal()">
+  <div class="modal-card">
+    <div class="modal-header" style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+      <div class="modal-icon" style="margin:0;font-size:1.4rem">🕒</div>
+      <div>
+        <h3 class="modal-title" style="margin:0">Script History</h3>
+        <div style="font-size:0.7rem;color:var(--dim2)">Saved snapshots & revisions</div>
+      </div>
+    </div>
+    <div id="historyList" class="history-list" style="max-height:260px;overflow-y:auto;margin-bottom:14px">
+      <div class="empty-state">No saved versions yet</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="clearHistoryVersions()">Clear History</button>
+      <button class="btn btn-primary" onclick="hideHistoryModal()">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ TOAST CONTAINER ══ -->
 <div id="toasts"></div>
 
@@ -215,19 +235,38 @@
             <span class="line-count" id="lineCount">0 lines</span>
           </div>
           <div class="toolbar-actions">
+            <button class="icon-btn sm history-btn" id="historyBtn" onclick="showHistoryModal()" title="Version History">🕒</button>
             <button class="icon-btn sm star-btn" id="starBtn" onclick="showAddFavModal()" title="Add to Favourites">⭐</button>
             <button class="icon-btn sm" onclick="document.getElementById('fileIn').click()" title="Open">OPEN</button>
             <button class="icon-btn sm save-btn" onclick="showSaveModal()" title="Save to Device">SAVE</button>
             <button class="icon-btn sm" onclick="clearEditor()" title="Clear">✕</button>
           </div>
         </div>
-        <div class="editor-wrap">
+        <div class="editor-wrap" style="position:relative">
           <div class="line-nums" id="lineNums"><span>1</span></div>
           <textarea id="editor" spellcheck="false" placeholder="REM Your DuckyScript here...&#10;DELAY 500&#10;GUI r&#10;STRING notepad&#10;ENTER"></textarea>
           <pre class="editor-highlight" id="editorHighlight" aria-hidden="true"><code></code></pre>
+          <!-- Autocomplete Dropdown -->
+          <div id="acDropdown" class="ac-dropdown" style="display:none"></div>
+        </div>
+        <!-- AI Copilot suggestion bar -->
+        <div id="aiSuggestBar" class="ai-suggest-bar" style="display:none">
+          <div class="ai-suggest-inner">
+            <span class="ai-suggest-icon">⚡</span>
+            <span class="ai-suggest-label">AI</span>
+            <span id="aiSuggestText" class="ai-suggest-text"></span>
+            <div class="ai-suggest-actions">
+              <button class="ai-suggest-btn accept" id="aiSuggestAccept" onclick="acAcceptAiSuggestion()">Tab ↵ Accept</button>
+              <button class="ai-suggest-btn dismiss" onclick="acDismissAiSuggestion()">✕</button>
+            </div>
+          </div>
+          <div id="aiSuggestLoading" class="ai-suggest-loading" style="display:none">
+            <span class="ai-suggest-spinner"></span><span>Generating…</span>
+          </div>
         </div>
         <input type="file" id="fileIn" accept=".txt,.ducky,.ds" style="display:none" onchange="openFile(event)">
       </div>
+
 
       <!-- Live Terminal -->
       <div class="card terminal-card">
@@ -370,6 +409,7 @@
         <button class="tool-app" onclick="openTool('favourites'); renderToolFavGrid()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><span>Favourites</span></button>
         <button class="tool-app" onclick="openTool('vault'); initVaultApp()"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><span>Vault</span></button>
         <button class="tool-app" onclick="openTool('shortcuts'); initShortcutsApp()"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg><span>Shortcuts</span></button>
+        <button class="tool-app" onclick="openTool('recorder'); initMacroRecorder()"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg><span>Action Recorder</span></button>
       </div>
       <div class="tool-panel" id="tool-constructor">
         <div class="tool-panel-head"><h3>Script Builder</h3><button class="tool-back" onclick="closeTool('constructor')">Back</button></div>
@@ -573,69 +613,111 @@
       </div>
       <div class="tool-panel" id="tool-keyboard">
         <div class="tool-panel-head"><h3>Live Keyboard</h3><button class="tool-back" onclick="closeTool('keyboard')">Back</button></div>
-        
-        <div class="card">
-          <div class="card-head">Quick Macros</div>
-          <div class="macro-grid">
-            <button class="macro-btn" onclick="kbMacro('GUI r')">Run Dialog</button>
-            <button class="macro-btn" onclick="kbMacro('GUI SPACE')">Spotlight</button>
-            <button class="macro-btn" onclick="kbMacro('GUI x')">Win + X</button>
-            <button class="macro-btn" onclick="kbMacro('ENTER')">Enter</button>
-            <button class="macro-btn" onclick="kbMacro('CTRL SHIFT ESC')">Task Mgr</button>
-            <button class="macro-btn" onclick="kbMacro('ALT F4')">Close Win</button>
-          </div>
-        </div>
 
         <div class="keyboard-wrap">
+
+          <!-- F-key row -->
           <div class="kb-row">
-            <button class="kb-key" onclick="kbKey('q')">Q</button>
-            <button class="kb-key" onclick="kbKey('w')">W</button>
-            <button class="kb-key" onclick="kbKey('e')">E</button>
-            <button class="kb-key" onclick="kbKey('r')">R</button>
-            <button class="kb-key" onclick="kbKey('t')">T</button>
-            <button class="kb-key" onclick="kbKey('y')">Y</button>
-            <button class="kb-key" onclick="kbKey('u')">U</button>
-            <button class="kb-key" onclick="kbKey('i')">I</button>
-            <button class="kb-key" onclick="kbKey('o')">O</button>
-            <button class="kb-key" onclick="kbKey('p')">P</button>
+            <button class="kb-key kb-fn" onclick="kbKey('ESC')">ESC</button>
+            <div class="kb-gap"></div>
+            <button class="kb-key kb-fn" onclick="kbKey('F1')">F1</button>
+            <button class="kb-key kb-fn" onclick="kbKey('F2')">F2</button>
+            <button class="kb-key kb-fn" onclick="kbKey('F3')">F3</button>
+            <button class="kb-key kb-fn" onclick="kbKey('F4')">F4</button>
+            <div class="kb-gap"></div>
+            <button class="kb-key kb-fn" onclick="kbKey('F5')">F5</button>
+            <button class="kb-key kb-fn" onclick="kbKey('F6')">F6</button>
+            <button class="kb-key kb-fn" onclick="kbKey('F7')">F7</button>
+            <button class="kb-key kb-fn" onclick="kbKey('F8')">F8</button>
+            <div class="kb-gap"></div>
+            <button class="kb-key kb-fn" onclick="kbKey('F9')">F9</button>
+            <button class="kb-key kb-fn" onclick="kbKey('F10')">F10</button>
+            <button class="kb-key kb-fn" onclick="kbKey('F11')">F11</button>
+            <button class="kb-key kb-fn" onclick="kbKey('F12')">F12</button>
           </div>
+
+          <!-- Number row -->
           <div class="kb-row">
-            <button class="kb-key" onclick="kbKey('a')">A</button>
-            <button class="kb-key" onclick="kbKey('s')">S</button>
-            <button class="kb-key" onclick="kbKey('d')">D</button>
-            <button class="kb-key" onclick="kbKey('f')">F</button>
-            <button class="kb-key" onclick="kbKey('g')">G</button>
-            <button class="kb-key" onclick="kbKey('h')">H</button>
-            <button class="kb-key" onclick="kbKey('j')">J</button>
-            <button class="kb-key" onclick="kbKey('k')">K</button>
-            <button class="kb-key" onclick="kbKey('l')">L</button>
+            <button class="kb-key kb-num" onclick="kbKey('`')"><span class="kb-sub">~</span>` </button>
+            <button class="kb-key kb-num" onclick="kbKey('1')"><span class="kb-sub">!</span>1</button>
+            <button class="kb-key kb-num" onclick="kbKey('2')"><span class="kb-sub">@</span>2</button>
+            <button class="kb-key kb-num" onclick="kbKey('3')"><span class="kb-sub">#</span>3</button>
+            <button class="kb-key kb-num" onclick="kbKey('4')"><span class="kb-sub">$</span>4</button>
+            <button class="kb-key kb-num" onclick="kbKey('5')"><span class="kb-sub">%</span>5</button>
+            <button class="kb-key kb-num" onclick="kbKey('6')"><span class="kb-sub">^</span>6</button>
+            <button class="kb-key kb-num" onclick="kbKey('7')"><span class="kb-sub">&amp;</span>7</button>
+            <button class="kb-key kb-num" onclick="kbKey('8')"><span class="kb-sub">*</span>8</button>
+            <button class="kb-key kb-num" onclick="kbKey('9')"><span class="kb-sub">(</span>9</button>
+            <button class="kb-key kb-num" onclick="kbKey('0')"><span class="kb-sub">)</span>0</button>
+            <button class="kb-key kb-num" onclick="kbKey('-')"><span class="kb-sub">_</span>-</button>
+            <button class="kb-key kb-num" onclick="kbKey('=')"><span class="kb-sub">+</span>=</button>
+            <button class="kb-key kb-wide2" onclick="kbKey('BACKSPACE')">⌫ BKSP</button>
           </div>
+
+          <!-- QWERTY row -->
           <div class="kb-row">
-            <button class="kb-key mod" id="kbShift" onclick="kbToggle('shift')">SHIFT</button>
-            <button class="kb-key" onclick="kbKey('z')">Z</button>
-            <button class="kb-key" onclick="kbKey('x')">X</button>
-            <button class="kb-key" onclick="kbKey('c')">C</button>
-            <button class="kb-key" onclick="kbKey('v')">V</button>
-            <button class="kb-key" onclick="kbKey('b')">B</button>
-            <button class="kb-key" onclick="kbKey('n')">N</button>
-            <button class="kb-key" onclick="kbKey('m')">M</button>
-            <button class="kb-key wide" onclick="kbKey('BACKSPACE')">BKSP</button>
+            <button class="kb-key kb-wide2" onclick="kbKey('TAB')">TAB ⇥</button>
+            <button class="kb-key kb-letter" data-key="q" onclick="kbKey('q')">q</button>
+            <button class="kb-key kb-letter" data-key="w" onclick="kbKey('w')">w</button>
+            <button class="kb-key kb-letter" data-key="e" onclick="kbKey('e')">e</button>
+            <button class="kb-key kb-letter" data-key="r" onclick="kbKey('r')">r</button>
+            <button class="kb-key kb-letter" data-key="t" onclick="kbKey('t')">t</button>
+            <button class="kb-key kb-letter" data-key="y" onclick="kbKey('y')">y</button>
+            <button class="kb-key kb-letter" data-key="u" onclick="kbKey('u')">u</button>
+            <button class="kb-key kb-letter" data-key="i" onclick="kbKey('i')">i</button>
+            <button class="kb-key kb-letter" data-key="o" onclick="kbKey('o')">o</button>
+            <button class="kb-key kb-letter" data-key="p" onclick="kbKey('p')">p</button>
+            <button class="kb-key kb-num" onclick="kbKey('[')"><span class="kb-sub">{</span>[</button>
+            <button class="kb-key kb-num" onclick="kbKey(']')"><span class="kb-sub">}</span>]</button>
+            <button class="kb-key kb-num kb-wide2" onclick="kbKey('\\')"><span class="kb-sub">|</span>\</button>
           </div>
+
+          <!-- ASDF row -->
           <div class="kb-row">
-            <button class="kb-key mod" id="kbCtrl" onclick="kbToggle('ctrl')">CTRL</button>
-            <button class="kb-key mod" id="kbAlt" onclick="kbToggle('alt')">ALT</button>
-            <button class="kb-key mod" id="kbGui" onclick="kbToggle('gui')">GUI</button>
-            <button class="kb-key space" onclick="kbKey('SPACE')">SPACE</button>
-            <button class="kb-key wide" onclick="kbKey('ENTER')">ENTER</button>
+            <button class="kb-key mod kb-wide3" id="kbCaps" onclick="kbToggleCaps()">CAPS</button>
+            <button class="kb-key kb-letter" data-key="a" onclick="kbKey('a')">a</button>
+            <button class="kb-key kb-letter" data-key="s" onclick="kbKey('s')">s</button>
+            <button class="kb-key kb-letter" data-key="d" onclick="kbKey('d')">d</button>
+            <button class="kb-key kb-letter" data-key="f" onclick="kbKey('f')">f</button>
+            <button class="kb-key kb-letter" data-key="g" onclick="kbKey('g')">g</button>
+            <button class="kb-key kb-letter" data-key="h" onclick="kbKey('h')">h</button>
+            <button class="kb-key kb-letter" data-key="j" onclick="kbKey('j')">j</button>
+            <button class="kb-key kb-letter" data-key="k" onclick="kbKey('k')">k</button>
+            <button class="kb-key kb-letter" data-key="l" onclick="kbKey('l')">l</button>
+            <button class="kb-key kb-num" onclick="kbKey(';')"><span class="kb-sub">:</span>;</button>
+            <button class="kb-key kb-num" onclick="kbKey(&quot;'&quot;)"><span class="kb-sub">&quot;</span>'</button>
+            <button class="kb-key kb-wide3" onclick="kbKey('ENTER')">ENTER ↵</button>
           </div>
-          <div class="kb-row" style="margin-top:10px">
-            <button class="kb-key" onclick="kbKey('UP')">UP</button>
-            <button class="kb-key" onclick="kbKey('DOWN')">DOWN</button>
-            <button class="kb-key" onclick="kbKey('LEFT')">LEFT</button>
-            <button class="kb-key" onclick="kbKey('RIGHT')">RIGHT</button>
-            <button class="kb-key" onclick="kbKey('TAB')">TAB</button>
-            <button class="kb-key" onclick="kbKey('ESC')">ESC</button>
+
+          <!-- ZXCV row -->
+          <div class="kb-row">
+            <button class="kb-key mod kb-wide4" id="kbShift" onclick="kbToggle('shift')">⇧ SHIFT</button>
+            <button class="kb-key kb-letter" data-key="z" onclick="kbKey('z')">z</button>
+            <button class="kb-key kb-letter" data-key="x" onclick="kbKey('x')">x</button>
+            <button class="kb-key kb-letter" data-key="c" onclick="kbKey('c')">c</button>
+            <button class="kb-key kb-letter" data-key="v" onclick="kbKey('v')">v</button>
+            <button class="kb-key kb-letter" data-key="b" onclick="kbKey('b')">b</button>
+            <button class="kb-key kb-letter" data-key="n" onclick="kbKey('n')">n</button>
+            <button class="kb-key kb-letter" data-key="m" onclick="kbKey('m')">m</button>
+            <button class="kb-key kb-num" onclick="kbKey(',')"><span class="kb-sub">&lt;</span>,</button>
+            <button class="kb-key kb-num" onclick="kbKey('.')"><span class="kb-sub">&gt;</span>.</button>
+            <button class="kb-key kb-num" onclick="kbKey('/')"><span class="kb-sub">?</span>/</button>
+            <button class="kb-key mod kb-wide4" onclick="kbToggle('shift')">SHIFT ⇧</button>
           </div>
+
+          <!-- Bottom row -->
+          <div class="kb-row">
+            <button class="kb-key mod kb-wide2" id="kbCtrl" onclick="kbToggle('ctrl')">CTRL</button>
+            <button class="kb-key mod kb-wide2" id="kbGui" onclick="kbToggle('gui')">GUI</button>
+            <button class="kb-key mod kb-wide2" id="kbAlt" onclick="kbToggle('alt')">ALT</button>
+            <button class="kb-key kb-space" onclick="kbKey('SPACE')">SPACE</button>
+            <button class="kb-key mod kb-wide2" onclick="kbToggle('alt')">ALT</button>
+            <button class="kb-key kb-fn" onclick="kbKey('LEFT')">◀</button>
+            <button class="kb-key kb-fn" onclick="kbKey('UP')">▲</button>
+            <button class="kb-key kb-fn" onclick="kbKey('DOWN')">▼</button>
+            <button class="kb-key kb-fn" onclick="kbKey('RIGHT')">▶</button>
+          </div>
+
         </div>
         
         <div class="card" style="margin-top:16px">
@@ -854,6 +936,143 @@
             <button class="btn btn-primary" id="shortcutAddConfirmBtn" onclick="confirmAddShortcut()">Save</button>
           </div>
         </div>
+      </div>
+
+      <!-- ── TOOL: ACTION RECORDER ── -->
+      <div class="tool-panel" id="tool-recorder">
+        <div class="tool-panel-head"><h3>Action Recorder</h3><button class="tool-back" onclick="closeTool('recorder')">Back</button></div>
+        
+        <div class="card" style="margin-bottom:12px">
+          <div class="card-head">Keystroke & Action Recorder</div>
+          <p style="font-size:0.78rem;color:var(--dim);margin-bottom:12px">Record keyboard actions & timing (via physical keyboard or on-screen keys) and export as DuckyScript.</p>
+          
+          <div class="rec-controls" style="display:flex;gap:8px;margin-bottom:12px">
+            <button class="btn btn-danger-sm" id="recStartBtn" onclick="startMacroRecord()">🔴 Record</button>
+            <button class="btn btn-ghost" id="recStopBtn" onclick="stopMacroRecord()" disabled>■ Stop</button>
+            <button class="btn btn-primary" id="recPlayBtn" onclick="playMacroRecord()" disabled>▶ Play</button>
+          </div>
+
+          <div class="rec-status-bar" style="font-family:var(--mono);font-size:0.7rem;color:var(--g);margin-bottom:10px;display:flex;align-items:center;gap:6px">
+            <div class="exec-dot" id="recDot"></div>
+            <span id="recStatusLabel">Status: Idle</span>
+          </div>
+
+          <!-- Realtime Actions Stream -->
+          <div class="rec-stream-wrap" style="background:rgba(0,0,0,0.3);border:1px solid var(--b1);border-radius:6px;padding:10px;min-height:100px;max-height:160px;overflow-y:auto;font-family:var(--mono);font-size:0.72rem;margin-bottom:12px">
+            <div id="recStream" class="rec-stream"><span style="color:var(--dim2)">// Actions will appear here...</span></div>
+          </div>
+
+          <div class="btn-row">
+            <button class="btn btn-primary" onclick="exportMacroToEditor()">⚡ Export to DuckyScript Editor</button>
+            <button class="btn btn-ghost" onclick="clearMacroRecord()">Clear</button>
+          </div>
+        </div>
+
+        <!-- Full Size Keyboard for Action Recorder -->
+        <div class="keyboard-wrap">
+          <!-- F-key row -->
+          <div class="kb-row">
+            <button class="kb-key kb-fn" onclick="recordVirtualKey('ESC')">ESC</button>
+            <div class="kb-gap"></div>
+            <button class="kb-key kb-fn" onclick="recordVirtualKey('F1')">F1</button>
+            <button class="kb-key kb-fn" onclick="recordVirtualKey('F2')">F2</button>
+            <button class="kb-key kb-fn" onclick="recordVirtualKey('F3')">F3</button>
+            <button class="kb-key kb-fn" onclick="recordVirtualKey('F4')">F4</button>
+            <div class="kb-gap"></div>
+            <button class="kb-key kb-fn" onclick="recordVirtualKey('F5')">F5</button>
+            <button class="kb-key kb-fn" onclick="recordVirtualKey('F6')">F6</button>
+            <button class="kb-key kb-fn" onclick="recordVirtualKey('F7')">F7</button>
+            <button class="kb-key kb-fn" onclick="recordVirtualKey('F8')">F8</button>
+            <div class="kb-gap"></div>
+            <button class="kb-key kb-fn" onclick="recordVirtualKey('F9')">F9</button>
+            <button class="kb-key kb-fn" onclick="recordVirtualKey('F10')">F10</button>
+            <button class="kb-key kb-fn" onclick="recordVirtualKey('F11')">F11</button>
+            <button class="kb-key kb-fn" onclick="recordVirtualKey('F12')">F12</button>
+          </div>
+
+          <!-- Number row -->
+          <div class="kb-row">
+            <button class="kb-key kb-num" onclick="recordVirtualKey('`')"><span class="kb-sub">~</span>` </button>
+            <button class="kb-key kb-num" onclick="recordVirtualKey('1')"><span class="kb-sub">!</span>1</button>
+            <button class="kb-key kb-num" onclick="recordVirtualKey('2')"><span class="kb-sub">@</span>2</button>
+            <button class="kb-key kb-num" onclick="recordVirtualKey('3')"><span class="kb-sub">#</span>3</button>
+            <button class="kb-key kb-num" onclick="recordVirtualKey('4')"><span class="kb-sub">$</span>4</button>
+            <button class="kb-key kb-num" onclick="recordVirtualKey('5')"><span class="kb-sub">%</span>5</button>
+            <button class="kb-key kb-num" onclick="recordVirtualKey('6')"><span class="kb-sub">^</span>6</button>
+            <button class="kb-key kb-num" onclick="recordVirtualKey('7')"><span class="kb-sub">&amp;</span>7</button>
+            <button class="kb-key kb-num" onclick="recordVirtualKey('8')"><span class="kb-sub">*</span>8</button>
+            <button class="kb-key kb-num" onclick="recordVirtualKey('9')"><span class="kb-sub">(</span>9</button>
+            <button class="kb-key kb-num" onclick="recordVirtualKey('0')"><span class="kb-sub">)</span>0</button>
+            <button class="kb-key kb-num" onclick="recordVirtualKey('-')"><span class="kb-sub">_</span>-</button>
+            <button class="kb-key kb-num" onclick="recordVirtualKey('=')"><span class="kb-sub">+</span>=</button>
+            <button class="kb-key kb-wide2" onclick="recordVirtualKey('BACKSPACE')">⌫ BKSP</button>
+          </div>
+
+          <!-- QWERTY row -->
+          <div class="kb-row">
+            <button class="kb-key kb-wide2" onclick="recordVirtualKey('TAB')">TAB ⇥</button>
+            <button class="kb-key rec-letter" data-key="q" onclick="recordVirtualKey('q')">q</button>
+            <button class="kb-key rec-letter" data-key="w" onclick="recordVirtualKey('w')">w</button>
+            <button class="kb-key rec-letter" data-key="e" onclick="recordVirtualKey('e')">e</button>
+            <button class="kb-key rec-letter" data-key="r" onclick="recordVirtualKey('r')">r</button>
+            <button class="kb-key rec-letter" data-key="t" onclick="recordVirtualKey('t')">t</button>
+            <button class="kb-key rec-letter" data-key="y" onclick="recordVirtualKey('y')">y</button>
+            <button class="kb-key rec-letter" data-key="u" onclick="recordVirtualKey('u')">u</button>
+            <button class="kb-key rec-letter" data-key="i" onclick="recordVirtualKey('i')">i</button>
+            <button class="kb-key rec-letter" data-key="o" onclick="recordVirtualKey('o')">o</button>
+            <button class="kb-key rec-letter" data-key="p" onclick="recordVirtualKey('p')">p</button>
+            <button class="kb-key kb-num" onclick="recordVirtualKey('[')"><span class="kb-sub">{</span>[</button>
+            <button class="kb-key kb-num" onclick="recordVirtualKey(']')"><span class="kb-sub">}</span>]</button>
+            <button class="kb-key kb-num kb-wide2" onclick="recordVirtualKey('\\')"><span class="kb-sub">|</span>\</button>
+          </div>
+
+          <!-- ASDF row -->
+          <div class="kb-row">
+            <button class="kb-key mod kb-wide3" id="recCaps" onclick="recToggleCaps()">CAPS</button>
+            <button class="kb-key rec-letter" data-key="a" onclick="recordVirtualKey('a')">a</button>
+            <button class="kb-key rec-letter" data-key="s" onclick="recordVirtualKey('s')">s</button>
+            <button class="kb-key rec-letter" data-key="d" onclick="recordVirtualKey('d')">d</button>
+            <button class="kb-key rec-letter" data-key="f" onclick="recordVirtualKey('f')">f</button>
+            <button class="kb-key rec-letter" data-key="g" onclick="recordVirtualKey('g')">g</button>
+            <button class="kb-key rec-letter" data-key="h" onclick="recordVirtualKey('h')">h</button>
+            <button class="kb-key rec-letter" data-key="j" onclick="recordVirtualKey('j')">j</button>
+            <button class="kb-key rec-letter" data-key="k" onclick="recordVirtualKey('k')">k</button>
+            <button class="kb-key rec-letter" data-key="l" onclick="recordVirtualKey('l')">l</button>
+            <button class="kb-key kb-num" onclick="recordVirtualKey(';')"><span class="kb-sub">:</span>;</button>
+            <button class="kb-key kb-num" onclick="recordVirtualKey(&quot;'&quot;)"><span class="kb-sub">&quot;</span>'</button>
+            <button class="kb-key kb-wide3" onclick="recordVirtualKey('ENTER')">ENTER ↵</button>
+          </div>
+
+          <!-- ZXCV row -->
+          <div class="kb-row">
+            <button class="kb-key mod kb-wide4" id="recShift" onclick="recToggleCaps()">⇧ SHIFT</button>
+            <button class="kb-key rec-letter" data-key="z" onclick="recordVirtualKey('z')">z</button>
+            <button class="kb-key rec-letter" data-key="x" onclick="recordVirtualKey('x')">x</button>
+            <button class="kb-key rec-letter" data-key="c" onclick="recordVirtualKey('c')">c</button>
+            <button class="kb-key rec-letter" data-key="v" onclick="recordVirtualKey('v')">v</button>
+            <button class="kb-key rec-letter" data-key="b" onclick="recordVirtualKey('b')">b</button>
+            <button class="kb-key rec-letter" data-key="n" onclick="recordVirtualKey('n')">n</button>
+            <button class="kb-key rec-letter" data-key="m" onclick="recordVirtualKey('m')">m</button>
+            <button class="kb-key kb-num" onclick="recordVirtualKey(',')"><span class="kb-sub">&lt;</span>,</button>
+            <button class="kb-key kb-num" onclick="recordVirtualKey('.')"><span class="kb-sub">&gt;</span>.</button>
+            <button class="kb-key kb-num" onclick="recordVirtualKey('/')"><span class="kb-sub">?</span>/</button>
+            <button class="kb-key mod kb-wide4" onclick="recToggleCaps()">SHIFT ⇧</button>
+          </div>
+
+          <!-- Bottom row -->
+          <div class="kb-row">
+            <button class="kb-key mod kb-wide2" onclick="recordVirtualKey('ctrl')">CTRL</button>
+            <button class="kb-key mod kb-wide2" onclick="recordVirtualKey('gui')">GUI</button>
+            <button class="kb-key mod kb-wide2" onclick="recordVirtualKey('alt')">ALT</button>
+            <button class="kb-key kb-space" onclick="recordVirtualKey('SPACE')">SPACE</button>
+            <button class="kb-key mod kb-wide2" onclick="recordVirtualKey('alt')">ALT</button>
+            <button class="kb-key kb-fn" onclick="recordVirtualKey('LEFT')">◀</button>
+            <button class="kb-key kb-fn" onclick="recordVirtualKey('UP')">▲</button>
+            <button class="kb-key kb-fn" onclick="recordVirtualKey('DOWN')">▼</button>
+            <button class="kb-key kb-fn" onclick="recordVirtualKey('RIGHT')">▶</button>
+          </div>
+        </div>
+
       </div>
     </section>
 
