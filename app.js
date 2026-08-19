@@ -4,7 +4,7 @@
 
 const $ = id => document.getElementById(id);
 let GROQ_KEY = localStorage.getItem('gc_groq_key') || '';
-const GROQ_MODEL = 'llama-3.3-70b-versatile';
+const GROQ_MODEL = 'openai/gpt-oss-120b';
 const WARN_KEY = 'gc_legal_v2';
 
 // ═══════════════════════════════════════════════════
