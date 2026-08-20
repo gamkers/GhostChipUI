@@ -4,7 +4,7 @@
 
 const $ = id => document.getElementById(id);
 let GROQ_KEY = localStorage.getItem('gc_groq_key') || '';
-const GROQ_MODEL = 'openai/gpt-oss-120b';
+const GROQ_MODEL = 'llama-3.1-8b-instant';
 const WARN_KEY = 'gc_legal_v2';
 
 // ═══════════════════════════════════════════════════
@@ -3888,7 +3888,7 @@ const agentTools = {
 
     const isOrKey = keyToUse.startsWith('sk-or-') || Boolean(OPENROUTER_KEY);
     const endpoint = isOrKey ? 'https://openrouter.ai/api/v1/chat/completions' : 'https://api.groq.com/openai/v1/chat/completions';
-    const modelToUse = isOrKey ? AGENT_MODEL : 'llama-3.3-70b-versatile';
+    const modelToUse = isOrKey ? AGENT_MODEL : GROQ_MODEL;
 
     const sysPrompt = `You are a DuckyScript expert. Generate ONLY valid DuckyScript for the described task.
 CRITICAL RULE: Always insert DELAY 2000 after each action/command line.
@@ -4224,7 +4224,7 @@ async function runAgent(userMessage) {
 
   const isOrKey = keyToUse.startsWith('sk-or-') || Boolean(OPENROUTER_KEY);
   const endpoint = isOrKey ? 'https://openrouter.ai/api/v1/chat/completions' : 'https://api.groq.com/openai/v1/chat/completions';
-  const modelToUse = isOrKey ? AGENT_MODEL : 'llama-3.3-70b-versatile';
+  const modelToUse = isOrKey ? AGENT_MODEL : GROQ_MODEL;
 
   const headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + keyToUse };
   if (isOrKey) {
