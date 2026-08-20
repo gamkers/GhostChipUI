@@ -1557,6 +1557,10 @@ async function saveApiKey() {
   // Save locally so AI works even when not on device
   GROQ_KEY = k;
   localStorage.setItem('gc_groq_key', k);
+  if (k.startsWith('sk-or-')) {
+    OPENROUTER_KEY = k;
+    localStorage.setItem('gc_openrouter_key', k);
+  }
   // Also save to device EEPROM if connected
   try {
     await deviceFetch('/saveApiKey', {
@@ -3882,6 +3886,10 @@ const agentTools = {
     const keyToUse = OPENROUTER_KEY || GROQ_KEY;
     if (!keyToUse) return 'Error: No API key configured. Go to Settings and add your OpenRouter or Groq API key.';
 
+    const isOrKey = keyToUse.startsWith('sk-or-') || Boolean(OPENROUTER_KEY);
+    const endpoint = isOrKey ? 'https://openrouter.ai/api/v1/chat/completions' : 'https://api.groq.com/openai/v1/chat/completions';
+    const modelToUse = isOrKey ? AGENT_MODEL : 'llama-3.3-70b-versatile';
+
     const sysPrompt = `You are a DuckyScript expert. Generate ONLY valid DuckyScript for the described task.
 CRITICAL RULE: Always insert DELAY 2000 after each action/command line.
 DuckyScript syntax rules:
@@ -3896,59 +3904,34 @@ DuckyScript syntax rules:
 - UPARROW, DOWNARROW, LEFTARROW, RIGHTARROW: arrows
 Output ONLY the script, no markdown, no explanation.`;
 
-    if (OPENROUTER_KEY) {
-      try {
-        const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + OPENROUTER_KEY,
-            'HTTP-Referer': window.location.origin || 'https://ghostchip.local',
-            'X-Title': 'GhostChip AI Agent'
-          },
-          body: JSON.stringify({
-            model: AGENT_MODEL,
-            messages: [
-              { role: 'system', content: sysPrompt },
-              { role: 'user', content: 'Generate DuckyScript for: ' + input }
-            ],
-            temperature: 0.2,
-            max_tokens: 2048
-          })
-        });
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          return 'Error from OpenRouter API: ' + (err.error?.message || res.statusText);
-        }
-        const data = await res.json();
-        return (data.choices[0]?.message?.content || '').trim();
-      } catch (e) {
-        return 'Error generating script: ' + e.message;
+    const headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + keyToUse };
+    if (isOrKey) {
+      headers['HTTP-Referer'] = window.location.origin || 'https://ghostchip.local';
+      headers['X-Title'] = 'GhostChip AI Agent';
+    }
+
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          model: modelToUse,
+          messages: [
+            { role: 'system', content: sysPrompt },
+            { role: 'user', content: 'Generate DuckyScript for: ' + input }
+          ],
+          temperature: 0.2,
+          max_tokens: 2048
+        })
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        return 'Error from API: ' + (err.error?.message || res.statusText);
       }
-    } else {
-      try {
-        const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + GROQ_KEY },
-          body: JSON.stringify({
-            model: GROQ_MODEL,
-            messages: [
-              { role: 'system', content: sysPrompt },
-              { role: 'user', content: 'Generate DuckyScript for: ' + input }
-            ],
-            temperature: 0.2,
-            max_tokens: 600
-          })
-        });
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          return 'Error from Groq API: ' + (err.error?.message || res.statusText);
-        }
-        const data = await res.json();
-        return (data.choices[0]?.message?.content || '').trim();
-      } catch (e) {
-        return 'Error generating script: ' + e.message;
-      }
+      const data = await res.json();
+      return (data.choices[0]?.message?.content || '').trim();
+    } catch (e) {
+      return 'Error generating script: ' + e.message;
     }
   },
 
@@ -4239,6 +4222,16 @@ async function runAgent(userMessage) {
     return;
   }
 
+  const isOrKey = keyToUse.startsWith('sk-or-') || Boolean(OPENROUTER_KEY);
+  const endpoint = isOrKey ? 'https://openrouter.ai/api/v1/chat/completions' : 'https://api.groq.com/openai/v1/chat/completions';
+  const modelToUse = isOrKey ? AGENT_MODEL : 'llama-3.3-70b-versatile';
+
+  const headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + keyToUse };
+  if (isOrKey) {
+    headers['HTTP-Referer'] = window.location.origin || 'https://ghostchip.local';
+    headers['X-Title'] = 'GhostChip AI Agent';
+  }
+
   agentRunning = true;
   agentAbort = false;
   agentSetButtons(true);
@@ -4259,69 +4252,33 @@ async function runAgent(userMessage) {
       iteration++;
       agentSetStatus('running', `Agent thinking… (step ${iteration}/${MAX_ITER})`);
 
+      const messages = [
+        { role: 'system', content: AGENT_SYSTEM_PROMPT },
+        ...agentHistory
+      ];
       let llmRes;
-      if (OPENROUTER_KEY) {
-        const messages = [
-          { role: 'system', content: AGENT_SYSTEM_PROMPT },
-          ...agentHistory
-        ];
-        try {
-          const apiRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer ' + OPENROUTER_KEY,
-              'HTTP-Referer': window.location.origin || 'https://ghostchip.local',
-              'X-Title': 'GhostChip AI Agent'
-            },
-            body: JSON.stringify({
-              model: AGENT_MODEL,
-              messages,
-              temperature: 0.2,
-              max_tokens: 4096
-            })
-          });
-          if (!apiRes.ok) {
-            const err = await apiRes.json().catch(() => ({}));
-            throw new Error(err.error?.message || apiRes.statusText);
-          }
-          const apiData = await apiRes.json();
-          llmRes = (apiData.choices[0]?.message?.content || '').trim();
-        } catch (e) {
-          if (thinkingEl) { thinkingEl.remove(); thinkingEl = null; }
-          appendAgentLog('error', 'API Error', e.message);
-          agentHistory.push({ role: 'assistant', content: 'Error: ' + e.message });
-          break;
+      try {
+        const apiRes = await fetch(endpoint, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            model: modelToUse,
+            messages,
+            temperature: 0.2,
+            max_tokens: 4096
+          })
+        });
+        if (!apiRes.ok) {
+          const err = await apiRes.json().catch(() => ({}));
+          throw new Error(err.error?.message || apiRes.statusText);
         }
-      } else {
-        // Groq API fallback
-        const messages = [
-          { role: 'system', content: AGENT_SYSTEM_PROMPT },
-          ...agentHistory
-        ];
-        try {
-          const apiRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + GROQ_KEY },
-            body: JSON.stringify({
-              model: GROQ_MODEL,
-              messages,
-              temperature: 0.2,
-              max_tokens: 1024
-            })
-          });
-          if (!apiRes.ok) {
-            const err = await apiRes.json().catch(() => ({}));
-            throw new Error(err.error?.message || apiRes.statusText);
-          }
-          const apiData = await apiRes.json();
-          llmRes = (apiData.choices[0]?.message?.content || '').trim();
-        } catch (e) {
-          if (thinkingEl) { thinkingEl.remove(); thinkingEl = null; }
-          appendAgentLog('error', 'API Error', e.message);
-          agentHistory.push({ role: 'assistant', content: 'Error: ' + e.message });
-          break;
-        }
+        const apiData = await apiRes.json();
+        llmRes = (apiData.choices[0]?.message?.content || '').trim();
+      } catch (e) {
+        if (thinkingEl) { thinkingEl.remove(); thinkingEl = null; }
+        appendAgentLog('error', 'API Error', e.message);
+        agentHistory.push({ role: 'assistant', content: 'Error: ' + e.message });
+        break;
       }
 
       // Remove thinking indicator on first real response
