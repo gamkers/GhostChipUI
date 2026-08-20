@@ -3774,39 +3774,40 @@ FINAL: <summary of what was done>
 
 ## CRITICAL RULES
 1. Output ONLY Format A or Format B. NEVER write "Observation:" yourself — the system injects real results.
-2. After writing "Action Input: ...", STOP. Do not continue. Wait for the Observation.
-3. Never skip calling tools. Always call generate_hid_script before execute_script when creating new payloads.
-4. Never make up tool results. Never assume success without seeing an Observation.
-5. One tool call per response. No chaining multiple Actions in one response.
-6. In all generated DuckyScript payloads, always include DELAY 2000 after each action line.
+2. After writing "Action Input: ...", STOP immediately. Wait for the system Observation.
+3. One tool call per response. No chaining multiple Actions in one response.
+4. When asked to create a script and execute it:
+   Step 1: Action: generate_hid_script (or write DuckyScript)
+   Step 2: Action: write_file to save the DuckyScript to the SD card (e.g. /utility/notes.txt)
+   Step 3: Action: run_script to execute the saved script file from the SD card (e.g. /utility/notes.txt)
+5. In all generated DuckyScript payloads, ALWAYS insert DELAY 2000 after each action line.
 
 ## AVAILABLE TOOLS
 
-execute_script
-  Executes DuckyScript payload directly on target HID device. Input: full DuckyScript code.
-
 generate_hid_script
-  Uses AI to generate a DuckyScript payload for a task. Input: plain text task description.
-  Always call this FIRST when asked to create a script.
+  Generates DuckyScript for a task. Input: task description (e.g. "Open Spotlight on Mac and type Notes then press Enter")
+
+execute_script
+  Executes raw DuckyScript directly on target HID device immediately. Input: DuckyScript code.
 
 run_script
-  Runs an existing DuckyScript file saved on the SD card by path (e.g. /Utility/notes.txt). Input: file path.
+  Runs an existing DuckyScript file saved on the SD card by path. Input: file path (e.g. /utility/notes.txt)
 
 list_files
-  Lists files and folders in a directory on the SD card. Input: directory path (e.g. / or /Utility or /Shortcuts)
+  Lists files and folders on SD card. Input: directory path (e.g. / or /utility or /Shortcuts)
 
 read_file
-  Reads contents of a file on the SD card. Input: full path (e.g. /Utility/notes.txt)
+  Reads contents of a file on the SD card. Input: file path (e.g. /utility/notes.txt)
 
 write_file
   Creates or overwrites a file on the SD card (auto-creates parent directories if needed).
-  Input: JSON like {"path":"/Utility/notes.txt", "content":"GUI SPACE\nDELAY 2000\nSTRING notes\nDELAY 2000\nENTER\nDELAY 2000"}
+  Input format (JSON): {"path": "/utility/notes.txt", "content": "GUI SPACE\\nDELAY 2000\\nSTRING notes\\nDELAY 2000\\nENTER\\nDELAY 2000"}
 
 create_directory
-  Creates a new folder on the SD card. Input: directory path (e.g. /Utility)
+  Creates a new folder on the SD card. Input: folder path (e.g. /utility)
 
 delete_file
-  Deletes a file or directory from the SD card. Input: file or folder path (e.g. /Utility/notes.txt)
+  Deletes a file or directory from the SD card. Input: file or folder path (e.g. /utility/notes.txt)
 
 get_device_info
   Returns chip info, MAC, IP, firmware version. Input: none
@@ -3818,7 +3819,7 @@ wifi_connect
   Connects to a WiFi network. Input: {"ssid":"Name","password":"pass"}
 
 neopixel_set
-  Sets NeoPixel RGB color. Input: {"r":255,"g":0,"b":0} or a color name like "red"
+  Sets NeoPixel RGB color. Input: {"r":255,"g":0,"b":0} or "red"
 
 neopixel_toggle
   Toggles NeoPixel on/off. Input: none
@@ -3827,42 +3828,31 @@ get_script_from_editor
   Reads the current DuckyScript from the editor tab. Input: none
 
 send_script_to_editor
-  Pushes script text into the editor tab. Input: the script text
+  Pushes script text into the editor tab. Input: script text
 
-## DUCKYSCRIPT QUICK REFERENCE
-- DELAY 2000      (wait 2000ms after lines)
-- STRING hello    (type text)
-- ENTER / TAB / SPACE / ESCAPE
-- GUI SPACE       (Mac Spotlight, Win Start)
-- GUI r           (Win Run dialog)
-- CTRL ALT t      (Linux terminal)
-- CTRL c / CTRL v (copy/paste)
-- F1 .. F12
+## EXAMPLE SCENARIO: Create script in folder & run it
+User: Create a script called notes inside utility which should open notes in my mac and run it.
 
-## EXAMPLE INTERACTION — FILE CREATION & EXECUTION
-
-User: Create a script called notes inside Utility which should open notes on my Mac, then run it.
-
-Thought: First I need to generate the DuckyScript to open Notes on a Mac.
+Thought: First I will generate the DuckyScript payload to open Notes on Mac with DELAY 2000 after each line.
 Action: generate_hid_script
 Action Input: Open Spotlight on Mac using Command+Space, wait 2000ms, type notes, wait 2000ms, press Enter, wait 2000ms
 
-[System injects → Observation: GUI SPACE\nDELAY 2000\nSTRING notes\nDELAY 2000\nENTER\nDELAY 2000]
+[System injects Observation]
 
-Thought: Now I will save this DuckyScript to /Utility/notes.txt on the SD card.
+Thought: Now I will create the file /utility/notes.txt on the SD card containing this DuckyScript payload.
 Action: write_file
-Action Input: {"path":"/Utility/notes.txt","content":"GUI SPACE\nDELAY 2000\nSTRING notes\nDELAY 2000\nENTER\nDELAY 2000"}
+Action Input: {"path": "/utility/notes.txt", "content": "GUI SPACE\\nDELAY 2000\\nSTRING notes\\nDELAY 2000\\nENTER\\nDELAY 2000"}
 
-[System injects → Observation: File written successfully to /Utility/notes.txt (67 bytes).]
+[System injects Observation]
 
-Thought: Now I will execute the script file /Utility/notes.txt from the SD card.
+Thought: Now I will execute the script file /utility/notes.txt from the SD card on the device.
 Action: run_script
-Action Input: /Utility/notes.txt
+Action Input: /utility/notes.txt
 
-[System injects → Observation: Executed script file from SD card: /Utility/notes.txt]
+[System injects Observation]
 
-Thought: The script was created and executed successfully.
-FINAL: Created /Utility/notes.txt with the payload to open Notes on Mac and executed it from the SD card.`;
+Thought: The script was created at /utility/notes.txt and executed successfully.
+FINAL: Successfully created /utility/notes.txt on the SD card and executed it on the target Mac.`;
 
 // ─── Tool Implementations ─────────────────────────────────────
 const agentTools = {
@@ -3946,13 +3936,17 @@ Output ONLY the script, no markdown, no explanation.`;
 
   async list_files(input) {
     let path = (input || '/').trim() || '/';
+    try {
+      const parsed = JSON.parse(path);
+      if (parsed && (parsed.path || parsed.folder)) path = parsed.path || parsed.folder;
+    } catch {}
     if (!path.startsWith('/')) path = '/' + path;
     try {
       const r = await fmFetch('/fm/list?path=' + encodeURIComponent(path));
       const text = await r.text();
       let data;
       try { data = JSON.parse(text); } catch { data = null; }
-      if (!data) return 'Response: ' + (text || 'Empty response');
+      if (!data) return 'Response from ' + path + ': ' + (text || 'Empty response or directory unavailable');
       const files = data.files || (Array.isArray(data) ? data : null);
       if (Array.isArray(files)) {
         if (files.length === 0) return `Directory "${path}" is empty.`;
@@ -3962,37 +3956,47 @@ Output ONLY the script, no markdown, no explanation.`;
           return `${isDir ? '📁' : '📄'} ${f.name}${sz}`;
         }).join('\n');
       }
-      return 'File listing: ' + text;
+      return 'File listing for ' + path + ':\n' + text;
     } catch (e) {
       return 'Error listing files: ' + e.message;
     }
   },
+  async ls(input) { return this.list_files(input); },
+  async dir(input) { return this.list_files(input); },
 
   async read_file(input) {
-    let path = input.trim();
+    let path = (input || '').trim();
+    try {
+      const parsed = JSON.parse(path);
+      if (parsed && (parsed.path || parsed.filename || parsed.file)) path = parsed.path || parsed.filename || parsed.file;
+    } catch {}
     if (!path) return 'Error: path is required';
     if (!path.startsWith('/')) path = '/' + path;
     try {
       const r = await fmFetch('/fm/download?path=' + encodeURIComponent(path));
       const text = await r.text();
-      return text.substring(0, 2000) + (text.length > 2000 ? '\n...(truncated)' : '');
+      if (!text && !r.ok) return `File "${path}" not found or unavailable (HTTP ${r.status}).`;
+      return text ? text.substring(0, 3000) + (text.length > 3000 ? '\n...(truncated)' : '') : `(File "${path}" is empty)`;
     } catch (e) {
       return 'Error reading file: ' + e.message;
     }
   },
+  async cat(input) { return this.read_file(input); },
+  async read(input) { return this.read_file(input); },
+  async get_file(input) { return this.read_file(input); },
 
   async write_file(input) {
     let path = '', content = '';
     try {
       const parsed = JSON.parse(input);
-      path = parsed.path || '';
-      content = parsed.content || '';
+      path = parsed.path || parsed.filename || parsed.filepath || parsed.file || '';
+      content = parsed.content !== undefined ? parsed.content : (parsed.script || parsed.text || parsed.code || '');
     } catch {
       const lines = input.trim().split('\n');
       path = lines[0].trim();
       content = lines.slice(1).join('\n');
     }
-    if (!path) return 'Error: path is required. Input format: {"path":"/Folder/file.txt", "content":"..."}';
+    if (!path) return 'Error: path is required. Format: {"path":"/utility/notes.txt", "content":"..."}';
     if (!path.startsWith('/')) path = '/' + path;
 
     const lastSlash = path.lastIndexOf('/');
@@ -4004,23 +4008,35 @@ Output ONLY the script, no markdown, no explanation.`;
         await fmFetchPost('/fm/mkdir?path=' + encodeURIComponent(folder)).catch(() => {});
       }
       const uploadUrl = fmBase() + '/fm/upload?path=' + encodeURIComponent(folder);
-      const form = new FormData();
       const blob = new Blob([content], { type: 'text/plain' });
-      form.append('file', blob, filename);
-      await fetch(uploadUrl, { method: 'POST', body: form });
-      return `File written successfully to ${path} (${content.length} bytes).`;
+      const file = new File([blob], filename, { type: 'text/plain' });
+      const form = new FormData();
+      form.append('file', file, filename);
+      const crossOrigin = new URL(uploadUrl).origin !== location.origin;
+      const opts = crossOrigin
+        ? { method: 'POST', mode: 'no-cors', body: form }
+        : { method: 'POST', headers: { 'Accept': '*/*' }, body: form };
+      await fetch(uploadUrl, opts);
+      return `File successfully created & saved to ${path} (${content.length} bytes).`;
     } catch (e) {
       return 'Error writing file: ' + e.message;
     }
   },
+  async create_file(input) { return this.write_file(input); },
+  async save_file(input) { return this.write_file(input); },
+  async new_file(input) { return this.write_file(input); },
 
   async create_directory(input) {
-    let path = input.trim();
+    let path = (input || '').trim();
+    try {
+      const parsed = JSON.parse(path);
+      if (parsed && (parsed.path || parsed.folder)) path = parsed.path || parsed.folder;
+    } catch {}
     if (!path) return 'Error: directory path is required';
     if (!path.startsWith('/')) path = '/' + path;
     try {
       await fmFetchPost('/fm/mkdir?path=' + encodeURIComponent(path));
-      return `Directory created successfully: ${path}`;
+      return `Directory "${path}" created successfully.`;
     } catch (e) {
       return 'Error creating directory: ' + e.message;
     }
@@ -4028,7 +4044,11 @@ Output ONLY the script, no markdown, no explanation.`;
   async mkdir(input) { return this.create_directory(input); },
 
   async delete_file(input) {
-    let path = input.trim();
+    let path = (input || '').trim();
+    try {
+      const parsed = JSON.parse(path);
+      if (parsed && (parsed.path || parsed.filename)) path = parsed.path || parsed.filename;
+    } catch {}
     if (!path) return 'Error: path is required for deletion';
     if (!path.startsWith('/')) path = '/' + path;
     try {
@@ -4043,14 +4063,18 @@ Output ONLY the script, no markdown, no explanation.`;
   async delete_file_or_directory(input) { return this.delete_file(input); },
 
   async run_script(input) {
-    let path = input.trim();
+    let path = (input || '').trim();
+    try {
+      const parsed = JSON.parse(path);
+      if (parsed && (parsed.path || parsed.scriptPath || parsed.file)) path = parsed.path || parsed.scriptPath || parsed.file;
+    } catch {}
     if (!path) return 'Error: script file path is required';
     if (!path.startsWith('/')) path = '/' + path;
     try {
       await fmFetchPost('/fm/run?path=' + encodeURIComponent(path));
-      return `Executed script file from SD card: ${path}`;
+      return `Executed script file "${path}" from SD card.`;
     } catch (e) {
-      return 'Error executing script file: ' + e.message;
+      return `Triggered execution for "${path}". (${e.message})`;
     }
   },
   async execute_file(input) { return this.run_script(input); },
@@ -4305,20 +4329,32 @@ async function runAgent(userMessage) {
 
       // Check for FINAL answer
       if (finalMatch) {
-        appendAgentLog('final', 'Done ✓', finalMatch[1].trim());
+        let finalStr = finalMatch[1].trim().replace(/^Thought:\s*/i, '');
+        appendAgentLog('final', 'Done ✓', finalStr);
         agentSetStatus('idle', 'Completed ✓');
         break;
       }
 
       // Check for tool call
       if (!actionMatch) {
-        // No action and no FINAL — show raw response and stop
-        appendAgentLog('observation', 'Response', llmRes);
+        // No action and no FINAL — clean any "Thought:" prefix and show clean response
+        let cleanContent = llmRes.replace(/^Thought:\s*/i, '').trim();
+        if (thoughtMatch && thoughtMatch[1].trim()) {
+          const thoughtText = thoughtMatch[1].trim();
+          if (cleanContent === thoughtText || cleanContent.startsWith('Thought:')) {
+            cleanContent = ''; // Already displayed in Reasoning bubble above
+          }
+        }
+        if (cleanContent) {
+          appendAgentLog('observation', 'Response', cleanContent);
+        }
+        agentSetStatus('idle', 'Completed ✓');
         break;
       }
 
       const toolName = actionMatch[1].trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z_]/g, '');
-      const toolInput = actionInputMatch ? actionInputMatch[1].trim() : '';
+      let toolInput = actionInputMatch ? actionInputMatch[1].trim() : '';
+      toolInput = toolInput.replace(/\n\s*Observation:[\s\S]*/i, '').trim();
 
       // Show action in log
       appendAgentLog('action', toolName, '', toolInput);
