@@ -60,6 +60,10 @@ function getProxyUrl(url) {
   return url;
 }
 
+
+
+
+
 // ─── Device Fetch Helper ───
 // Handles CORS transparently: same-origin uses normal fetch, cross-origin uses no-cors
 async function deviceFetch(path, opts = {}) {
@@ -440,7 +444,7 @@ async function triggerAiCopilot(remComment) {
         messages: [
           {
             role: 'system',
-            content: `You are an AI DuckyScript Copilot. User provided a comment line: "${remComment}". Generate concise DuckyScript instructions (3-8 lines max) to perform this request. Output ONLY executable DuckyScript code without markdown fences or comments.`
+            content: `You are an AI DuckyScript Copilot. User provided a comment line: "${remComment}". Generate concise DuckyScript instructions (3-8 lines max) to perform this request. Output ONLY executable DuckyScript code without markdown fences or comments. Always include DELAY 2000 after each action line.`
           },
           { role: 'user', content: remComment }
         ],
@@ -1570,6 +1574,25 @@ function clearApiKey() {
   deviceFetch('/saveApiKey', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'apiKey=' })
     .then(() => toast('Key cleared', 'warn'));
 }
+
+// ─── OpenRouter API Key (For AI Agent) ───
+let OPENROUTER_KEY = localStorage.getItem('gc_openrouter_key') || '';
+
+function saveOpenRouterApiKey() {
+  const k = $('openrouterApiKeyInput')?.value?.trim();
+  if (!k) { toast('Enter OpenRouter API key first', 'warn'); return; }
+  OPENROUTER_KEY = k;
+  localStorage.setItem('gc_openrouter_key', k);
+  toast('OpenRouter API Key saved ✓');
+  if ($('openrouterApiKeyInput')) $('openrouterApiKeyInput').value = '';
+}
+
+function clearOpenRouterApiKey() {
+  if (!confirm('Clear OpenRouter API key?')) return;
+  OPENROUTER_KEY = '';
+  localStorage.removeItem('gc_openrouter_key');
+  toast('OpenRouter Key cleared', 'warn');
+}
 // Try to load API key from device EEPROM on startup
 // The device embeds the key in /aigenerate page as: const SAVED_KEY = "gsk_...";
 // Only runs when on the device (HTTP same-origin), not from GitHub Pages (HTTPS)
@@ -1843,7 +1866,7 @@ async function aiGenerate() {
         messages: [
           {
             role: 'system',
-            content: `You are a DuckyScript expert for USB Rubber Ducky / ESP32 HID payloads. ${getOSContext()} Generate ONLY the DuckyScript payload — no explanations, no markdown code fences, no extra text. Use proper DuckyScript syntax: DELAY, STRING, ENTER, GUI, ALT, CTRL, SHIFT, TAB, SPACE, UP, DOWN, LEFT, RIGHT, REM, F1-F12, CAPSLOCK, etc. add DELAY 2000 for each line`
+            content: `You are a DuckyScript expert for USB Rubber Ducky / ESP32 HID payloads. ${getOSContext()} Generate ONLY the DuckyScript payload — no explanations, no markdown code fences, no extra text. Use proper DuckyScript syntax: DELAY, STRING, ENTER, GUI, ALT, CTRL, SHIFT, TAB, SPACE, UP, DOWN, LEFT, RIGHT, REM, F1-F12, CAPSLOCK, etc. Always add DELAY 2000 after each action line.`
           },
           { role: 'user', content: prompt }
         ],
@@ -3303,7 +3326,7 @@ async function processAssistantRequest(query) {
             2. If the user asks for a technical action or HID payload (e.g. "open notepad", "extract wifi"), provide a short text response AND the DuckyScript for ${assistOS}.
             You MUST respond in JSON: {"text": "verbal reply", "script": "duckyscript or null"}.
             Use proper DuckyScript syntax: DELAY, STRING, ENTER, GUI, ALT, CTRL, SHIFT, TAB, SPACE, UP, DOWN, LEFT, RIGHT, REM, F1-F12, CAPSLOCK, etc. for windows use GUI for windows key and for mac spotlight use GUI SPACE there is no CMD.
-            *NOTE: always add DELAY 2000 for each line*,
+            *NOTE: ALWAYS add DELAY 2000 after each action line in DuckyScript*,
             Text replies must be under 100 words.`
           },
           { role: 'user', content: query }
@@ -3716,4 +3739,732 @@ async function runShortcutEntry(name) {
   } catch (e) {
     toast(`Shortcut sent. Check device.`, 'warn');
   }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  AI AGENT — Browser-native LangGraph-style ReAct Agent
+//  Think → Action → Observation loop powered by Groq API
+// ═══════════════════════════════════════════════════════════════
+
+let agentRunning = false;
+let agentAbort = false;
+let agentHistory = [];   // persists across runs within session
+let agentInspectorOpen = false;
+const AGENT_MODEL = 'nvidia/nemotron-3.5-lightning:free';
+
+// ─── System Prompt ────────────────────────────────────────────
+const AGENT_SYSTEM_PROMPT = `You are GhostChip AI Agent — an autonomous HID operator for a GhostChip ESP32 device that physically injects keystrokes, manages SD card files & directories, controls WiFi, and drives an RGB LED.
+
+## STRICT OUTPUT FORMAT — ONE STEP PER RESPONSE
+
+You MUST output EXACTLY ONE of these two formats per response, nothing else:
+
+FORMAT A — When you need to call a tool:
+Thought: <your reasoning>
+Action: <exact_tool_name>
+Action Input: <tool input — stop writing here, do NOT write Observation>
+
+FORMAT B — When you are completely done:
+Thought: <final reasoning>
+FINAL: <summary of what was done>
+
+## CRITICAL RULES
+1. Output ONLY Format A or Format B. NEVER write "Observation:" yourself — the system injects real results.
+2. After writing "Action Input: ...", STOP. Do not continue. Wait for the Observation.
+3. Never skip calling tools. Always call generate_hid_script before execute_script when creating new payloads.
+4. Never make up tool results. Never assume success without seeing an Observation.
+5. One tool call per response. No chaining multiple Actions in one response.
+6. In all generated DuckyScript payloads, always include DELAY 2000 after each action line.
+
+## AVAILABLE TOOLS
+
+execute_script
+  Executes DuckyScript payload directly on target HID device. Input: full DuckyScript code.
+
+generate_hid_script
+  Uses AI to generate a DuckyScript payload for a task. Input: plain text task description.
+  Always call this FIRST when asked to create a script.
+
+run_script
+  Runs an existing DuckyScript file saved on the SD card by path (e.g. /Utility/notes.txt). Input: file path.
+
+list_files
+  Lists files and folders in a directory on the SD card. Input: directory path (e.g. / or /Utility or /Shortcuts)
+
+read_file
+  Reads contents of a file on the SD card. Input: full path (e.g. /Utility/notes.txt)
+
+write_file
+  Creates or overwrites a file on the SD card (auto-creates parent directories if needed).
+  Input: JSON like {"path":"/Utility/notes.txt", "content":"GUI SPACE\nDELAY 2000\nSTRING notes\nDELAY 2000\nENTER\nDELAY 2000"}
+
+create_directory
+  Creates a new folder on the SD card. Input: directory path (e.g. /Utility)
+
+delete_file
+  Deletes a file or directory from the SD card. Input: file or folder path (e.g. /Utility/notes.txt)
+
+get_device_info
+  Returns chip info, MAC, IP, firmware version. Input: none
+
+wifi_scan
+  Triggers a WiFi AP scan. Input: none
+
+wifi_connect
+  Connects to a WiFi network. Input: {"ssid":"Name","password":"pass"}
+
+neopixel_set
+  Sets NeoPixel RGB color. Input: {"r":255,"g":0,"b":0} or a color name like "red"
+
+neopixel_toggle
+  Toggles NeoPixel on/off. Input: none
+
+get_script_from_editor
+  Reads the current DuckyScript from the editor tab. Input: none
+
+send_script_to_editor
+  Pushes script text into the editor tab. Input: the script text
+
+## DUCKYSCRIPT QUICK REFERENCE
+- DELAY 2000      (wait 2000ms after lines)
+- STRING hello    (type text)
+- ENTER / TAB / SPACE / ESCAPE
+- GUI SPACE       (Mac Spotlight, Win Start)
+- GUI r           (Win Run dialog)
+- CTRL ALT t      (Linux terminal)
+- CTRL c / CTRL v (copy/paste)
+- F1 .. F12
+
+## EXAMPLE INTERACTION — FILE CREATION & EXECUTION
+
+User: Create a script called notes inside Utility which should open notes on my Mac, then run it.
+
+Thought: First I need to generate the DuckyScript to open Notes on a Mac.
+Action: generate_hid_script
+Action Input: Open Spotlight on Mac using Command+Space, wait 2000ms, type notes, wait 2000ms, press Enter, wait 2000ms
+
+[System injects → Observation: GUI SPACE\nDELAY 2000\nSTRING notes\nDELAY 2000\nENTER\nDELAY 2000]
+
+Thought: Now I will save this DuckyScript to /Utility/notes.txt on the SD card.
+Action: write_file
+Action Input: {"path":"/Utility/notes.txt","content":"GUI SPACE\nDELAY 2000\nSTRING notes\nDELAY 2000\nENTER\nDELAY 2000"}
+
+[System injects → Observation: File written successfully to /Utility/notes.txt (67 bytes).]
+
+Thought: Now I will execute the script file /Utility/notes.txt from the SD card.
+Action: run_script
+Action Input: /Utility/notes.txt
+
+[System injects → Observation: Executed script file from SD card: /Utility/notes.txt]
+
+Thought: The script was created and executed successfully.
+FINAL: Created /Utility/notes.txt with the payload to open Notes on Mac and executed it from the SD card.`;
+
+// ─── Tool Implementations ─────────────────────────────────────
+const agentTools = {
+
+  async execute_script(input) {
+    const script = input.trim();
+    if (!script) return 'Error: no script provided';
+    try {
+      await deviceFetch('/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'duckyscript=' + encodeURIComponent(script)
+      });
+      return `Script sent to device successfully (${script.split('\n').length} lines).\n\nScript:\n${script}`;
+    } catch (e) {
+      return 'Error sending script: ' + e.message;
+    }
+  },
+
+  async generate_hid_script(input) {
+    const keyToUse = OPENROUTER_KEY || GROQ_KEY;
+    if (!keyToUse) return 'Error: No API key configured. Go to Settings and add your OpenRouter or Groq API key.';
+
+    const sysPrompt = `You are a DuckyScript expert. Generate ONLY valid DuckyScript for the described task.
+CRITICAL RULE: Always insert DELAY 2000 after each action/command line.
+DuckyScript syntax rules:
+- DELAY <ms>: wait (always use DELAY 2000 after action lines)
+- STRING <text>: type text
+- ENTER, TAB, SPACE, BACKSPACE, DELETE, ESCAPE: key presses
+- GUI <key>: Windows/Mac Command + key (e.g. GUI r, GUI SPACE)
+- CTRL <key>: Control + key (e.g. CTRL c, CTRL ALT t)
+- ALT <key>: Alt + key
+- SHIFT <key>: Shift + key
+- F1..F12: function keys
+- UPARROW, DOWNARROW, LEFTARROW, RIGHTARROW: arrows
+Output ONLY the script, no markdown, no explanation.`;
+
+    if (OPENROUTER_KEY) {
+      try {
+        const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + OPENROUTER_KEY,
+            'HTTP-Referer': window.location.origin || 'https://ghostchip.local',
+            'X-Title': 'GhostChip AI Agent'
+          },
+          body: JSON.stringify({
+            model: AGENT_MODEL,
+            messages: [
+              { role: 'system', content: sysPrompt },
+              { role: 'user', content: 'Generate DuckyScript for: ' + input }
+            ],
+            temperature: 0.2,
+            max_tokens: 2048
+          })
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          return 'Error from OpenRouter API: ' + (err.error?.message || res.statusText);
+        }
+        const data = await res.json();
+        return (data.choices[0]?.message?.content || '').trim();
+      } catch (e) {
+        return 'Error generating script: ' + e.message;
+      }
+    } else {
+      try {
+        const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + GROQ_KEY },
+          body: JSON.stringify({
+            model: GROQ_MODEL,
+            messages: [
+              { role: 'system', content: sysPrompt },
+              { role: 'user', content: 'Generate DuckyScript for: ' + input }
+            ],
+            temperature: 0.2,
+            max_tokens: 600
+          })
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          return 'Error from Groq API: ' + (err.error?.message || res.statusText);
+        }
+        const data = await res.json();
+        return (data.choices[0]?.message?.content || '').trim();
+      } catch (e) {
+        return 'Error generating script: ' + e.message;
+      }
+    }
+  },
+
+  async get_device_info(_input) {
+    try {
+      const data = await deviceGet('/info');
+      return JSON.stringify(data, null, 2);
+    } catch (e) {
+      return 'Could not fetch device info: ' + e.message;
+    }
+  },
+
+  async list_files(input) {
+    let path = (input || '/').trim() || '/';
+    if (!path.startsWith('/')) path = '/' + path;
+    try {
+      const r = await fmFetch('/fm/list?path=' + encodeURIComponent(path));
+      const text = await r.text();
+      let data;
+      try { data = JSON.parse(text); } catch { data = null; }
+      if (!data) return 'Response: ' + (text || 'Empty response');
+      const files = data.files || (Array.isArray(data) ? data : null);
+      if (Array.isArray(files)) {
+        if (files.length === 0) return `Directory "${path}" is empty.`;
+        return files.map(f => {
+          const isDir = f.type === 'dir' || f.isDir;
+          const sz = f.size !== undefined ? ` (${f.size} B)` : '';
+          return `${isDir ? '📁' : '📄'} ${f.name}${sz}`;
+        }).join('\n');
+      }
+      return 'File listing: ' + text;
+    } catch (e) {
+      return 'Error listing files: ' + e.message;
+    }
+  },
+
+  async read_file(input) {
+    let path = input.trim();
+    if (!path) return 'Error: path is required';
+    if (!path.startsWith('/')) path = '/' + path;
+    try {
+      const r = await fmFetch('/fm/download?path=' + encodeURIComponent(path));
+      const text = await r.text();
+      return text.substring(0, 2000) + (text.length > 2000 ? '\n...(truncated)' : '');
+    } catch (e) {
+      return 'Error reading file: ' + e.message;
+    }
+  },
+
+  async write_file(input) {
+    let path = '', content = '';
+    try {
+      const parsed = JSON.parse(input);
+      path = parsed.path || '';
+      content = parsed.content || '';
+    } catch {
+      const lines = input.trim().split('\n');
+      path = lines[0].trim();
+      content = lines.slice(1).join('\n');
+    }
+    if (!path) return 'Error: path is required. Input format: {"path":"/Folder/file.txt", "content":"..."}';
+    if (!path.startsWith('/')) path = '/' + path;
+
+    const lastSlash = path.lastIndexOf('/');
+    const folder = lastSlash > 0 ? path.substring(0, lastSlash) : '/';
+    const filename = lastSlash >= 0 ? path.substring(lastSlash + 1) : path;
+
+    try {
+      if (folder !== '/') {
+        await fmFetchPost('/fm/mkdir?path=' + encodeURIComponent(folder)).catch(() => {});
+      }
+      const uploadUrl = fmBase() + '/fm/upload?path=' + encodeURIComponent(folder);
+      const form = new FormData();
+      const blob = new Blob([content], { type: 'text/plain' });
+      form.append('file', blob, filename);
+      await fetch(uploadUrl, { method: 'POST', body: form });
+      return `File written successfully to ${path} (${content.length} bytes).`;
+    } catch (e) {
+      return 'Error writing file: ' + e.message;
+    }
+  },
+
+  async create_directory(input) {
+    let path = input.trim();
+    if (!path) return 'Error: directory path is required';
+    if (!path.startsWith('/')) path = '/' + path;
+    try {
+      await fmFetchPost('/fm/mkdir?path=' + encodeURIComponent(path));
+      return `Directory created successfully: ${path}`;
+    } catch (e) {
+      return 'Error creating directory: ' + e.message;
+    }
+  },
+  async mkdir(input) { return this.create_directory(input); },
+
+  async delete_file(input) {
+    let path = input.trim();
+    if (!path) return 'Error: path is required for deletion';
+    if (!path.startsWith('/')) path = '/' + path;
+    try {
+      await fmFetchPost('/fm/delete?path=' + encodeURIComponent(path));
+      return `Successfully deleted: ${path}`;
+    } catch (e) {
+      return 'Error deleting: ' + e.message;
+    }
+  },
+  async delete(input) { return this.delete_file(input); },
+  async delete_directory(input) { return this.delete_file(input); },
+  async delete_file_or_directory(input) { return this.delete_file(input); },
+
+  async run_script(input) {
+    let path = input.trim();
+    if (!path) return 'Error: script file path is required';
+    if (!path.startsWith('/')) path = '/' + path;
+    try {
+      await fmFetchPost('/fm/run?path=' + encodeURIComponent(path));
+      return `Executed script file from SD card: ${path}`;
+    } catch (e) {
+      return 'Error executing script file: ' + e.message;
+    }
+  },
+  async execute_file(input) { return this.run_script(input); },
+  async execute_script_by_path(input) { return this.run_script(input); },
+  async run_file(input) { return this.run_script(input); },
+
+  async wifi_scan(_input) {
+    try {
+      await deviceFetch('/wifi/scan', { method: 'POST' });
+      await new Promise(r => setTimeout(r, 3000));
+      const data = await deviceGet('/wifi/networks');
+      if (data && data.networks) {
+        return data.networks.map(n => `📶 ${n.ssid} (${n.rssi}dBm, ch${n.channel})`).join('\n');
+      }
+      return 'Scan triggered. Check device for results.';
+    } catch (e) {
+      return 'WiFi scan triggered (result: ' + e.message + ')';
+    }
+  },
+
+  async wifi_connect(input) {
+    let ssid, password;
+    try {
+      const p = JSON.parse(input);
+      ssid = p.ssid; password = p.password || '';
+    } catch {
+      return 'Error: input must be JSON {"ssid":"...","password":"..."}';
+    }
+    try {
+      await deviceFetch('/wifi/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `ssid=${encodeURIComponent(ssid)}&password=${encodeURIComponent(password)}`
+      });
+      return `Connection request sent for SSID: ${ssid}`;
+    } catch (e) {
+      return 'Error connecting: ' + e.message;
+    }
+  },
+
+  async neopixel_set(input) {
+    let r = 0, g = 0, b = 0;
+    try {
+      const p = JSON.parse(input);
+      r = p.r || 0; g = p.g || 0; b = p.b || 0;
+    } catch {
+      // Try parsing "red", "green", "blue" etc.
+      const lc = input.toLowerCase();
+      if (lc.includes('red'))    { r=255; g=0;   b=0;   }
+      else if (lc.includes('green'))  { r=0;   g=255; b=0;   }
+      else if (lc.includes('blue'))   { r=0;   g=0;   b=255; }
+      else if (lc.includes('white'))  { r=255; g=255; b=255; }
+      else if (lc.includes('purple')) { r=128; g=0;   b=128; }
+      else if (lc.includes('cyan'))   { r=0;   g=255; b=255; }
+      else if (lc.includes('orange')) { r=255; g=128; b=0;   }
+      else if (lc.includes('off'))    { r=0;   g=0;   b=0;   }
+      else return 'Error: provide JSON {"r":0,"g":255,"b":0} or a color name';
+    }
+    try {
+      await deviceFetch('/neopixel/set', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `r=${r}&g=${g}&b=${b}`
+      });
+      return `NeoPixel set to RGB(${r}, ${g}, ${b})`;
+    } catch (e) {
+      return 'Error setting NeoPixel: ' + e.message;
+    }
+  },
+
+  async neopixel_toggle(_input) {
+    try {
+      await deviceFetch('/neopixel/toggle', { method: 'POST' });
+      return 'NeoPixel toggled.';
+    } catch (e) {
+      return 'Toggle sent: ' + e.message;
+    }
+  },
+
+  async get_script_from_editor(_input) {
+    const ta = $('duckyInput') || document.querySelector('textarea[id*="ducky"]');
+    if (!ta) return 'Editor not found.';
+    return ta.value || '(editor is empty)';
+  },
+
+  async send_script_to_editor(input) {
+    const ta = $('duckyInput') || document.querySelector('textarea[id*="ducky"]');
+    if (!ta) return 'Editor not found.';
+    ta.value = input.trim();
+    ta.dispatchEvent(new Event('input'));
+    return `Script pushed to editor (${input.trim().split('\n').length} lines).`;
+  }
+};
+
+// ─── Agent UI Helpers ─────────────────────────────────────────
+function appendAgentLog(type, label, text, codeText) {
+  const log = $('agentLog');
+  if (!log) return;
+  const icons = {
+    user: '👤', thought: '🧠', action: '🔧', observation: '📡',
+    final: '✅', error: '❌', thinking: '⏳'
+  };
+  const labels = {
+    user: 'You', thought: 'Reasoning', action: 'Tool Call',
+    observation: 'Observation', final: 'Done', error: 'Error', thinking: 'Thinking'
+  };
+  const entry = document.createElement('div');
+  entry.className = `agent-entry agent-${type}`;
+  const iconDiv = `<div class="agent-entry-icon">${icons[type] || '•'}</div>`;
+  let bodyHtml = `<div class="agent-entry-label">${label || labels[type] || type}</div>`;
+
+  if (type === 'thinking') {
+    bodyHtml += `<div class="agent-entry-text"><span class="agent-dots"><span></span><span></span><span></span></span>&nbsp;Thinking…</div>`;
+  } else if (type === 'action') {
+    bodyHtml += `<div class="agent-entry-text"><span class="agent-tool-badge">${label}</span>`;
+    if (codeText) bodyHtml += `<code class="agent-code">${escHtml(codeText)}</code>`;
+    bodyHtml += `</div>`;
+  } else {
+    bodyHtml += `<div class="agent-entry-text">${escHtml(text)}</div>`;
+  }
+
+  entry.innerHTML = iconDiv + `<div class="agent-entry-body">${bodyHtml}</div>`;
+  log.appendChild(entry);
+  log.scrollTop = log.scrollHeight;
+  return entry;
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function agentSetStatus(state, text) {
+  const dot = $('agentDot');
+  const label = $('agentStatusLabel');
+  if (dot) { dot.className = 'agent-status-dot' + (state === 'running' ? ' running' : state === 'error' ? ' error' : ''); }
+  if (label) label.textContent = text;
+}
+
+function agentSetButtons(running) {
+  const runBtn = $('agentRunBtn');
+  const stopBtn = $('agentStopBtn');
+  if (runBtn) runBtn.disabled = running;
+  if (stopBtn) stopBtn.disabled = !running;
+}
+
+function toggleAgentInspector() {
+  agentInspectorOpen = !agentInspectorOpen;
+  const body = $('agentToolBody');
+  const chev = $('agentInspectorChevron');
+  if (body) body.style.display = agentInspectorOpen ? 'block' : 'none';
+  if (chev) chev.style.transform = agentInspectorOpen ? 'rotate(180deg)' : '';
+}
+
+function updateAgentInspector(toolName, toolInput, toolResult) {
+  const inspector = $('agentToolInspector');
+  const nameEl = $('agentToolName');
+  const body = $('agentToolBody');
+  if (inspector) inspector.style.display = 'block';
+  if (nameEl) nameEl.textContent = `🔧 ${toolName}`;
+  if (body) body.textContent = `INPUT:\n${toolInput}\n\nRESULT:\n${toolResult}`;
+}
+
+// ─── Main ReAct Loop ──────────────────────────────────────────
+async function runAgent(userMessage) {
+  if (agentRunning) return;
+  const keyToUse = OPENROUTER_KEY || GROQ_KEY;
+  if (!keyToUse) {
+    appendAgentLog('error', 'Error', 'No API key found. Please add your OpenRouter or Groq API key in Settings.');
+    return;
+  }
+
+  agentRunning = true;
+  agentAbort = false;
+  agentSetButtons(true);
+  agentSetStatus('running', 'Running agent…');
+
+  // Add user message to log and history
+  appendAgentLog('user', 'You', userMessage);
+  agentHistory.push({ role: 'user', content: userMessage });
+
+  const MAX_ITER = 10;
+  let iteration = 0;
+
+  // Show thinking indicator
+  let thinkingEl = appendAgentLog('thinking', 'Thinking', '');
+
+  try {
+    while (iteration < MAX_ITER && !agentAbort) {
+      iteration++;
+      agentSetStatus('running', `Agent thinking… (step ${iteration}/${MAX_ITER})`);
+
+      let llmRes;
+      if (OPENROUTER_KEY) {
+        const messages = [
+          { role: 'system', content: AGENT_SYSTEM_PROMPT },
+          ...agentHistory
+        ];
+        try {
+          const apiRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + OPENROUTER_KEY,
+              'HTTP-Referer': window.location.origin || 'https://ghostchip.local',
+              'X-Title': 'GhostChip AI Agent'
+            },
+            body: JSON.stringify({
+              model: AGENT_MODEL,
+              messages,
+              temperature: 0.2,
+              max_tokens: 4096
+            })
+          });
+          if (!apiRes.ok) {
+            const err = await apiRes.json().catch(() => ({}));
+            throw new Error(err.error?.message || apiRes.statusText);
+          }
+          const apiData = await apiRes.json();
+          llmRes = (apiData.choices[0]?.message?.content || '').trim();
+        } catch (e) {
+          if (thinkingEl) { thinkingEl.remove(); thinkingEl = null; }
+          appendAgentLog('error', 'API Error', e.message);
+          agentHistory.push({ role: 'assistant', content: 'Error: ' + e.message });
+          break;
+        }
+      } else {
+        // Groq API fallback
+        const messages = [
+          { role: 'system', content: AGENT_SYSTEM_PROMPT },
+          ...agentHistory
+        ];
+        try {
+          const apiRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + GROQ_KEY },
+            body: JSON.stringify({
+              model: GROQ_MODEL,
+              messages,
+              temperature: 0.2,
+              max_tokens: 1024
+            })
+          });
+          if (!apiRes.ok) {
+            const err = await apiRes.json().catch(() => ({}));
+            throw new Error(err.error?.message || apiRes.statusText);
+          }
+          const apiData = await apiRes.json();
+          llmRes = (apiData.choices[0]?.message?.content || '').trim();
+        } catch (e) {
+          if (thinkingEl) { thinkingEl.remove(); thinkingEl = null; }
+          appendAgentLog('error', 'API Error', e.message);
+          agentHistory.push({ role: 'assistant', content: 'Error: ' + e.message });
+          break;
+        }
+      }
+
+      // Remove thinking indicator on first real response
+      if (thinkingEl) { thinkingEl.remove(); thinkingEl = null; }
+
+      // Add assistant response to history (assistant role only — no observation yet)
+      agentHistory.push({ role: 'assistant', content: llmRes });
+
+      // ── Parse the LLM response ──
+      // Thought: everything before Action: or FINAL:
+      const thoughtMatch = llmRes.match(/Thought:\s*([\s\S]*?)(?=\nAction:|\nFINAL:|$)/i);
+      // Action: single line tool name
+      const actionMatch = llmRes.match(/^Action:\s*(.+)$/im);
+      // Action Input: everything after "Action Input:" until end-of-string
+      // (the model must STOP after this — we enforce it via prompt, not stop tokens)
+      const actionInputMatch = llmRes.match(/^Action Input:\s*([\s\S]*)$/im);
+      // FINAL: everything after "FINAL:"
+      const finalMatch = llmRes.match(/FINAL:\s*([\s\S]*)/i);
+
+      // Show thought
+      if (thoughtMatch && thoughtMatch[1].trim()) {
+        appendAgentLog('thought', 'Reasoning', thoughtMatch[1].trim());
+      }
+
+      // Check for FINAL answer
+      if (finalMatch) {
+        appendAgentLog('final', 'Done ✓', finalMatch[1].trim());
+        agentSetStatus('idle', 'Completed ✓');
+        break;
+      }
+
+      // Check for tool call
+      if (!actionMatch) {
+        // No action and no FINAL — show raw response and stop
+        appendAgentLog('observation', 'Response', llmRes);
+        break;
+      }
+
+      const toolName = actionMatch[1].trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z_]/g, '');
+      const toolInput = actionInputMatch ? actionInputMatch[1].trim() : '';
+
+      // Show action in log
+      appendAgentLog('action', toolName, '', toolInput);
+      agentSetStatus('running', `Calling tool: ${toolName}…`);
+
+      // Execute the tool
+      let toolResult = '';
+      if (agentTools[toolName]) {
+        try {
+          toolResult = await agentTools[toolName](toolInput);
+        } catch (e) {
+          toolResult = 'Tool error: ' + e.message;
+        }
+      } else {
+        toolResult = `Unknown tool: "${toolName}". Available tools: ${Object.keys(agentTools).join(', ')}`;
+      }
+
+      // Update inspector
+      updateAgentInspector(toolName, toolInput, toolResult);
+
+      // Show observation in UI
+      appendAgentLog('observation', 'Observation', toolResult);
+
+      // Inject observation as a user message — this is the standard ReAct pattern.
+      // Using role:'user' so the model clearly sees it came from outside (real tool result).
+      agentHistory.push({ role: 'user', content: `Observation: ${toolResult}\n\nContinue with the next step using Format A (if more steps needed) or Format B (if done).` });
+
+      // Show next thinking indicator
+      thinkingEl = appendAgentLog('thinking', 'Thinking', '');
+
+      // Small delay to prevent rate limiting
+      await new Promise(r => setTimeout(r, 300));
+    }
+
+    if (iteration >= MAX_ITER && !agentAbort) {
+      if (thinkingEl) { thinkingEl.remove(); thinkingEl = null; }
+      appendAgentLog('error', 'Limit Reached', `Max iterations (${MAX_ITER}) reached. Agent stopped.`);
+      agentSetStatus('idle', `Stopped at max iterations`);
+    }
+
+    if (agentAbort) {
+      if (thinkingEl) { thinkingEl.remove(); thinkingEl = null; }
+      appendAgentLog('error', 'Stopped', 'Agent was stopped by user.');
+      agentSetStatus('idle', 'Stopped by user');
+    }
+
+  } finally {
+    agentRunning = false;
+    agentAbort = false;
+    agentSetButtons(false);
+    if (agentSetStatus && !$('agentStatusLabel')?.textContent.startsWith('Completed')) {
+      // only update if not already set to completed
+    }
+  }
+}
+
+// ─── Lifecycle Functions ──────────────────────────────────────
+function initAiAgent() {
+  agentAbort = false;
+  agentSetStatus('idle', 'Idle — ready for instructions');
+  agentSetButtons(false);
+  // Focus input
+  setTimeout(() => { const ta = $('agentInput'); if (ta) ta.focus(); }, 200);
+}
+
+function stopAgent() {
+  agentAbort = true;
+}
+
+function clearAgentLog() {
+  agentHistory = [];
+  const log = $('agentLog');
+  if (!log) return;
+  log.innerHTML = `
+    <div class="agent-entry agent-welcome">
+      <div class="agent-entry-icon">🤖</div>
+      <div class="agent-entry-body">
+        <div class="agent-entry-label">GhostChip AI Agent</div>
+        <div class="agent-entry-text">Log cleared. Ready for new instructions.</div>
+      </div>
+    </div>`;
+  const inspector = $('agentToolInspector');
+  if (inspector) inspector.style.display = 'none';
+  agentSetStatus('idle', 'Idle — ready for instructions');
+}
+
+function runAgentFromInput() {
+  const ta = $('agentInput');
+  if (!ta) return;
+  const msg = ta.value.trim();
+  if (!msg) { ta.focus(); return; }
+  ta.value = '';
+  runAgent(msg);
+}
+
+function agentInputKeydown(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    runAgentFromInput();
+  }
+}
+
+function agentQuickPrompt(text) {
+  const ta = $('agentInput');
+  if (ta) { ta.value = text; ta.focus(); }
 }
