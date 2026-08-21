@@ -349,7 +349,7 @@ function acSelectIndex(idx) {
   const ed = $('editor');
   const wordMatch = info.textBeforeCursor.match(/([a-zA-Z]{1,15})$/);
   if (!wordMatch) return;
-  
+
   const replaceLen = wordMatch[1].length;
   const start = info.pos - replaceLen;
   ed.value = ed.value.slice(0, start) + item.cmd + ' ' + ed.value.slice(info.pos);
@@ -417,10 +417,102 @@ function updateAcActiveItem() {
   });
 }
 
+// ─── AI DuckyScript Cleaner & Output Hardener ───
+function cleanDuckyScriptOutput(rawText) {
+  if (!rawText) return '';
+  let text = String(rawText).trim();
+
+  // 1. Strip <think>...</think> tags (reasoning models)
+  text = text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+
+  // 2. Strip markdown code blocks
+  const codeMatch = text.match(/```(?:duckyscript|bash|sh|text|plaintext)?\n([\s\S]*?)```/i);
+  if (codeMatch && codeMatch[1].trim()) {
+    text = codeMatch[1].trim();
+  } else {
+    text = text.replace(/```[\w]*\n?/g, '').trim();
+  }
+
+  // 3. Fix key syntax errors (e.g. "GUI space" -> "GUI SPACE", "gui space" -> "GUI SPACE")
+  text = text.replace(/^GUI\s+space\b/gim, 'GUI SPACE');
+  text = text.replace(/^gui\s+space\b/gim, 'GUI SPACE');
+  text = text.replace(/^gui\s+/gim, 'GUI ');
+  text = text.replace(/^string\s+/gim, 'STRING ');
+  text = text.replace(/^delay\s+/gim, 'DELAY ');
+  text = text.replace(/^enter\b/gim, 'ENTER');
+  text = text.replace(/^tab\b/gim, 'TAB');
+  text = text.replace(/^escape\b/gim, 'ESCAPE');
+  text = text.replace(/^backspace\b/gim, 'BACKSPACE');
+
+  // 4. Strict Line-by-Line Filtering: Discard any English self-talk/prose lines!
+  const lines = text.split('\n');
+  const validLines = [];
+  const cmdRegex = /^(?:GUI|STRING|DELAY|ENTER|TAB|SPACE|CTRL|ALT|SHIFT|F\d{1,2}|UPARROW|DOWNARROW|LEFTARROW|RIGHTARROW|REPEAT|DEFAULTDELAY|DEFAULT_DELAY|ESCAPE|BACKSPACE|DELETE|CAPSLOCK|UP|DOWN|LEFT|RIGHT)\b/i;
+
+  for (let l of lines) {
+    const trimmed = l.trim();
+    if (!trimmed) continue;
+
+    if (cmdRegex.test(trimmed)) {
+      validLines.push(trimmed);
+    } else if (/^REM\b/i.test(trimmed)) {
+      const remText = trimmed.substring(3).trim();
+      // Discard REM lines if they are AI self-talk or paragraphs (>80 chars or contains AI prose words)
+      if (remText.length <= 80 && !/(?:actually|the user|wants me|I need to|we need|let's|here is|thinking|reasoning|should be|step \d|analyze|determine)/i.test(remText)) {
+        validLines.push(trimmed);
+      }
+    }
+  }
+
+  // 5. Auto-insert ENTER after terminal STRING commands & DELAY 2000 after action lines
+  const outputLines = [];
+  const actionRegex = /^(?:GUI|STRING|ENTER|TAB|SPACE|CTRL|ALT|SHIFT|F\d{1,2}|UPARROW|DOWNARROW|LEFTARROW|RIGHTARROW)\b/i;
+
+  for (let i = 0; i < validLines.length; i++) {
+    const current = validLines[i].trim();
+    if (!current) continue;
+    outputLines.push(current);
+
+    // If current line is a terminal command typed via STRING (e.g. STRING terminal, STRING mkdir ducky)
+    // ensure an ENTER keypress follows so the command actually executes!
+    if (/^STRING\b/i.test(current)) {
+      let nextNonEmpty = '';
+      for (let j = i + 1; j < validLines.length; j++) {
+        if (validLines[j].trim()) {
+          nextNonEmpty = validLines[j].trim();
+          break;
+        }
+      }
+      if (!/^ENTER\b/i.test(nextNonEmpty) && !/^DELAY\b/i.test(nextNonEmpty)) {
+        outputLines.push('DELAY 2000');
+        outputLines.push('ENTER');
+        outputLines.push('DELAY 2000');
+      }
+    } else if (actionRegex.test(current) && !/^ENTER\b/i.test(current)) {
+      let nextLine = '';
+      for (let j = i + 1; j < validLines.length; j++) {
+        if (validLines[j].trim()) {
+          nextLine = validLines[j].trim();
+          break;
+        }
+      }
+      if (!/^DELAY\b/i.test(nextLine)) {
+        outputLines.push('DELAY 2000');
+      }
+    }
+  }
+
+  return outputLines.join('\n').trim();
+}
+
 // ─── AI Copilot Inline Engine ───
 async function triggerAiCopilot(remComment) {
-  const apiKey = GROQ_KEY || localStorage.getItem('gc_groq_key') || '';
-  if (!apiKey || apiKey.length < 5) return;
+  const keyToUse = OPENROUTER_KEY || GROQ_KEY || localStorage.getItem('gc_openrouter_key') || localStorage.getItem('gc_groq_key') || '';
+  if (!keyToUse || keyToUse.length < 5) return;
+
+  const isOrKey = keyToUse.startsWith('sk-or-') || Boolean(OPENROUTER_KEY);
+  const endpoint = isOrKey ? 'https://openrouter.ai/api/v1/chat/completions' : 'https://api.groq.com/openai/v1/chat/completions';
+  const modelToUse = isOrKey ? AGENT_MODEL : GROQ_MODEL;
 
   const bar = $('aiSuggestBar');
   const loading = $('aiSuggestLoading');
@@ -432,30 +524,59 @@ async function triggerAiCopilot(remComment) {
   if (loading) loading.style.display = 'flex';
   if (inner) inner.style.display = 'none';
 
+  const headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + keyToUse };
+  if (isOrKey) {
+    headers['HTTP-Referer'] = window.location.origin || 'https://ghostchip.local';
+    headers['X-Title'] = 'GhostChip AI Agent';
+  }
+
   try {
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    const res = await fetch(endpoint, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + apiKey
-      },
+      headers,
       body: JSON.stringify({
-        model: GROQ_MODEL,
+        model: modelToUse,
         messages: [
           {
             role: 'system',
-            content: `You are an AI DuckyScript Copilot. User provided a comment line: "${remComment}". Generate concise DuckyScript instructions (3-8 lines max) to perform this request. Output ONLY executable DuckyScript code without markdown fences or comments. Always include DELAY 2000 after each action line.`
+            content: `STRICT DUCKYSCRIPT SYNTAX RULES:
+1. ALL DuckyScript keywords and key names MUST be UPPERCASE (e.g. GUI SPACE, ENTER, STRING, DELAY 2000). NEVER write "GUI space".
+2. EXECUTING TERMINAL COMMANDS: Every shell command typed with "STRING <cmd>" MUST be followed by "ENTER" to execute it!
+   Example:
+   GUI SPACE
+   DELAY 2000
+   STRING terminal
+   DELAY 2000
+   ENTER
+   DELAY 2000
+   STRING mkdir ducky
+   DELAY 2000
+   ENTER
+   DELAY 2000
+   STRING cd ducky
+   DELAY 2000
+   ENTER
+   DELAY 2000
+   STRING echo "What is a HID attack?" > ducky.txt
+   DELAY 2000
+   ENTER
+3. Always insert DELAY 2000 after each action line.
+4. Output ONLY raw executable DuckyScript code lines. DO NOT output reasoning, thinking process, preamble, or markdown. User comment: "${remComment}".`
           },
           { role: 'user', content: remComment }
         ],
-        temperature: 0.1,
-        max_tokens: 300
+        temperature: 0.6,
+        top_p: 0.95,
+        max_tokens: 2048,
+        max_completion_tokens: 2048,
+        reasoning_effort: 'none',
+        stop: null
       })
     });
     if (!res.ok) throw new Error('AI Copilot request failed');
     const data = await res.json();
-    let script = data.choices?.[0]?.message?.content?.trim() || '';
-    script = script.replace(/```[\w]*\n?/g, '').trim();
+    let raw = data.choices?.[0]?.message?.content?.trim() || '';
+    let script = cleanDuckyScriptOutput(raw);
 
     if (script) {
       currentAiSuggestion = script;
@@ -528,7 +649,7 @@ async function saveVersionToDeviceLogs(script, timestampId, label) {
     // 2. Generate new filename every time using timestamp (e.g. log_20260819_211230.txt)
     const now = new Date();
     const pad = n => String(n).padStart(2, '0');
-    const filename = `log_${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}.txt`;
+    const filename = `log_${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}.txt`;
 
     const uploadUrl = fmBase() + '/fm/upload?path=%2Flogs';
     const crossOrigin = new URL(uploadUrl).origin !== location.origin;
@@ -557,7 +678,7 @@ function saveScriptVersion(label = 'Auto snapshot') {
 
   const now = new Date();
   const timestampId = Date.now();
-  const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' (' + (now.getMonth()+1) + '/' + now.getDate() + ')';
+  const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' (' + (now.getMonth() + 1) + '/' + now.getDate() + ')';
 
   history.unshift({
     id: timestampId,
@@ -678,7 +799,7 @@ function sendHidAction(action) {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: 'duckyscript=' + encodeURIComponent(command)
-  }).catch(() => {});
+  }).catch(() => { });
 }
 
 const SHIFT_SYMBOL_MAP = {
@@ -771,7 +892,7 @@ function startMacroRecord() {
   $('recPlayBtn').disabled = true;
   $('recDot').classList.add('run');
   $('recStatusLabel').textContent = 'Status: Recording...';
-  
+
   window.addEventListener('keydown', captureMacroKey);
   renderMacroStream();
   toast('Macro recording started 🔴', 'ok');
@@ -845,7 +966,7 @@ function renderMacroStream() {
   stream.innerHTML = macroEvents.map((ev, i) => `
     <div style="display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid rgba(255,255,255,0.02)">
       <span><span style="color:var(--dim2)">[${ev.delay}ms]</span> <b style="color:var(--g)">${escHtml(ev.key)}</b></span>
-      <span style="color:var(--dim2);font-size:0.65rem">#${i+1}</span>
+      <span style="color:var(--dim2);font-size:0.65rem">#${i + 1}</span>
     </div>
   `).join('');
   stream.scrollTop = stream.scrollHeight;
@@ -855,7 +976,7 @@ async function playMacroRecord() {
   if (macroEvents.length === 0) return;
   toast('Replaying recorded macro payload...', 'ok', 2000);
   let idx = 0;
-  
+
   async function step() {
     if (idx >= macroEvents.length) {
       toast('Macro playback completed ✓', 'ok', 2000);
@@ -863,14 +984,14 @@ async function playMacroRecord() {
     }
     const ev = macroEvents[idx++];
     toast(`Executing: ${ev.key}`, 'ok', 1000);
-    
+
     // Execute live HID keystroke command on target device
     sendHidAction(ev.key);
-    
+
     const nextDelay = idx < macroEvents.length ? Math.max(macroEvents[idx].delay, 100) : 500;
     setTimeout(step, Math.min(nextDelay, 3000));
   }
-  
+
   step();
 }
 
@@ -924,7 +1045,7 @@ function exportMacroToEditor() {
   updateLines();
   saveScriptVersion('Recorded Macro Export');
   localStorage.setItem('gc_script', generatedDs);
-  
+
   closeAllTools();
   goPage('scripts', document.querySelectorAll('.nav-item')[0]);
   toast('Macro exported to DuckyScript Editor ✓', 'ok', 2000);
@@ -1849,47 +1970,83 @@ async function aiGenerate() {
   const btn = $('aiGenBtn');
   btn.disabled = true;
   btn.innerHTML = '<span class="spin"></span> Generating...';
-  const apiKey = GROQ_KEY || localStorage.getItem('gc_groq_key') || '';
-  if (!apiKey || apiKey.length < 5) {
-    toast('No API key found. Go to Settings → save your Groq key first.', 'err');
+
+  const keyToUse = OPENROUTER_KEY || GROQ_KEY || localStorage.getItem('gc_openrouter_key') || localStorage.getItem('gc_groq_key') || '';
+  if (!keyToUse || keyToUse.length < 5) {
+    toast('No API key found. Go to Settings → save your OpenRouter or Groq key first.', 'err');
     btn.disabled = false;
     btn.innerHTML = '⚡ Generate DuckyScript';
     return;
   }
+
+  const isOrKey = keyToUse.startsWith('sk-or-') || Boolean(OPENROUTER_KEY);
+  const endpoint = isOrKey ? 'https://openrouter.ai/api/v1/chat/completions' : 'https://api.groq.com/openai/v1/chat/completions';
+  const modelToUse = isOrKey ? AGENT_MODEL : GROQ_MODEL;
+
   $('aiOutput').value = '';
   $('aiOutputCard').style.display = 'none';
+
+  const headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + keyToUse };
+  if (isOrKey) {
+    headers['HTTP-Referer'] = window.location.origin || 'https://ghostchip.local';
+    headers['X-Title'] = 'GhostChip AI Agent';
+  }
+
   try {
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    const res = await fetch(endpoint, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + apiKey
-      },
+      headers,
       body: JSON.stringify({
-        model: GROQ_MODEL,
+        model: modelToUse,
         messages: [
           {
             role: 'system',
-            content: `You are a DuckyScript expert for USB Rubber Ducky / ESP32 HID payloads. ${getOSContext()} Generate ONLY the DuckyScript payload — no explanations, no markdown code fences, no extra text. Use proper DuckyScript syntax: DELAY, STRING, ENTER, GUI, ALT, CTRL, SHIFT, TAB, SPACE, UP, DOWN, LEFT, RIGHT, REM, F1-F12, CAPSLOCK, etc. Always add DELAY 2000 after each action line.`
+            content: `STRICT DUCKYSCRIPT SYNTAX RULES:
+1. ALL DuckyScript keywords and key names MUST be UPPERCASE (e.g. GUI SPACE, ENTER, STRING, DELAY 2000). NEVER write "GUI space".
+2. EXECUTING TERMINAL COMMANDS: Every shell command typed with "STRING <cmd>" MUST be followed by "ENTER" to execute it!
+   Example:
+   GUI SPACE
+   DELAY 2000
+   STRING terminal
+   DELAY 2000
+   ENTER
+   DELAY 2000
+   STRING mkdir ducky
+   DELAY 2000
+   ENTER
+   DELAY 2000
+   STRING cd ducky
+   DELAY 2000
+   ENTER
+   DELAY 2000
+   STRING echo "What is a HID attack?" > ducky.txt
+   DELAY 2000
+   ENTER
+3. Always insert DELAY 2000 after each action line.
+4. Output ONLY raw executable DuckyScript code lines. DO NOT output reasoning, thinking process, preamble, or markdown. ${getOSContext()}`
           },
           { role: 'user', content: prompt }
         ],
-        temperature: 0.2,
-        max_tokens: 800
+        temperature: 0.6,
+        top_p: 0.95,
+        max_tokens: 2048,
+        max_completion_tokens: 2048,
+        reasoning_effort: 'none',
+        stop: null
       })
     });
     if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error?.message || 'Groq API error: ' + res.status);
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error?.message || 'API error: ' + res.status);
     }
     const data = await res.json();
-    let script = data.choices?.[0]?.message?.content?.trim() || '';
-    script = script.replace(/```[\w]*\n?/g, '').trim();
+    let raw = data.choices?.[0]?.message?.content?.trim() || '';
+    let script = cleanDuckyScriptOutput(raw);
     $('aiOutput').value = script;
     $('aiOutputCard').style.display = 'block';
     toast('Script generated ✓');
   } catch (e) {
-    toast('Generation failed: ' + e.message + '. Check Groq API key.', 'err');
+    toast('Generation failed: ' + e.message, 'err');
   } finally {
     btn.disabled = false;
     btn.innerHTML = '⚡ Generate DuckyScript';
@@ -1900,28 +2057,45 @@ async function aiGenerate() {
 async function aiConvertOS(newOS) {
   const script = $('aiOutput').value.trim();
   if (!script) { toast('No script to convert', 'warn'); return; }
-  const apiKey = GROQ_KEY || localStorage.getItem('gc_groq_key') || '';
-  if (!apiKey || apiKey.length < 5) { toast('No API key. Save in Settings.', 'err'); return; }
+
+  const keyToUse = OPENROUTER_KEY || GROQ_KEY || localStorage.getItem('gc_openrouter_key') || localStorage.getItem('gc_groq_key') || '';
+  if (!keyToUse || keyToUse.length < 5) { toast('No API key. Save in Settings.', 'err'); return; }
+
+  const isOrKey = keyToUse.startsWith('sk-or-') || Boolean(OPENROUTER_KEY);
+  const endpoint = isOrKey ? 'https://openrouter.ai/api/v1/chat/completions' : 'https://api.groq.com/openai/v1/chat/completions';
+  const modelToUse = isOrKey ? AGENT_MODEL : GROQ_MODEL;
+
   const osNames = { windows: 'Windows', macos: 'macOS', linux: 'Linux' };
   toast(`Converting to ${osNames[newOS]}...`, 'ok', 2000);
+
+  const headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + keyToUse };
+  if (isOrKey) {
+    headers['HTTP-Referer'] = window.location.origin || 'https://ghostchip.local';
+    headers['X-Title'] = 'GhostChip AI Agent';
+  }
+
   try {
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    const res = await fetch(endpoint, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+      headers,
       body: JSON.stringify({
-        model: GROQ_MODEL,
+        model: modelToUse,
         messages: [
-          { role: 'system', content: `Convert the following DuckyScript payload to work on ${osNames[newOS]}. Output ONLY the converted DuckyScript — no explanations, no code fences. Adapt all OS-specific commands (e.g. GUI r for Windows Run → GUI SPACE for macOS Spotlight, CTRL ALT t for Linux terminal). Keep the same overall logic and intent.` },
+          { role: 'system', content: `STRICT SYSTEM INSTRUCTION: Convert the following DuckyScript payload to work on ${osNames[newOS]}. Output ONLY raw converted DuckyScript lines — no reasoning, no thinking process, no preamble, no markdown. Adapt all OS-specific commands (e.g. GUI r for Windows Run → GUI SPACE for macOS Spotlight). Always add DELAY 2000 after each action line.` },
           { role: 'user', content: script }
         ],
-        temperature: 0.2,
-        max_tokens: 800
+        temperature: 1,
+        top_p: 1,
+        max_tokens: 2048,
+        max_completion_tokens: 2048,
+        reasoning_effort: 'low',
+        stop: null
       })
     });
     if (!res.ok) throw new Error('API error');
     const data = await res.json();
-    let converted = data.choices?.[0]?.message?.content?.trim() || '';
-    converted = converted.replace(/```[\w]*\n?/g, '').trim();
+    let raw = data.choices?.[0]?.message?.content?.trim() || '';
+    let converted = cleanDuckyScriptOutput(raw);
     $('aiOutput').value = converted;
     toast(`Converted to ${osNames[newOS]} ✓`);
   } catch (e) { toast('Conversion failed: ' + e.message, 'err'); }
@@ -3754,7 +3928,7 @@ let agentRunning = false;
 let agentAbort = false;
 let agentHistory = [];   // persists across runs within session
 let agentInspectorOpen = false;
-const AGENT_MODEL = 'nvidia/nemotron-3.5-lightning:free';
+const AGENT_MODEL = 'qwen/qwen3.6-27b';
 
 // ─── System Prompt ────────────────────────────────────────────
 const AGENT_SYSTEM_PROMPT = `You are GhostChip AI Agent — an autonomous HID operator for a GhostChip ESP32 device that physically injects keystrokes, manages SD card files & directories, controls WiFi, and drives an RGB LED.
@@ -3880,19 +4054,29 @@ const agentTools = {
     const endpoint = isOrKey ? 'https://openrouter.ai/api/v1/chat/completions' : 'https://api.groq.com/openai/v1/chat/completions';
     const modelToUse = isOrKey ? AGENT_MODEL : GROQ_MODEL;
 
-    const sysPrompt = `You are a DuckyScript expert. Generate ONLY valid DuckyScript for the described task.
-CRITICAL RULE: Always insert DELAY 2000 after each action/command line.
-DuckyScript syntax rules:
-- DELAY <ms>: wait (always use DELAY 2000 after action lines)
-- STRING <text>: type text
-- ENTER, TAB, SPACE, BACKSPACE, DELETE, ESCAPE: key presses
-- GUI <key>: Windows/Mac Command + key (e.g. GUI r, GUI SPACE)
-- CTRL <key>: Control + key (e.g. CTRL c, CTRL ALT t)
-- ALT <key>: Alt + key
-- SHIFT <key>: Shift + key
-- F1..F12: function keys
-- UPARROW, DOWNARROW, LEFTARROW, RIGHTARROW: arrows
-Output ONLY the script, no markdown, no explanation.`;
+    const sysPrompt = `STRICT DUCKYSCRIPT SYNTAX RULES:
+1. ALL DuckyScript keywords and key names MUST be UPPERCASE (e.g. GUI SPACE, ENTER, STRING, DELAY 2000). NEVER write "GUI space".
+2. EXECUTING TERMINAL COMMANDS: Every shell command typed with "STRING <cmd>" MUST be followed by "ENTER" to execute it!
+   Example:
+   GUI SPACE
+   DELAY 2000
+   STRING terminal
+   DELAY 2000
+   ENTER
+   DELAY 2000
+   STRING mkdir ducky
+   DELAY 2000
+   ENTER
+   DELAY 2000
+   STRING cd ducky
+   DELAY 2000
+   ENTER
+   DELAY 2000
+   STRING echo "What is a HID attack?" > ducky.txt
+   DELAY 2000
+   ENTER
+3. Always insert DELAY 2000 after each action line.
+4. Output ONLY raw executable DuckyScript code lines. DO NOT output reasoning, thinking process, preamble, or markdown.`;
 
     const headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + keyToUse };
     if (isOrKey) {
@@ -3910,8 +4094,12 @@ Output ONLY the script, no markdown, no explanation.`;
             { role: 'system', content: sysPrompt },
             { role: 'user', content: 'Generate DuckyScript for: ' + input }
           ],
-          temperature: 0.2,
-          max_tokens: 2048
+          temperature: 0.6,
+          top_p: 0.95,
+          max_tokens: 2048,
+          max_completion_tokens: 2048,
+          reasoning_effort: 'none',
+          stop: null
         })
       });
       if (!res.ok) {
@@ -3919,7 +4107,8 @@ Output ONLY the script, no markdown, no explanation.`;
         return 'Error from API: ' + (err.error?.message || res.statusText);
       }
       const data = await res.json();
-      return (data.choices[0]?.message?.content || '').trim();
+      let raw = (data.choices[0]?.message?.content || '').trim();
+      return cleanDuckyScriptOutput(raw);
     } catch (e) {
       return 'Error generating script: ' + e.message;
     }
@@ -3939,7 +4128,7 @@ Output ONLY the script, no markdown, no explanation.`;
     try {
       const parsed = JSON.parse(path);
       if (parsed && (parsed.path || parsed.folder)) path = parsed.path || parsed.folder;
-    } catch {}
+    } catch { }
     if (!path.startsWith('/')) path = '/' + path;
     try {
       const r = await fmFetch('/fm/list?path=' + encodeURIComponent(path));
@@ -3969,7 +4158,7 @@ Output ONLY the script, no markdown, no explanation.`;
     try {
       const parsed = JSON.parse(path);
       if (parsed && (parsed.path || parsed.filename || parsed.file)) path = parsed.path || parsed.filename || parsed.file;
-    } catch {}
+    } catch { }
     if (!path) return 'Error: path is required';
     if (!path.startsWith('/')) path = '/' + path;
     try {
@@ -4005,7 +4194,7 @@ Output ONLY the script, no markdown, no explanation.`;
 
     try {
       if (folder !== '/') {
-        await fmFetchPost('/fm/mkdir?path=' + encodeURIComponent(folder)).catch(() => {});
+        await fmFetchPost('/fm/mkdir?path=' + encodeURIComponent(folder)).catch(() => { });
       }
       const uploadUrl = fmBase() + '/fm/upload?path=' + encodeURIComponent(folder);
       const blob = new Blob([content], { type: 'text/plain' });
@@ -4031,7 +4220,7 @@ Output ONLY the script, no markdown, no explanation.`;
     try {
       const parsed = JSON.parse(path);
       if (parsed && (parsed.path || parsed.folder)) path = parsed.path || parsed.folder;
-    } catch {}
+    } catch { }
     if (!path) return 'Error: directory path is required';
     if (!path.startsWith('/')) path = '/' + path;
     try {
@@ -4048,7 +4237,7 @@ Output ONLY the script, no markdown, no explanation.`;
     try {
       const parsed = JSON.parse(path);
       if (parsed && (parsed.path || parsed.filename)) path = parsed.path || parsed.filename;
-    } catch {}
+    } catch { }
     if (!path) return 'Error: path is required for deletion';
     if (!path.startsWith('/')) path = '/' + path;
     try {
@@ -4067,7 +4256,7 @@ Output ONLY the script, no markdown, no explanation.`;
     try {
       const parsed = JSON.parse(path);
       if (parsed && (parsed.path || parsed.scriptPath || parsed.file)) path = parsed.path || parsed.scriptPath || parsed.file;
-    } catch {}
+    } catch { }
     if (!path) return 'Error: script file path is required';
     if (!path.startsWith('/')) path = '/' + path;
     try {
@@ -4123,14 +4312,14 @@ Output ONLY the script, no markdown, no explanation.`;
     } catch {
       // Try parsing "red", "green", "blue" etc.
       const lc = input.toLowerCase();
-      if (lc.includes('red'))    { r=255; g=0;   b=0;   }
-      else if (lc.includes('green'))  { r=0;   g=255; b=0;   }
-      else if (lc.includes('blue'))   { r=0;   g=0;   b=255; }
-      else if (lc.includes('white'))  { r=255; g=255; b=255; }
-      else if (lc.includes('purple')) { r=128; g=0;   b=128; }
-      else if (lc.includes('cyan'))   { r=0;   g=255; b=255; }
-      else if (lc.includes('orange')) { r=255; g=128; b=0;   }
-      else if (lc.includes('off'))    { r=0;   g=0;   b=0;   }
+      if (lc.includes('red')) { r = 255; g = 0; b = 0; }
+      else if (lc.includes('green')) { r = 0; g = 255; b = 0; }
+      else if (lc.includes('blue')) { r = 0; g = 0; b = 255; }
+      else if (lc.includes('white')) { r = 255; g = 255; b = 255; }
+      else if (lc.includes('purple')) { r = 128; g = 0; b = 128; }
+      else if (lc.includes('cyan')) { r = 0; g = 255; b = 255; }
+      else if (lc.includes('orange')) { r = 255; g = 128; b = 0; }
+      else if (lc.includes('off')) { r = 0; g = 0; b = 0; }
       else return 'Error: provide JSON {"r":0,"g":255,"b":0} or a color name';
     }
     try {
@@ -4203,7 +4392,7 @@ function appendAgentLog(type, label, text, codeText) {
 }
 
 function escHtml(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 function agentSetStatus(state, text) {
@@ -4288,8 +4477,12 @@ async function runAgent(userMessage) {
           body: JSON.stringify({
             model: modelToUse,
             messages,
-            temperature: 0.2,
-            max_tokens: 4096
+            temperature: 0.6,
+            top_p: 0.95,
+            max_tokens: 4096,
+            max_completion_tokens: 4096,
+            reasoning_effort: 'none',
+            stop: null
           })
         });
         if (!apiRes.ok) {
