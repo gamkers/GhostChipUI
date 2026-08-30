@@ -68,54 +68,57 @@
 
 <!-- ══ ADD FAVOURITE MODAL ══ -->
 <div id="addFavModal" class="modal-overlay" style="display:none" onclick="if(event.target===this)hideAddFavModal()">
-  <div class="modal-card fav-modal-card">
-    <div class="fav-modal-header">
-      <div class="fav-modal-icon">⭐</div>
+  <div class="modal-card pro-ai-card" style="max-width:440px; width:90%; border:1px solid rgba(255,170,0,0.3); background:rgba(12,12,12,0.95); backdrop-filter:blur(16px);">
+    <div class="modal-header" style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
+      <div class="pro-ai-icon-wrap" style="background:rgba(255,170,0,0.15); border-color:rgba(255,170,0,0.3); color:#ffaa00;">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      </div>
       <div>
-        <h3 class="modal-title" style="margin-bottom:2px">Save to Favourites</h3>
-        <div class="fav-modal-sub" id="favModalSub">0 lines</div>
+        <h3 class="modal-title" style="margin:0; font-size:1.1rem; color:var(--white);">Save to Favourites</h3>
+        <div class="fav-modal-sub" id="favModalSub" style="color:var(--dim); font-size:0.72rem;">0 lines</div>
       </div>
     </div>
 
     <!-- Save-first prompt (shown when not linked to a device file) -->
-    <div id="favSavePrompt" class="fav-save-prompt" style="display:none">
-      <div class="fav-save-prompt-icon">💾</div>
-      <div class="fav-save-prompt-body">
-        <div class="fav-save-prompt-title">Save to device first?</div>
-        <div class="fav-save-prompt-desc">Linking to a device file lets you sync and save back anytime.</div>
+    <div id="favSavePrompt" class="fav-save-prompt" style="display:none; background:var(--s2); border:1px dashed var(--b1); border-radius:10px; padding:12px; margin-bottom:14px;">
+      <div style="display:flex; gap:10px; align-items:flex-start;">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--g); flex-shrink:0;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        <div>
+          <div class="fav-save-prompt-title" style="font-weight:700; font-size:0.82rem; color:var(--white);">Save to device storage first?</div>
+          <div class="fav-save-prompt-desc" style="font-size:0.72rem; color:var(--dim); margin-top:2px;">Linking to a device file lets you sync and execute back anytime.</div>
+        </div>
       </div>
-      <div class="fav-save-prompt-btns">
-        <button class="btn btn-primary fav-save-first-btn" onclick="favSaveFirst()">💾 Save First</button>
-        <button class="btn btn-ghost fav-skip-btn" onclick="favSkipSave()">⭐ Star Anyway</button>
+      <div class="fav-save-prompt-btns" style="display:flex; gap:8px; margin-top:10px; justify-content:flex-end;">
+        <button class="btn btn-primary fav-save-first-btn" onclick="favSaveFirst()" style="padding:6px 12px; font-size:0.75rem;">Save First</button>
+        <button class="btn btn-ghost fav-skip-btn" onclick="favSkipSave()" style="padding:6px 12px; font-size:0.75rem;">Star Anyway</button>
       </div>
     </div>
 
     <!-- Main form (shown after user chooses) -->
     <div id="favMainForm">
-      <div class="fav-field-group">
-        <label class="fav-field-label">Name</label>
-        <input type="text" id="favName" class="input fav-input" placeholder="e.g. Win Admin Shell" maxlength="40" autocomplete="off" oninput="updateFavPathPreview()">
+      <div class="fav-field-group" style="margin-bottom:14px;">
+        <label class="fav-field-label" style="font-size:0.75rem; font-weight:700; color:var(--dim); text-transform:uppercase;">Payload Title</label>
+        <input type="text" id="favName" class="input pro-input-textarea" style="min-height:auto; height:42px;" placeholder="e.g. Win Admin Shell" maxlength="40" autocomplete="off" oninput="updateFavPathPreview()">
       </div>
 
-      <div class="fav-field-group">
-        <label class="fav-field-label">Tag</label>
-        <div class="fav-tag-picker" id="favTagPicker">
-          <button class="fav-tag-opt attack" data-tag="attack" onclick="selectFavTag('attack',this)">⚔ Attack</button>
-          <button class="fav-tag-opt recon"  data-tag="recon"  onclick="selectFavTag('recon',this)">🔍 Recon</button>
-          <button class="fav-tag-opt utility" data-tag="utility" onclick="selectFavTag('utility',this)">🔧 Utility</button>
-          <button class="fav-tag-opt custom active" data-tag="custom"  onclick="selectFavTag('custom',this)">✦ Custom</button>
+      <div class="fav-field-group" style="margin-bottom:14px;">
+        <label class="fav-field-label" style="font-size:0.75rem; font-weight:700; color:var(--dim); text-transform:uppercase;">Category Tag</label>
+        <div class="pro-tags-grid" id="favTagPicker">
+          <button class="pro-tag-chip attack" data-tag="attack" onclick="selectFavTag('attack',this)">🎯 Attack</button>
+          <button class="pro-tag-chip recon" data-tag="recon" onclick="selectFavTag('recon',this)">📡 Recon</button>
+          <button class="pro-tag-chip utility" data-tag="utility" onclick="selectFavTag('utility',this)">🔧 Utility</button>
+          <button class="pro-tag-chip custom active" data-tag="custom" onclick="selectFavTag('custom',this)">✦ Custom</button>
         </div>
       </div>
 
       <!-- Device path indicator (shown when linked) -->
-      <div id="favLinkedPath" class="fav-linked-path" style="display:none">
-        <span class="fav-linked-icon">📁</span>
-        <span class="fav-linked-text" id="favLinkedPathText"></span>
+      <div id="favLinkedPath" class="fav-linked-path" style="display:none; margin-bottom:14px;">
+        <span class="fav-linked-text" id="favLinkedPathText" style="font-family:var(--mono); font-size:0.7rem; color:var(--g);"></span>
       </div>
 
-      <div class="modal-actions" style="margin-top:18px">
+      <div class="modal-actions" style="margin-top:20px; display:flex; gap:10px; justify-content:flex-end;">
         <button class="btn btn-ghost" onclick="hideAddFavModal()">Cancel</button>
-        <button class="btn btn-primary" id="addFavConfirmBtn" onclick="confirmAddFav()">⭐ Save Favourite</button>
+        <button class="btn btn-primary" id="addFavConfirmBtn" onclick="confirmAddFav()" style="background: linear-gradient(135deg, #ffaa00, #ff8800); color:#000;">Save Favourite</button>
       </div>
     </div>
   </div>
@@ -292,102 +295,238 @@
 
     </section>
 
-    <!-- ── PAGE: SCAN ── -->
+    <!-- ── PAGE: NETWORK SCANNER ── -->
     <section class="page" id="page-scan">
-      <div class="section-head"><h2>Network Scanner</h2></div>
-
-      <!-- Scan Tabs -->
-      <div class="seg-control">
-        <button class="seg active" id="seg-wifi" onclick="switchScan('wifi')">WiFi</button>
-        <button class="seg" id="seg-ble" onclick="switchScan('ble')">BLE</button>
-        <button class="seg" id="seg-deauth" onclick="switchScan('deauth')">Deauth</button>
-      </div>
-
-      <!-- WiFi Panel -->
-      <div class="scan-panel active" id="scan-wifi">
-        <button class="btn btn-scan" onclick="scanWifi()">
-          Scan WiFi Networks
-        </button>
-        <div id="wifiResults" class="results-list">
-          <div class="empty-state">Tap scan to discover networks</div>
+      <div class="card pro-scan-card">
+        <!-- Header -->
+        <div class="pro-scan-header">
+          <div class="pro-scan-brand">
+            <div class="pro-scan-icon-wrap">📡</div>
+            <div class="pro-scan-title-wrap">
+              <h3>Cyber Recon Suite</h3>
+              <p>2.4GHz WiFi • BLE 5.0 • Passive Deauth</p>
+            </div>
+          </div>
+          <div class="pro-scan-status-badge">
+            <span class="pro-ai-status-dot" style="background:#00c8ff; box-shadow:0 0 8px #00c8ff;"></span>
+            <span>Scanner Ready</span>
+          </div>
         </div>
-      </div>
 
-      <!-- BLE Panel -->
-      <div class="scan-panel" id="scan-ble">
-        <button class="btn btn-scan" onclick="scanBle()">
-          Scan BLE Devices
-        </button>
-        <div id="bleResults" class="results-list">
-          <div class="empty-state">Tap scan to discover BLE devices</div>
+        <!-- Scan Mode Tabs -->
+        <div class="pro-scan-segmented">
+          <button class="seg pro-scan-seg-btn active" id="seg-wifi" onclick="switchScan('wifi')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+            <span>WiFi Networks</span>
+          </button>
+          <button class="seg pro-scan-seg-btn" id="seg-ble" onclick="switchScan('ble')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6.5 6.5 17.5 17.5 12 23 12 1 17.5 6.5 6.5 17.5"/></svg>
+            <span>BLE Devices</span>
+          </button>
+          <button class="seg pro-scan-seg-btn" id="seg-deauth" onclick="switchScan('deauth')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            <span>Deauth Monitor</span>
+          </button>
         </div>
-      </div>
 
-      <!-- Deauth Panel -->
-      <div class="scan-panel" id="scan-deauth">
-        <div class="deauth-controls">
-          <button class="btn btn-scan" onclick="deauthStart()">▶ Start Monitor</button>
-          <button class="btn btn-danger-sm" onclick="deauthStop()">■ Stop</button>
+        <!-- WiFi Panel -->
+        <div class="scan-panel active" id="scan-wifi">
+          <button class="pro-scan-action-btn" onclick="scanWifi()">
+            📡 INITIATE WIFI SPECTRUM SCAN
+          </button>
+          <div id="wifiResults" class="results-list">
+            <div class="pro-radar-box">
+              <div class="pro-radar-icon">📡</div>
+              <div style="font-weight:700; color:var(--white); margin-bottom:4px;">No Networks Discovered</div>
+              <div style="font-size:0.72rem; color:var(--dim);">Tap button above to scan 2.4GHz spectrum</div>
+            </div>
+          </div>
         </div>
-        <div class="deauth-status">
-          <div class="dd-dot" id="ddDot"></div>
-          <span id="ddLabel">Stopped</span>
+
+        <!-- BLE Panel -->
+        <div class="scan-panel" id="scan-ble">
+          <button class="pro-scan-action-btn" style="background: linear-gradient(135deg, #7c3aed, #4c1d95); color: #fff; box-shadow: 0 4px 20px rgba(124,58,237,0.3);" onclick="scanBle()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6.5 6.5 17.5 17.5 12 23 12 1 17.5 6.5 6.5 17.5"/></svg>
+            <span>DISCOVER BLE BLUETOOTH DEVICES</span>
+          </button>
+          <div id="bleResults" class="results-list">
+            <div class="pro-radar-box" style="border-color: rgba(124,58,237,0.25);">
+              <div class="pro-radar-icon">
+                <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="#a78bfa" stroke-width="1.5"><polyline points="6.5 6.5 17.5 17.5 12 23 12 1 17.5 6.5 6.5 17.5"/></svg>
+              </div>
+              <div style="font-weight:700; color:var(--white); margin-bottom:4px;">No BLE Devices Found</div>
+              <div style="font-size:0.72rem; color:var(--dim);">Tap button above to scan Bluetooth Low Energy beacon frames</div>
+            </div>
+          </div>
         </div>
-        <div id="deauthLog" class="terminal deauth-log">
-          <span class="t-dim">// Passive 802.11 deauth detector</span>
+
+        <!-- Deauth Panel -->
+        <div class="scan-panel" id="scan-deauth">
+          <div class="deauth-controls" style="display:flex; gap:10px; margin-bottom:12px;">
+            <button class="pro-scan-action-btn" style="margin-bottom:0; flex:1; background: linear-gradient(135deg, #00ff41, #00cc33); color:#000; box-shadow: 0 4px 20px rgba(0,255,65,0.3);" onclick="deauthStart()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              <span>Start Passive Monitor</span>
+            </button>
+            <button class="btn btn-danger-sm" style="padding: 0 20px; font-weight:700; border-radius:12px;" onclick="deauthStop()">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+              <span>Stop</span>
+            </button>
+          </div>
+          <div class="deauth-status" style="background:var(--s2); padding:8px 12px; border-radius:8px; border:1px solid var(--b1); display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+            <div class="dd-dot" id="ddDot"></div>
+            <span id="ddLabel" style="font-family:var(--mono); font-size:0.75rem; font-weight:700;">Stopped</span>
+          </div>
+          <div id="deauthLog" class="terminal deauth-log" style="min-height:220px; background:var(--bg); border:1px solid var(--b1); border-radius:10px; padding:12px; font-family:var(--mono); font-size:0.72rem; color:var(--g);">
+            <span class="t-dim">// Passive 802.11 deauthentication frame detector initialized</span>
+          </div>
         </div>
       </div>
     </section>
 
-    <!-- ── PAGE: AI ── -->
+    <!-- ── PAGE: AI GENERATOR ── -->
     <section class="page" id="page-ai">
-      <div class="section-head"><h2>AI Generator</h2></div>
-      <div class="card">
-        <p class="card-desc">Describe your payload — AI writes the DuckyScript.</p>
-        <!-- OS Target Toggle -->
-        <div class="os-toggle">
-          <button class="os-btn active" id="os-windows" onclick="setTargetOS('windows',this)">WIN</button>
-          <button class="os-btn" id="os-macos" onclick="setTargetOS('macos',this)">MAC</button>
-          <button class="os-btn" id="os-linux" onclick="setTargetOS('linux',this)">LINUX</button>
+      <div class="card pro-ai-card">
+        <!-- Header -->
+        <div class="pro-ai-header">
+          <div class="pro-ai-brand">
+            <div class="pro-ai-icon-wrap">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            </div>
+            <div class="pro-ai-title-wrap">
+              <h3>AI Payload Architect</h3>
+              <p>Groq Engine • Qwen 3.8 27B</p>
+            </div>
+          </div>
+          <div class="pro-ai-status-badge">
+            <span class="pro-ai-status-dot"></span>
+            <span>Online</span>
+          </div>
         </div>
-        <div class="ai-tags">
-          <button class="ai-tag" onclick="fillAi('Open cmd as admin on Windows')">CMD Admin</button>
-          <button class="ai-tag" onclick="fillAi('Download file with PowerShell')">PS Download</button>
-          <button class="ai-tag" onclick="fillAi('Extract saved WiFi passwords')">WiFi Pass</button>
-          <button class="ai-tag" onclick="fillAi('Open Terminal on macOS')">macOS Term</button>
-          <button class="ai-tag" onclick="fillAi('Disable Windows Defender')">Kill Defender</button>
-          <button class="ai-tag" onclick="fillAi('Open browser to URL on Windows')">Open URL</button>
+
+        <!-- OS Target Selector -->
+        <div class="pro-os-wrapper">
+          <div class="pro-os-label">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+            <span>Target System Architecture</span>
+          </div>
+          <div class="pro-os-segmented">
+            <button class="os-btn pro-os-btn active" id="os-windows" onclick="setTargetOS('windows',this)">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.95-9.6L24 0v11.4H10.95M0 12.6h9.75v9.451L0 20.701M10.95 12.6H24V24l-13.05-1.85"/></svg>
+              <span>Windows</span>
+            </button>
+            <button class="os-btn pro-os-btn" id="os-macos" onclick="setTargetOS('macos',this)">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 4.54c.64-.78 1.08-1.85.96-2.94-.93.04-2.06.62-2.73 1.4-.6.7-.1.13-1.12 1.83.97 2.96 1.05.04 2.11-.53 2.89-1.42"/></svg>
+              <span>macOS</span>
+            </button>
+            <button class="os-btn pro-os-btn" id="os-linux" onclick="setTargetOS('linux',this)">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg>
+              <span>Linux</span>
+            </button>
+          </div>
         </div>
-        <div class="ai-prompt-wrap">
-          <textarea id="aiPrompt" class="ai-input" placeholder="e.g. Open PowerShell as admin, disable firewall..."></textarea>
-          <button class="btn-mic" id="micBtn" onclick="toggleVoice()" title="Voice input">
-            <svg id="micIcon" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-              <line x1="12" y1="19" x2="12" y2="23"/>
-              <line x1="8" y1="23" x2="16" y2="23"/>
-            </svg>
-            <div class="mic-pulse"></div>
-            <div class="mic-pulse"></div>
-          </button>
+
+        <!-- Preset Chips -->
+        <div class="pro-presets-wrapper">
+          <div class="pro-os-label">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            <span>Payload Templates</span>
+          </div>
+          <div class="pro-tags-grid">
+            <button class="pro-tag-chip" onclick="fillAi('Open cmd as admin on Windows')">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+              <span>CMD Admin</span>
+            </button>
+            <button class="pro-tag-chip" onclick="fillAi('Download file with PowerShell')">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <span>PS Download</span>
+            </button>
+            <button class="pro-tag-chip" onclick="fillAi('Extract saved WiFi passwords')">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-1.5 1.5L14 9.5a5 5 0 1 0 4.5 4.5l6-6V2h-3.5z"/></svg>
+              <span>WiFi Pass</span>
+            </button>
+            <button class="pro-tag-chip" onclick="fillAi('Open Terminal on macOS')">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+              <span>macOS Term</span>
+            </button>
+            <button class="pro-tag-chip" onclick="fillAi('Disable Windows Defender')">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              <span>Kill Defender</span>
+            </button>
+            <button class="pro-tag-chip" onclick="fillAi('Open browser to URL on Windows')">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+              <span>Open URL</span>
+            </button>
+          </div>
         </div>
-        <button class="btn btn-primary full" id="aiGenBtn" onclick="aiGenerate()">
-          ⚡ Generate DuckyScript
+
+        <!-- Prompt Textarea Card -->
+        <div class="pro-input-card">
+          <div class="ai-prompt-wrap">
+            <textarea id="aiPrompt" class="pro-input-textarea" placeholder="Describe payload behavior in plain English (e.g. Open PowerShell as admin, download script from URL, and run stealthily)..."></textarea>
+            <button class="btn-mic" id="micBtn" onclick="toggleVoice()" title="Voice input">
+              <svg id="micIcon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                <line x1="12" y1="19" x2="12" y2="23"/>
+                <line x1="8" y1="23" x2="16" y2="23"/>
+              </svg>
+              <div class="mic-pulse"></div>
+              <div class="mic-pulse"></div>
+            </button>
+          </div>
+          <div class="pro-input-footer">
+            <span class="pro-input-hint">PROMPT INSTRUCTION ENGINE</span>
+            <span class="pro-input-hint">DUCKYSCRIPT v2.0 READY</span>
+          </div>
+        </div>
+
+        <!-- Generate Button -->
+        <button class="pro-btn-gen" id="aiGenBtn" onclick="aiGenerate()">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          <span>GENERATE DUCKYSCRIPT PAYLOAD</span>
         </button>
       </div>
-      <div class="card" id="aiOutputCard" style="display:none">
-        <div class="card-head">Generated Script</div>
-        <textarea id="aiOutput" class="code-output" readonly></textarea>
-        <div class="btn-row">
-          <button class="btn btn-primary" onclick="aiExec()">▶ Execute</button>
-          <button class="btn btn-ghost" onclick="aiCopy()">Copy</button>
-          <button class="btn btn-ghost" onclick="aiToEditor()">→ Editor</button>
+
+      <!-- Output Card -->
+      <div class="card pro-ai-card" id="aiOutputCard" style="display:none; margin-top: 16px;">
+        <div class="pro-output-head">
+          <div class="pro-output-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            <span>GENERATED DUCKYSCRIPT PAYLOAD</span>
+          </div>
+          <span class="pro-input-hint" style="color:var(--g)">READY FOR DEPLOYMENT</span>
         </div>
-        <div class="convert-row">
-          <span class="convert-label">Convert to:</span>
-          <button class="ai-tag" onclick="aiConvertOS('windows')">WIN</button>
-          <button class="ai-tag" onclick="aiConvertOS('macos')">MAC</button>
-          <button class="ai-tag" onclick="aiConvertOS('linux')">LINUX</button>
+        <textarea id="aiOutput" class="code-output" style="min-height:160px; font-family:var(--mono);" readonly></textarea>
+        
+        <div class="btn-row" style="margin-bottom: 12px;">
+          <button class="btn btn-primary" onclick="aiExec()">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            <span>Execute Payload</span>
+          </button>
+          <button class="btn btn-ghost" onclick="aiCopy()">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            <span>Copy Code</span>
+          </button>
+          <button class="btn btn-ghost" onclick="aiToEditor()">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            <span>Open in Editor</span>
+          </button>
+        </div>
+
+        <div class="convert-row" style="padding-top:10px; border-top: 1px solid var(--b1);">
+          <span class="convert-label" style="font-size:0.7rem; font-weight:700; color:var(--dim);">Transpile Payload To:</span>
+          <button class="pro-tag-chip" onclick="aiConvertOS('windows')">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.95-9.6L24 0v11.4H10.95M0 12.6h9.75v9.451L0 20.701M10.95 12.6H24V24l-13.05-1.85"/></svg>
+            <span>Windows</span>
+          </button>
+          <button class="pro-tag-chip" onclick="aiConvertOS('macos')">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 4.54c.64-.78 1.08-1.85.96-2.94-.93.04-2.06.62-2.73 1.4-.6.7-.1.13-1.12 1.83.97 2.96 1.05.04 2.11-.53 2.89-1.42"/></svg>
+            <span>macOS</span>
+          </button>
+          <button class="pro-tag-chip" onclick="aiConvertOS('linux')">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg>
+            <span>Linux</span>
+          </button>
         </div>
       </div>
     </section>
@@ -411,6 +550,7 @@
         <button class="tool-app" onclick="openTool('shortcuts'); initShortcutsApp()"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg><span>Shortcuts</span></button>
         <button class="tool-app" onclick="openTool('recorder'); initMacroRecorder()"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg><span>Action Recorder</span></button>
         <button class="tool-app agent-tool-btn" onclick="openTool('aiagent'); initAiAgent()"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a4 4 0 0 1 4 4v1h1a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V10a3 3 0 0 1 3-3h1V6a4 4 0 0 1 4-4z"/><circle cx="9" cy="13" r="1" fill="currentColor"/><circle cx="15" cy="13" r="1" fill="currentColor"/><path d="M9 17c1 1 5 1 6 0"/></svg><span>AI Agent</span></button>
+        <button class="tool-app prompt-enhancer-tool-btn" onclick="openTool('prompter'); initPromptEnhancer()"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/><path d="M12 7v6M9 10h6"/></svg><span>Prompt Enhancer</span></button>
       </div>
       <div class="tool-panel" id="tool-constructor">
         <div class="tool-panel-head"><h3>Script Builder</h3><button class="tool-back" onclick="closeTool('constructor')">Back</button></div>
@@ -538,9 +678,102 @@
           <a href="flasher.html" style="display: block; text-decoration: none; font-size: 0.78rem; text-align: center; border: 1px solid rgba(0,255,65,0.25); color: #00ff41; background: rgba(0,255,65,0.03); padding: 10px; border-radius: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">⚡ Launch Web Serial Flasher</a>
         </div>
       </div>
+      <!-- ── TOOL: DEVICE INFO ── -->
       <div class="tool-panel" id="tool-devinfo">
-        <div class="tool-panel-head"><h3>Device Info</h3><button class="tool-back" onclick="closeTool('devinfo')">Back</button></div>
-        <div class="info-grid"><div class="info-item"><span class="info-k">Firmware</span><span class="info-v">Ghost Chip v2.0</span></div><div class="info-item"><span class="info-k">Chip</span><span class="info-v">ESP32-S3</span></div><div class="info-item"><span class="info-k">Build</span><span class="info-v">GAMKERS</span></div><div class="info-item"><span class="info-k">AP IP</span><span class="info-v">192.168.4.1</span></div></div>
+        <div class="tool-panel-head">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6M9 13h6M9 17h4"/></svg>
+            <h3>Device Info & Diagnostics</h3>
+          </div>
+          <button class="tool-back" onclick="closeTool('devinfo')">Back</button>
+        </div>
+
+        <div class="card pro-ai-card" style="margin-bottom:15px;">
+          <!-- Header -->
+          <div class="pro-ai-header" style="margin-bottom:14px;">
+            <div class="pro-ai-brand">
+              <div class="pro-ai-icon-wrap" style="background:rgba(0,255,65,0.12); border-color:rgba(0,255,65,0.3); color:var(--g);">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6M9 13h6M9 17h4"/></svg>
+              </div>
+              <div class="pro-ai-title-wrap">
+                <h3>GhostChip Hardware Diagnostics</h3>
+                <p>ESP32-S3 Dual-Core Xtensa LX7 • Realtime Telemetry</p>
+              </div>
+            </div>
+            <div class="pro-ai-status-badge">
+              <span class="pro-ai-status-dot"></span>
+              <span>Hardware Active</span>
+            </div>
+          </div>
+
+          <!-- Warning Box -->
+          <div class="card warning-card" style="border-left: 4px solid #ffaa00; background: rgba(255, 170, 0, 0.08); padding:12px 14px; border-radius:10px; margin-bottom:16px;">
+            <div class="card-head" style="color: #ffaa00; display: flex; align-items: center; gap: 8px; font-weight:700; font-size:0.8rem; margin-bottom:6px;">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              <span>Physical & Operational Safety Warning</span>
+            </div>
+            <ul style="font-size: 0.74rem; opacity: 0.95; margin: 0; padding-left: 18px; color: var(--white); line-height: 1.5;">
+              <li><strong>Thermal Management:</strong> Continuous high-power operations (BLE Deauth loops / Radio TX bursts) can cause board temperatures to reach 45°C–50°C. Ensure sufficient airflow.</li>
+              <li><strong>Electrostatic (ESD) Safety:</strong> Avoid touching exposed GPIO header pins while connected to host USB power to prevent static discharge damage.</li>
+              <li><strong>Operational Scope:</strong> BadUSB HID payloads must only be executed on target hosts you legally own or have explicit written penetration testing authorization to evaluate.</li>
+            </ul>
+          </div>
+
+          <!-- Technical Specifications Table Grid -->
+          <div class="pro-presets-wrapper" style="margin-bottom:14px;">
+            <div class="pro-os-label">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+              <span>System & Hardware Architecture Specs</span>
+            </div>
+            
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:10px;">
+              <div style="background:var(--s2); border:1px solid var(--b1); padding:10px 12px; border-radius:10px;">
+                <div style="font-size:0.68rem; color:var(--dim); font-weight:700; text-transform:uppercase; margin-bottom:4px;">Firmware Version</div>
+                <div style="font-family:var(--mono); font-size:0.82rem; font-weight:700; color:var(--g);">GhostChip OS v2.0.4</div>
+              </div>
+              <div style="background:var(--s2); border:1px solid var(--b1); padding:10px 12px; border-radius:10px;">
+                <div style="font-size:0.68rem; color:var(--dim); font-weight:700; text-transform:uppercase; margin-bottom:4px;">SoC Microcontroller</div>
+                <div style="font-family:var(--mono); font-size:0.82rem; font-weight:700; color:var(--white);">ESP32-S3 Dual-Core 240MHz</div>
+              </div>
+              <div style="background:var(--s2); border:1px solid var(--b1); padding:10px 12px; border-radius:10px;">
+                <div style="font-size:0.68rem; color:var(--dim); font-weight:700; text-transform:uppercase; margin-bottom:4px;">Flash & Storage Memory</div>
+                <div style="font-family:var(--mono); font-size:0.82rem; font-weight:700; color:var(--white);">16MB QSPI Flash + SD Slot</div>
+              </div>
+              <div style="background:var(--s2); border:1px solid var(--b1); padding:10px 12px; border-radius:10px;">
+                <div style="font-size:0.68rem; color:var(--dim); font-weight:700; text-transform:uppercase; margin-bottom:4px;">SRAM / PSRAM</div>
+                <div style="font-family:var(--mono); font-size:0.82rem; font-weight:700; color:var(--white);">512KB SRAM + 8MB Octal PSRAM</div>
+              </div>
+              <div style="background:var(--s2); border:1px solid var(--b1); padding:10px 12px; border-radius:10px;">
+                <div style="font-size:0.68rem; color:var(--dim); font-weight:700; text-transform:uppercase; margin-bottom:4px;">Wireless Radios</div>
+                <div style="font-family:var(--mono); font-size:0.82rem; font-weight:700; color:#00c8ff;">2.4GHz 802.11 b/g/n + BLE 5.0</div>
+              </div>
+              <div style="background:var(--s2); border:1px solid var(--b1); padding:10px 12px; border-radius:10px;">
+                <div style="font-size:0.68rem; color:var(--dim); font-weight:700; text-transform:uppercase; margin-bottom:4px;">AP Access Point IP</div>
+                <div style="font-family:var(--mono); font-size:0.82rem; font-weight:700; color:var(--g);">192.168.4.1 (ghostchip.local)</div>
+              </div>
+              <div style="background:var(--s2); border:1px solid var(--b1); padding:10px 12px; border-radius:10px;">
+                <div style="font-size:0.68rem; color:var(--dim); font-weight:700; text-transform:uppercase; margin-bottom:4px;">USB HID Protocol</div>
+                <div style="font-family:var(--mono); font-size:0.82rem; font-weight:700; color:var(--white);">USB 2.0 Native OTG Composite</div>
+              </div>
+              <div style="background:var(--s2); border:1px solid var(--b1); padding:10px 12px; border-radius:10px;">
+                <div style="font-size:0.68rem; color:var(--dim); font-weight:700; text-transform:uppercase; margin-bottom:4px;">Power & Current Draw</div>
+                <div style="font-family:var(--mono); font-size:0.82rem; font-weight:700; color:var(--white);">5V VBUS (80mA Idle / 220mA Peak)</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Diagnostic Action Buttons -->
+          <div class="btn-row" style="margin-top:16px;">
+            <button class="btn btn-primary" onclick="pingDevice()" style="flex:1;">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              <span>Ping Telemetry</span>
+            </button>
+            <button class="btn btn-ghost" onclick="closeTool('devinfo'); openTool('ota');" style="flex:1;">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <span>OTA Updater</span>
+            </button>
+          </div>
+        </div>
       </div>
       <div class="tool-panel" id="tool-guide">
         <div class="tool-panel-head"><h3>User Guide</h3><button class="tool-back" onclick="closeTool('guide')">Back</button></div>
@@ -761,69 +994,159 @@
         </div>
 
       </div>
+      <!-- ── TOOL: PAYLOAD TEMPLATES ── -->
       <div class="tool-panel" id="tool-templates">
-        <div class="tool-panel-head"><h3>Payload Templates</h3><button class="tool-back" onclick="closeTool('templates')">Back</button></div>
-        
-        <div class="card warning-card" style="border-left: 4px solid var(--err); background: rgba(255, 51, 51, 0.05);">
-          <div class="card-head" style="color: var(--err); display: flex; align-items: center; gap: 8px;">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-            Legal Warning
+        <div class="tool-panel-head">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            <h3>Payload Templates Studio</h3>
           </div>
-          <p style="font-size: 0.85rem; opacity: 0.9; margin: 0;">
-            <strong>Educational Purposes Only.</strong> Unauthorized access to computer systems is a criminal offense. Use these scripts only on systems you own or have explicit written permission to test.
-          </p>
+          <button class="tool-back" onclick="closeTool('templates')">Back</button>
         </div>
 
-        <div class="card">
-          <div class="card-head">Select Template</div>
-          <div class="sc-choices" id="tpChoices">
-            <button class="sc-choice active" onclick="tpSelectTemplate('sysinfo', this)">System Info</button>
-            <button class="sc-choice" onclick="tpSelectTemplate('processes', this)">Processes</button>
-            <button class="sc-choice" onclick="tpSelectTemplate('network', this)">Network</button>
-            <button class="sc-choice" onclick="tpSelectTemplate('keylogger_full', this)">Keylogger Only</button>
-            <button class="sc-choice" onclick="tpSelectTemplate('persistence', this)">Add Persistence</button>
-            <button class="sc-choice" onclick="tpSelectTemplate('suite', this)">Complete Suite</button>
-            <button class="sc-choice" onclick="tpSelectTemplate('remove', this)">Remove Everything</button>
+        <!-- Banner Card -->
+        <div class="card pro-ai-card" style="margin-bottom:14px;">
+          <div class="pro-ai-header" style="margin-bottom:12px;">
+            <div class="pro-ai-brand">
+              <div class="pro-ai-icon-wrap" style="background:rgba(0,200,255,0.12); border-color:rgba(0,200,255,0.3); color:#00c8ff;">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+              </div>
+              <div class="pro-ai-title-wrap">
+                <h3>Exfiltration & Payload Builder</h3>
+                <p>Generate Production DuckyScript Templates with Webhook Endpoints</p>
+              </div>
+            </div>
           </div>
-          <p class="card-desc" id="tpDesc" style="margin-top:10px;font-size:0.85rem;opacity:0.8">Collects hardware, OS, and user information and sends it to a webhook.</p>
+
+          <!-- Legal Warning Box -->
+          <div class="card warning-card" style="border-left: 4px solid #ff4444; background: rgba(255, 68, 68, 0.08); padding:10px 14px; border-radius:10px; margin-bottom:14px;">
+            <div class="card-head" style="color: #ff4444; display: flex; align-items: center; gap: 8px; font-weight:700; font-size:0.8rem; margin-bottom:4px;">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              <span>Legal Warning & Compliance</span>
+            </div>
+            <p style="font-size: 0.75rem; opacity: 0.9; margin: 0; color:var(--white);">
+              <strong>Educational & Authorized Testing Only.</strong> Unauthorized execution on computer systems is strictly prohibited. Use only on target machines you own or have explicit written authorization to pentest.
+            </p>
+          </div>
+
+          <!-- Select Template Buttons -->
+          <div class="pro-presets-wrapper" style="margin-bottom:14px;">
+            <div class="pro-os-label">🎯 Select Payload Archetype</div>
+            <div class="pro-tags-grid sc-choices" id="tpChoices">
+              <button class="pro-tag-chip sc-choice active" onclick="tpSelectTemplate('sysinfo', this)">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                <span>System Info</span>
+              </button>
+              <button class="pro-tag-chip sc-choice" onclick="tpSelectTemplate('processes', this)">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="15" x2="23" y2="15"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="15" x2="4" y2="15"/></svg>
+                <span>Processes</span>
+              </button>
+              <button class="pro-tag-chip sc-choice" onclick="tpSelectTemplate('network', this)">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                <span>Network</span>
+              </button>
+              <button class="pro-tag-chip sc-choice" onclick="tpSelectTemplate('keylogger_full', this)">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="6" y1="8" x2="6.01" y2="8"/><line x1="10" y1="8" x2="10.01" y2="8"/><line x1="14" y1="8" x2="14.01" y2="8"/><line x1="18" y1="8" x2="18.01" y2="8"/><line x1="8" y1="16" x2="16" y2="16"/></svg>
+                <span>Keylogger Only</span>
+              </button>
+              <button class="pro-tag-chip sc-choice" onclick="tpSelectTemplate('persistence', this)">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                <span>Add Persistence</span>
+              </button>
+              <button class="pro-tag-chip sc-choice" onclick="tpSelectTemplate('suite', this)">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                <span>Complete Suite</span>
+              </button>
+              <button class="pro-tag-chip sc-choice" onclick="tpSelectTemplate('remove', this)">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                <span>Remove Everything</span>
+              </button>
+            </div>
+            <!-- Dynamic Description Card -->
+            <div style="margin-top:10px; background:rgba(0,0,0,0.3); border:1px solid var(--b1); border-radius:8px; padding:10px 12px;">
+              <p class="card-desc" id="tpDesc" style="font-family:var(--mono); font-size:0.75rem; color:var(--dim); margin:0;">Collects hardware, OS, and user information and sends it to a webhook.</p>
+            </div>
+          </div>
+
+          <!-- Configuration Card -->
+          <div class="pro-input-card" style="margin-bottom:14px;">
+            <div class="pro-os-label" style="margin-bottom:6px;">Exfiltration Configuration</div>
+            <div class="input-group">
+              <label style="font-size:0.75rem; font-weight:700; color:var(--dim); text-transform:uppercase; margin-bottom:4px;">Webhook Endpoint URL</label>
+              <input type="url" id="tpWebhookUrl" class="input pro-input-textarea" style="min-height:auto; height:42px; font-family:var(--mono); font-size:0.8rem;" placeholder="https://ntfy.sh/your_topic" value="">
+              <p class="input-hint" style="font-size:0.7rem; color:var(--dim); margin-top:4px;">Generate free receiver URL at <a href="https://webhook.site/" target="_blank" style="color:var(--g)">Webhook.site</a> or <a href="https://ntfy.sh/" target="_blank" style="color:var(--g)">ntfy.sh</a></p>
+            </div>
+          </div>
+
+          <!-- Generate Button -->
+          <button class="pro-btn-gen" style="background: linear-gradient(135deg, #00c8ff, #0088ff); color:#fff; box-shadow: 0 4px 20px rgba(0,200,255,0.3);" onclick="tpGenerate()">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            <span>GENERATE CONFIGURED TEMPLATE</span>
+          </button>
         </div>
 
-        <div class="card">
-          <div class="card-head">Configuration</div>
-          <div class="input-group">
-            <label>Webhook URL</label>
-            <input type="url" id="tpWebhookUrl" class="input" placeholder="https://ntfy.sh/your_topic" value="">
-            <p class="input-hint">Get a URL from <a href="https://webhook.site/" target="_blank" class="t-ok">Webhook.site</a> or <a href="https://ntfy.sh/" target="_blank" class="t-ok">ntfy.sh</a></p>
+        <!-- Output Card -->
+        <div class="card pro-ai-card" id="tpOutputCard" style="display:none; margin-top:16px;">
+          <div class="pro-output-head">
+            <div class="pro-output-title">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+              <span>PREVIEW DUCKYSCRIPT PAYLOAD</span>
+            </div>
           </div>
-        </div>
-
-        <button class="btn btn-primary full" onclick="tpGenerate()">⚡ Generate Template</button>
-
-        <div class="card" id="tpOutputCard" style="margin-top:16px; display:none;">
-          <div class="card-head">Preview Payload</div>
-          <textarea id="tpOutput" class="code-output" style="min-height:200px" readonly></textarea>
+          <textarea id="tpOutput" class="code-output" style="min-height:200px; font-family:var(--mono); font-size:0.75rem; margin-bottom:12px;" readonly></textarea>
           <div class="btn-row">
-            <button class="btn btn-primary" onclick="tpToEditor()">Send to Editor</button>
-            <button class="btn btn-ghost" onclick="tpClear()">Clear</button>
+            <button class="btn btn-primary" onclick="tpToEditor()">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+              <span>Send to Editor</span>
+            </button>
+            <button class="btn btn-ghost" onclick="tpClear()">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              <span>Clear</span>
+            </button>
           </div>
         </div>
       </div>
+      <!-- ── TOOL: AI ASSISTANT ── -->
       <div class="tool-panel" id="tool-assistant">
-        <div class="tool-panel-head"><h3>AI Assistant</h3><button class="tool-back" onclick="closeTool('assistant')">Back</button></div>
+        <div class="tool-panel-head">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:1.2rem;">🤖</span>
+            <h3>AI Voice Assistant</h3>
+          </div>
+          <button class="tool-back" onclick="closeTool('assistant')">Back</button>
+        </div>
         
-        <div class="os-toggle assistant-os" style="margin-bottom:15px">
-          <button class="os-btn active" onclick="setAssistOS('windows',this)">WIN</button>
-          <button class="os-btn" onclick="setAssistOS('macos',this)">MAC</button>
-          <button class="os-btn" onclick="setAssistOS('linux',this)">LINUX</button>
-          <button class="os-btn" onclick="setAssistOS('android',this)">AND</button>
+        <!-- OS Target Selector Bar -->
+        <div class="pro-os-wrapper" style="margin-bottom:15px;">
+          <div class="pro-os-label">🎯 Target System OS</div>
+          <div class="pro-os-segmented assistant-os" style="grid-template-columns: repeat(4, 1fr);">
+            <button class="os-btn pro-os-btn active" onclick="setAssistOS('windows',this)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.95-9.6L24 0v11.4H10.95M0 12.6h9.75v9.451L0 20.701M10.95 12.6H24V24l-13.05-1.85"/></svg>
+              <span>WIN</span>
+            </button>
+            <button class="os-btn pro-os-btn" onclick="setAssistOS('macos',this)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 4.54c.64-.78 1.08-1.85.96-2.94-.93.04-2.06.62-2.73 1.4-.6.7-.1.13-1.12 1.83.97 2.96 1.05.04 2.11-.53 2.89-1.42"/></svg>
+              <span>MAC</span>
+            </button>
+            <button class="os-btn pro-os-btn" onclick="setAssistOS('linux',this)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg>
+              <span>LINUX</span>
+            </button>
+            <button class="os-btn pro-os-btn" onclick="setAssistOS('android',this)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-.9997 0-.551.4482-.9993.9993-.9993.551 0 .9993.4483.9993.9993 0 .5511-.4483.9997-.9993.9997m-11.046 0c-.5511 0-.9993-.4486-.9993-.9997 0-.551.4482-.9993.9993-.9993.551 0 .9993.4483.9993.9993 0 .5511-.4483.9997-.9993.9997m11.4045-6.02l1.9973-3.4592a.416.416 0 00-.1522-.5676.416.416 0 00-.5676.1522l-2.0223 3.503C15.5902 8.358 13.8533 8 12 8s-3.5902.358-5.1367.9498L4.841 5.4468a.416.416 0 00-.5676-.1522.416.416 0 00-.1522.5676l1.9973 3.4592C2.6889 11.0843.3468 14.2435 0 18h24c-.3468-3.7565-2.6889-6.9157-6.1185-8.6786"/></svg>
+              <span>AND</span>
+            </button>
+          </div>
         </div>
 
-        <div class="assistant-chat" id="assistantChat">
+        <!-- Chat Container -->
+        <div class="assistant-chat pro-assistant-chat" id="assistantChat">
           <div class="chat-msg bot">Hi! I'm your GhostChip agent. Select your target OS and tell me what you need. I'll automatically detect if you need an HID script or just a quick answer.</div>
         </div>
 
-        <div class="assistant-controls">
-          <div class="mic-wrap large" id="assistMicBtn" onclick="toggleAssistantVoice()">
+        <!-- Voice & Controls Hub -->
+        <div class="assistant-controls pro-assistant-controls">
+          <div class="mic-wrap large pro-mic-wrap" id="assistMicBtn" onclick="toggleAssistantVoice()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
               <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
@@ -833,108 +1156,201 @@
             <div class="mic-pulse"></div>
             <div class="mic-pulse"></div>
           </div>
-          <div id="assistStatus" class="assist-status">Tap to speak</div>
+          <div id="assistStatus" class="assist-status pro-assist-status">TAP TO SPEAK</div>
           
-          <div class="assist-playback" style="margin-top:15px;display:flex;gap:12px">
-            <button class="btn btn-danger-sm" onclick="stopAssistant()" style="padding:8px 16px">Stop Voice</button>
-            <button class="btn btn-ghost-sm" onclick="clearAssistantChat()" style="padding:8px 16px">Clear Chat</button>
+          <div class="assist-playback" style="margin-top:12px; display:flex; gap:10px; width:100%; justify-content:center;">
+            <button class="btn btn-danger-sm pro-assist-btn-danger" onclick="stopAssistant()">🛑 Stop Voice</button>
+            <button class="btn btn-ghost-sm pro-assist-btn-ghost" onclick="clearAssistantChat()">🧹 Clear Chat</button>
           </div>
         </div>
 
-        <div class="card" style="margin-top:20px">
-          <div class="card-head">Last Executed Script</div>
-          <textarea id="assistScript" class="code-output" readonly style="min-height:100px;font-size:0.7rem"></textarea>
-          <div class="btn-row" style="margin-top:10px">
-            <button class="btn btn-primary-sm" onclick="simulateAssistant()">Simulate</button>
-            <button class="btn btn-ghost-sm" onclick="copyAssistant()">Copy</button>
+        <!-- Last Executed Script -->
+        <div class="card pro-ai-card" style="margin-top:16px;">
+          <div class="pro-output-head">
+            <div class="pro-output-title">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+              <span>LAST EXECUTED SCRIPT</span>
+            </div>
+          </div>
+          <textarea id="assistScript" class="code-output" readonly style="min-height:100px; font-family:var(--mono); font-size:0.72rem; margin-bottom:10px;" placeholder="// No script executed yet..."></textarea>
+          <div class="btn-row">
+            <button class="btn btn-primary" onclick="simulateAssistant()">▶ Simulate</button>
+            <button class="btn btn-ghost" onclick="copyAssistant()">📋 Copy</button>
           </div>
         </div>
       </div>
+      <!-- ── TOOL: FAVOURITES ── -->
       <div class="tool-panel" id="tool-favourites">
-        <div class="tool-panel-head"><h3>Favourites</h3><button class="tool-back" onclick="closeTool('favourites')">Back</button></div>
-        <div class="favs-toolbar" style="margin-bottom:15px;">
-          <div class="favs-filter" id="toolFavsFilter">
-            <button class="fav-filter-btn active" onclick="filterToolFavs('all',this)">All</button>
-            <button class="fav-filter-btn" onclick="filterToolFavs('attack',this)">⚔ Attack</button>
-            <button class="fav-filter-btn" onclick="filterToolFavs('recon',this)">🔍 Recon</button>
-            <button class="fav-filter-btn" onclick="filterToolFavs('utility',this)">🔧 Utility</button>
-            <button class="fav-filter-btn" onclick="filterToolFavs('custom',this)">✦ Custom</button>
+        <div class="tool-panel-head">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <h3>Starred Payload Library</h3>
+          </div>
+          <button class="tool-back" onclick="closeTool('favourites')">Back</button>
+        </div>
+
+        <div class="card pro-ai-card" style="margin-bottom:15px;">
+          <div class="pro-ai-header" style="margin-bottom:12px;">
+            <div class="pro-ai-brand">
+              <div class="pro-ai-icon-wrap" style="background:rgba(255,170,0,0.12); border-color:rgba(255,170,0,0.3); color:#ffaa00;">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              </div>
+              <div class="pro-ai-title-wrap">
+                <h3>Favourite Payload Repository</h3>
+                <p>Quick Access DuckyScript Payloads saved on SD Card</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="pro-presets-wrapper" style="margin-bottom:0;">
+            <div class="pro-os-label">Filter Category</div>
+            <div class="pro-tags-grid" id="toolFavsFilter">
+              <button class="pro-tag-chip active" onclick="filterToolFavs('all',this)">All</button>
+              <button class="pro-tag-chip" onclick="filterToolFavs('attack',this)">🎯 Attack</button>
+              <button class="pro-tag-chip" onclick="filterToolFavs('recon',this)">📡 Recon</button>
+              <button class="pro-tag-chip" onclick="filterToolFavs('utility',this)">🔧 Utility</button>
+              <button class="pro-tag-chip" onclick="filterToolFavs('custom',this)">✦ Custom</button>
+            </div>
           </div>
         </div>
-        <div class="fav-grid" id="toolFavGrid" style="max-height:none;overflow-y:visible;">
+
+        <div class="fav-grid" id="toolFavGrid" style="max-height:none; overflow-y:visible;">
           <!-- Loaded dynamically -->
         </div>
       </div>
+      <!-- ── TOOL: PASSWORD VAULT ── -->
       <div class="tool-panel" id="tool-vault">
-        <div class="tool-panel-head"><h3>Password Vault</h3><button class="tool-back" onclick="closeTool('vault')">Back</button></div>
-        <div style="display:flex;gap:10px;margin-bottom:15px;">
-          <input type="text" id="vaultSearch" class="input" placeholder="Search sites..." oninput="filterVaultList()" style="flex:1;">
-          <button class="btn btn-primary-sm" onclick="showAddVaultModal()" style="padding:10px 16px;">+ Add</button>
+        <div class="tool-panel-head">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <h3>Encrypted Password Vault</h3>
+          </div>
+          <button class="tool-back" onclick="closeTool('vault')">Back</button>
         </div>
-        <div class="fav-grid" id="vaultGrid" style="max-height:none;overflow-y:visible;">
+
+        <div class="card pro-ai-card" style="margin-bottom:15px;">
+          <div class="pro-ai-header" style="margin-bottom:12px;">
+            <div class="pro-ai-brand">
+              <div class="pro-ai-icon-wrap" style="background:rgba(0,255,65,0.12); border-color:rgba(0,255,65,0.3); color:var(--g);">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              </div>
+              <div class="pro-ai-title-wrap">
+                <h3>Secure Credential Enclave</h3>
+                <p>Stores DuckyScript Auto-Typers directly on SD Card (/Vault)</p>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex; gap:10px; align-items:center;">
+            <div class="pro-input-card" style="flex:1; margin:0; padding:8px 12px; display:flex; align-items:center; gap:8px;">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--dim);"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="text" id="vaultSearch" class="input" placeholder="Search credentials..." oninput="filterVaultList()" style="background:none; border:none; padding:0; height:auto; outline:none; font-size:0.82rem; width:100%;">
+            </div>
+            <button class="btn btn-primary" onclick="showAddVaultModal()" style="padding:10px 18px; display:flex; align-items:center; gap:6px; white-space:nowrap;">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              <span>+ Add Entry</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="fav-grid" id="vaultGrid" style="max-height:none; overflow-y:visible;">
           <!-- Loaded dynamically -->
         </div>
       </div>
       
       <!-- Add to Vault Modal -->
-      <div class="modal-overlay" id="addVaultModal" style="display:none;z-index:9999;">
-        <div class="modal-card">
-          <div class="modal-header">
-            <div class="modal-icon">🔐</div>
+      <div class="modal-overlay" id="addVaultModal" style="display:none; z-index:9999;">
+        <div class="modal-card pro-ai-card" style="max-width:440px; width:90%; border:1px solid rgba(0,255,65,0.3); background:rgba(12,12,12,0.95); backdrop-filter:blur(16px);">
+          <div class="modal-header" style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
+            <div class="pro-ai-icon-wrap" style="background:rgba(0,255,65,0.15); border-color:rgba(0,255,65,0.3); color:var(--g);">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            </div>
             <div>
-              <h3 style="margin:0;font-size:1.1rem;color:var(--white);">Add to Vault</h3>
-              <small style="color:var(--dim);">Saved directly to device SD card</small>
+              <h3 style="margin:0; font-size:1.1rem; color:var(--white);">Add Vault Credential</h3>
+              <small style="color:var(--dim); font-size:0.72rem;">Saved to device storage at /Vault/[SiteName].txt</small>
             </div>
           </div>
-          <div class="input-group" style="margin-bottom:15px;">
-            <label>Site Name</label>
-            <input type="text" id="vaultSiteName" class="input" placeholder="e.g. github" autocomplete="off" spellcheck="false">
+          <div class="input-group" style="margin-bottom:14px;">
+            <label style="font-size:0.75rem; font-weight:700; color:var(--dim); text-transform:uppercase;">Site / Service Identifier</label>
+            <input type="text" id="vaultSiteName" class="input pro-input-textarea" style="min-height:auto; height:42px;" placeholder="e.g. github, corporate-vpn, router-admin" autocomplete="off" spellcheck="false">
           </div>
-          <div class="input-group" style="margin-bottom:15px;display:flex;flex-direction:column;">
-            <label>Password</label>
-            <div style="display:flex;gap:8px;width:100%;">
-              <input type="password" id="vaultPassword" class="input" placeholder="Enter password" autocomplete="off" spellcheck="false" style="flex:1;">
-              <button class="btn btn-ghost" onclick="togglePass('vaultPassword',this)" style="padding:10px 15px;">SHOW</button>
+          <div class="input-group" style="margin-bottom:16px;">
+            <label style="font-size:0.75rem; font-weight:700; color:var(--dim); text-transform:uppercase;">Password String</label>
+            <div style="display:flex; gap:8px;">
+              <input type="password" id="vaultPassword" class="input pro-input-textarea" style="min-height:auto; height:42px; flex:1;" placeholder="Enter target password" autocomplete="off" spellcheck="false">
+              <button class="btn btn-ghost" onclick="togglePass('vaultPassword',this)" style="padding:0 16px; font-weight:700;">SHOW</button>
             </div>
           </div>
-          <div class="modal-actions" style="margin-top:16px;">
+          <div class="modal-actions" style="margin-top:20px; display:flex; gap:10px; justify-content:flex-end;">
             <button class="btn btn-ghost" onclick="hideAddVaultModal()">Cancel</button>
-            <button class="btn btn-primary" id="vaultAddConfirmBtn" onclick="confirmAddVault()">Save</button>
+            <button class="btn btn-primary" id="vaultAddConfirmBtn" onclick="confirmAddVault()">Save Credential</button>
           </div>
         </div>
       </div>
+
+      <!-- ── TOOL: SHORTCUT LAUNCHER ── -->
       <div class="tool-panel" id="tool-shortcuts">
-        <div class="tool-panel-head"><h3>Shortcut Launcher</h3><button class="tool-back" onclick="closeTool('shortcuts')">Back</button></div>
-        <div style="display:flex;gap:10px;margin-bottom:15px;">
-          <input type="text" id="shortcutsSearch" class="input" placeholder="Search shortcuts..." oninput="filterShortcutsList()" style="flex:1;">
-          <button class="btn btn-primary-sm" onclick="showAddShortcutModal()" style="padding:10px 16px;">+ Add</button>
+        <div class="tool-panel-head">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            <h3>Shortcut Launcher</h3>
+          </div>
+          <button class="tool-back" onclick="closeTool('shortcuts')">Back</button>
         </div>
-        <div class="fav-grid" id="shortcutsGrid" style="max-height:none;overflow-y:visible;">
+
+        <div class="card pro-ai-card" style="margin-bottom:15px;">
+          <div class="pro-ai-header" style="margin-bottom:12px;">
+            <div class="pro-ai-brand">
+              <div class="pro-ai-icon-wrap" style="background:rgba(0,200,255,0.12); border-color:rgba(0,200,255,0.3); color:#00c8ff;">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              </div>
+              <div class="pro-ai-title-wrap">
+                <h3>One-Touch Rapid Deployment</h3>
+                <p>Executes DuckyScript Macros stored on SD Card (/Shortcuts)</p>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex; gap:10px; align-items:center;">
+            <div class="pro-input-card" style="flex:1; margin:0; padding:8px 12px; display:flex; align-items:center; gap:8px;">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--dim);"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="text" id="shortcutsSearch" class="input" placeholder="Search shortcuts..." oninput="filterShortcutsList()" style="background:none; border:none; padding:0; height:auto; outline:none; font-size:0.82rem; width:100%;">
+            </div>
+            <button class="btn btn-primary" onclick="showAddShortcutModal()" style="padding:10px 18px; display:flex; align-items:center; gap:6px; white-space:nowrap; background: linear-gradient(135deg, #00c8ff, #0088ff);">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              <span>+ Add Shortcut</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="fav-grid" id="shortcutsGrid" style="max-height:none; overflow-y:visible;">
           <!-- Loaded dynamically -->
         </div>
       </div>
       
       <!-- Add to Shortcuts Modal -->
-      <div class="modal-overlay" id="addShortcutModal" style="display:none;z-index:9999;">
-        <div class="modal-card">
-          <div class="modal-header">
-            <div class="modal-icon">⚡</div>
+      <div class="modal-overlay" id="addShortcutModal" style="display:none; z-index:9999;">
+        <div class="modal-card pro-ai-card" style="max-width:480px; width:90%; border:1px solid rgba(0,200,255,0.3); background:rgba(12,12,12,0.95); backdrop-filter:blur(16px);">
+          <div class="modal-header" style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
+            <div class="pro-ai-icon-wrap" style="background:rgba(0,200,255,0.15); border-color:rgba(0,200,255,0.3); color:#00c8ff;">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            </div>
             <div>
-              <h3 style="margin:0;font-size:1.1rem;color:var(--white);">Add Shortcut</h3>
-              <small style="color:var(--dim);">Saved directly to device SD card</small>
+              <h3 style="margin:0; font-size:1.1rem; color:var(--white);">Create Macro Shortcut</h3>
+              <small style="color:var(--dim); font-size:0.72rem;">Saved to device storage at /Shortcuts/[ShortcutName].txt</small>
             </div>
           </div>
-          <div class="input-group" style="margin-bottom:15px;">
-            <label>Shortcut Name</label>
-            <input type="text" id="shortcutName" class="input" placeholder="e.g. open-notes" autocomplete="off" spellcheck="false">
+          <div class="input-group" style="margin-bottom:14px;">
+            <label style="font-size:0.75rem; font-weight:700; color:var(--dim); text-transform:uppercase;">Shortcut Title</label>
+            <input type="text" id="shortcutName" class="input pro-input-textarea" style="min-height:auto; height:42px;" placeholder="e.g. open-notes, win-ipconfig, lock-screen" autocomplete="off" spellcheck="false">
           </div>
-          <div class="input-group" style="margin-bottom:15px;">
-            <label>DuckyScript Body</label>
-            <textarea id="shortcutScript" class="input" placeholder="DELAY 500&#10;GUI r&#10;DELAY 200&#10;STRING notepad&#10;ENTER" style="min-height:120px;font-family:var(--mono);font-size:0.8rem;line-height:1.4;background:rgba(0,0,0,0.2);color:var(--white);border:1px solid var(--b1);border-radius:6px;padding:8px;resize:vertical;" spellcheck="false"></textarea>
+          <div class="input-group" style="margin-bottom:16px;">
+            <label style="font-size:0.75rem; font-weight:700; color:var(--dim); text-transform:uppercase;">DuckyScript Commands</label>
+            <textarea id="shortcutScript" class="pro-input-textarea" placeholder="DELAY 500&#10;GUI r&#10;DELAY 200&#10;STRING notepad&#10;ENTER" style="min-height:130px; font-family:var(--mono); font-size:0.78rem;" spellcheck="false"></textarea>
           </div>
-          <div class="modal-actions" style="margin-top:16px;">
+          <div class="modal-actions" style="margin-top:20px; display:flex; gap:10px; justify-content:flex-end;">
             <button class="btn btn-ghost" onclick="hideAddShortcutModal()">Cancel</button>
-            <button class="btn btn-primary" id="shortcutAddConfirmBtn" onclick="confirmAddShortcut()">Save</button>
+            <button class="btn btn-primary" id="shortcutAddConfirmBtn" onclick="confirmAddShortcut()" style="background: linear-gradient(135deg, #00c8ff, #0088ff);">Save Shortcut</button>
           </div>
         </div>
       </div>
@@ -1076,58 +1492,200 @@
 
       </div>
 
+      <!-- ── TOOL: PROMPT ENHANCER ── -->
+      <div class="tool-panel" id="tool-prompter">
+        <div class="tool-panel-head">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z"/></svg>
+            <h3>Prompt Enhancer</h3>
+          </div>
+          <button class="tool-back" onclick="closeTool('prompter')">Back</button>
+        </div>
+        
+        <div class="card pro-ai-card" style="margin-bottom:12px">
+          <div class="pro-ai-header">
+            <div class="pro-ai-brand">
+              <div class="pro-ai-icon-wrap" style="background:linear-gradient(135deg, rgba(255,170,0,0.18), rgba(255,68,68,0.12)); border-color:rgba(255,170,0,0.3); color:#ffaa00;">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z"/></svg>
+              </div>
+              <div class="pro-ai-title-wrap">
+                <h3>Master System Prompt Engine</h3>
+                <p>Synthesizes Core Instructions into HID Payloads</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Input Textarea & Voice Button -->
+          <div class="pro-input-card" style="margin-bottom:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <span class="pro-os-label" style="margin:0;">Core Prompt Instruction</span>
+              <button class="btn btn-ghost sm" id="peVoiceBtn" onclick="peToggleVoice()" style="font-size:0.7rem; padding:4px 10px; display:flex; align-items:center; gap:5px;">
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+                <span>Voice Input</span>
+              </button>
+            </div>
+            <textarea id="peInput" class="pro-input-textarea" rows="3" placeholder="e.g. Write a cold email to sales CTO, or Create a python script to scrape news, or Explain quantum physics simply..." spellcheck="false"></textarea>
+          </div>
+
+          <!-- Style Selectors -->
+          <div class="pro-presets-wrapper" style="margin-bottom:14px;">
+            <div class="pro-os-label">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+              <span>System Prompt Persona / Tone</span>
+            </div>
+            <div class="pro-tags-grid" id="peStylePicker">
+              <button class="pro-tag-chip active" data-style="professional" onclick="peSetStyle('professional',this)">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+                <span>Professional</span>
+              </button>
+              <button class="pro-tag-chip" data-style="developer" onclick="peSetStyle('developer',this)">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                <span>Developer</span>
+              </button>
+              <button class="pro-tag-chip" data-style="pentest" onclick="peSetStyle('pentest',this)">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                <span>Pentest</span>
+              </button>
+              <button class="pro-tag-chip" data-style="creative" onclick="peSetStyle('creative',this)">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.9 0 1.6-.7 1.6-1.6 0-.4-.2-.8-.4-1.1-.2-.3-.4-.7-.4-1.1 0-.9.7-1.6 1.6-1.6H16c3.3 0 6-2.7 6-6 0-4.8-4.5-8.6-10-8.6z"/></svg>
+                <span>Creative</span>
+              </button>
+              <button class="pro-tag-chip" data-style="concise" onclick="peSetStyle('concise',this)">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                <span>Concise</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Generate Button -->
+          <button class="pro-btn-gen" id="peGenBtn" style="background: linear-gradient(135deg, #ffaa00, #ff8800); color:#000; box-shadow: 0 4px 20px rgba(255,170,0,0.3);" onclick="peGenerate()">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            <span>GENERATE MASTER SYSTEM PROMPT</span>
+          </button>
+        </div>
+
+        <!-- Output Card -->
+        <div class="card pro-ai-card" id="peOutputCard" style="display:none; margin-top:12px">
+          <div class="pro-output-head">
+            <div class="pro-output-title" style="color:#ffaa00;">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+              <span>ENHANCED MASTER PROMPT</span>
+            </div>
+            <span class="agent-model-badge" style="font-size:0.65rem">Qwen 3.8 27B (Groq)</span>
+          </div>
+          <textarea id="peOutput" class="code-output" style="min-height:160px; font-size:0.82rem; white-space:pre-wrap; margin-bottom:12px" readonly></textarea>
+          
+          <div class="btn-row" style="flex-wrap:wrap; gap:8px">
+            <button class="btn btn-primary" onclick="peTypeHid()">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="6" y1="8" x2="6.01" y2="8"/><line x1="10" y1="8" x2="10.01" y2="8"/><line x1="14" y1="8" x2="14.01" y2="8"/><line x1="18" y1="8" x2="18.01" y2="8"/><line x1="8" y1="16" x2="16" y2="16"/></svg>
+              <span>Type via HID (STRING)</span>
+            </button>
+            <button class="btn btn-ghost" onclick="peGenerate()">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+              <span>Regenerate</span>
+            </button>
+            <button class="btn btn-ghost" onclick="peCopy()">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              <span>Copy</span>
+            </button>
+            <button class="btn btn-ghost" onclick="peToEditor()">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+              <span>Editor</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- ── TOOL: AI AGENT ── -->
       <div class="tool-panel" id="tool-aiagent">
         <div class="tool-panel-head">
-          <h3>🤖 AI Agent</h3>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8.01" y2="16"/><line x1="16" y1="16" x2="16.01" y2="16"/></svg>
+            <h3>GhostChip AI Agent</h3>
+          </div>
           <button class="tool-back" onclick="closeTool('aiagent'); stopAgent()">Back</button>
         </div>
 
-        <!-- Status bar -->
-        <div class="agent-status-bar">
-          <span class="agent-status-dot" id="agentDot"></span>
-          <span id="agentStatusLabel">Idle — ready for instructions</span>
-          <span class="agent-model-badge" id="agentModelBadge">Qwen 3.6 27B</span>
-        </div>
+        <div class="card pro-ai-card">
+          <!-- Status bar -->
+          <div class="pro-ai-header" style="margin-bottom:10px; padding-bottom:8px;">
+            <div class="pro-ai-brand">
+              <span class="agent-status-dot" id="agentDot"></span>
+              <span id="agentStatusLabel" style="font-family:var(--mono); font-size:0.75rem; font-weight:700; color:var(--white);">Idle — ready for instructions</span>
+            </div>
+            <span class="agent-model-badge" id="agentModelBadge">Qwen 3.8 27B (Groq)</span>
+          </div>
 
-        <!-- Conversation log -->
-        <div class="agent-log" id="agentLog">
-          <div class="agent-entry agent-welcome">
-            <div class="agent-entry-icon">🤖</div>
-            <div class="agent-entry-body">
-              <div class="agent-entry-label">GhostChip AI Agent</div>
-              <div class="agent-entry-text">I can control your GhostChip device using natural language. Ask me to generate and execute HID payloads, manage files, scan networks, or control the NeoPixel LED.<br><br><em>Try: "Open Spotlight on Mac and type Notes then press Enter"</em></div>
+          <!-- Conversation log -->
+          <div class="agent-log pro-assistant-chat" id="agentLog" style="height:320px !important;">
+            <div class="agent-entry agent-welcome">
+              <div class="agent-entry-icon">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8.01" y2="16"/><line x1="16" y1="16" x2="16.01" y2="16"/></svg>
+              </div>
+              <div class="agent-entry-body">
+                <div class="agent-entry-label">GhostChip AI Agent Engine</div>
+                <div class="agent-entry-text">I am your autonomous HID agent. Ask me to generate and execute DuckyScript payloads, manage SD files, scan networks, or drive the RGB NeoPixel LED.<br><br><em>Try: "Open Spotlight on Mac and type Notes then press Enter"</em></div>
+              </div>
             </div>
           </div>
-        </div>
 
-        <!-- Tool call inspector (collapsible) -->
-        <div class="agent-tool-inspector" id="agentToolInspector" style="display:none">
-          <div class="agent-tool-inspector-head" onclick="toggleAgentInspector()">
-            <span id="agentToolName">Tool call</span>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" id="agentInspectorChevron"><polyline points="6 9 12 15 18 9"/></svg>
+          <!-- Tool call inspector (collapsible) -->
+          <div class="agent-tool-inspector" id="agentToolInspector" style="display:none; margin-top:10px; background:var(--s2); border:1px solid var(--b1); border-radius:10px; padding:10px;">
+            <div class="agent-tool-inspector-head" onclick="toggleAgentInspector()" style="display:flex; align-items:center; justify-space-between; cursor:pointer; font-family:var(--mono); font-size:0.72rem; color:var(--g);">
+              <span id="agentToolName">Tool call trace</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" id="agentInspectorChevron"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            <pre class="agent-tool-body" id="agentToolBody" style="font-family:var(--mono); font-size:0.7rem; color:var(--dim); margin-top:6px; white-space:pre-wrap;"></pre>
           </div>
-          <pre class="agent-tool-body" id="agentToolBody"></pre>
-        </div>
 
-        <!-- Input row -->
-        <div class="agent-input-wrap">
-          <textarea id="agentInput" class="agent-textarea" placeholder="Tell the agent what to do on the target machine..." rows="2" spellcheck="false" onkeydown="agentInputKeydown(event)"></textarea>
-          <div class="agent-btn-row">
-            <button class="btn btn-primary agent-run-btn" id="agentRunBtn" onclick="runAgentFromInput()">▶ Run</button>
-            <button class="btn btn-ghost" id="agentStopBtn" onclick="stopAgent()" disabled>⏹ Stop</button>
-            <button class="btn btn-ghost" onclick="clearAgentLog()">🗑 Clear</button>
+          <!-- Input row -->
+          <div class="pro-input-card" style="margin-top:12px; margin-bottom:10px;">
+            <textarea id="agentInput" class="pro-input-textarea" placeholder="Tell the autonomous agent what action to execute on the target host..." rows="2" spellcheck="false" onkeydown="agentInputKeydown(event)"></textarea>
+            <div class="agent-btn-row" style="display:flex; gap:8px; margin-top:8px; justify-content:flex-end;">
+              <button class="btn btn-primary agent-run-btn" id="agentRunBtn" onclick="runAgentFromInput()">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                <span>Run Agent</span>
+              </button>
+              <button class="btn btn-ghost" id="agentStopBtn" onclick="stopAgent()" disabled>
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+                <span>Stop</span>
+              </button>
+              <button class="btn btn-ghost" onclick="clearAgentLog()">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                <span>Clear</span>
+              </button>
+            </div>
           </div>
-        </div>
 
-        <!-- Quick prompts -->
-        <div class="agent-quick-prompts">
-          <span class="agent-qp-label">Quick:</span>
-          <button class="agent-qp" onclick="agentQuickPrompt('Open Spotlight on Mac and type Notes then press Enter')">🔍 Spotlight Notes</button>
-          <button class="agent-qp" onclick="agentQuickPrompt('Open a terminal on Windows and run ipconfig')">💻 Win Terminal</button>
-          <button class="agent-qp" onclick="agentQuickPrompt('List all files on the SD card')">📂 List Files</button>
-          <button class="agent-qp" onclick="agentQuickPrompt('Set the NeoPixel LED to red')">🔴 Red LED</button>
-          <button class="agent-qp" onclick="agentQuickPrompt('Get device info and firmware version')">ℹ️ Device Info</button>
+          <!-- Quick prompts -->
+          <div class="pro-presets-wrapper" style="margin-bottom:0;">
+            <div class="pro-os-label" style="font-size:0.65rem;">
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              <span>QUICK ACTIONS</span>
+            </div>
+            <div class="pro-tags-grid">
+              <button class="pro-tag-chip" onclick="agentQuickPrompt('Open Spotlight on Mac and type Notes then press Enter')">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <span>Spotlight Notes</span>
+              </button>
+              <button class="pro-tag-chip" onclick="agentQuickPrompt('Open a terminal on Windows and run ipconfig')">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+                <span>Win Terminal</span>
+              </button>
+              <button class="pro-tag-chip" onclick="agentQuickPrompt('List all files on the SD card')">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                <span>List Files</span>
+              </button>
+              <button class="pro-tag-chip" onclick="agentQuickPrompt('Set the NeoPixel LED to red')">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                <span>Red LED</span>
+              </button>
+              <button class="pro-tag-chip" onclick="agentQuickPrompt('Get device info and firmware version')">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                <span>Device Info</span>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </section>

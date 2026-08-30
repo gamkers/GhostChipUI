@@ -4,7 +4,7 @@
 
 const $ = id => document.getElementById(id);
 let GROQ_KEY = localStorage.getItem('gc_groq_key') || '';
-const GROQ_MODEL = 'openai/gpt-oss-120b';
+const GROQ_MODEL = 'qwen/qwen3.8-27b';
 const WARN_KEY = 'gc_legal_v2';
 
 // ═══════════════════════════════════════════════════
@@ -507,12 +507,11 @@ function cleanDuckyScriptOutput(rawText) {
 
 // ─── AI Copilot Inline Engine ───
 async function triggerAiCopilot(remComment) {
-  const keyToUse = OPENROUTER_KEY || GROQ_KEY || localStorage.getItem('gc_openrouter_key') || localStorage.getItem('gc_groq_key') || '';
+  const keyToUse = GROQ_KEY || localStorage.getItem('gc_groq_key') || '';
   if (!keyToUse || keyToUse.length < 5) return;
 
-  const isOrKey = keyToUse.startsWith('sk-or-') || Boolean(OPENROUTER_KEY);
-  const endpoint = isOrKey ? 'https://openrouter.ai/api/v1/chat/completions' : 'https://api.groq.com/openai/v1/chat/completions';
-  const modelToUse = isOrKey ? AGENT_MODEL : GROQ_MODEL;
+  const endpoint = 'https://api.groq.com/openai/v1/chat/completions';
+  const modelToUse = GROQ_MODEL;
 
   const bar = $('aiSuggestBar');
   const loading = $('aiSuggestLoading');
@@ -525,10 +524,6 @@ async function triggerAiCopilot(remComment) {
   if (inner) inner.style.display = 'none';
 
   const headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + keyToUse };
-  if (isOrKey) {
-    headers['HTTP-Referer'] = window.location.origin || 'https://ghostchip.local';
-    headers['X-Title'] = 'GhostChip AI Agent';
-  }
 
   try {
     const res = await fetch(endpoint, {
@@ -569,7 +564,7 @@ async function triggerAiCopilot(remComment) {
         top_p: 0.95,
         max_tokens: 2048,
         max_completion_tokens: 2048,
-        reasoning_effort: 'none',
+        reasoning_effort: 'default',
         stop: null
       })
     });
@@ -1301,10 +1296,10 @@ async function confirmAddFav() {
 
 // ─── Render the grid ───
 const TAG_META = {
-  attack: { emoji: '⚔', label: 'Attack', cls: 'tag-attack' },
-  recon: { emoji: '🔍', label: 'Recon', cls: 'tag-recon' },
-  utility: { emoji: '🔧', label: 'Utility', cls: 'tag-utility' },
-  custom: { emoji: '✦', label: 'Custom', cls: 'tag-custom' },
+  attack: { emoji: '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/></svg>', label: 'Attack', cls: 'tag-attack' },
+  recon: { emoji: '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M4.9 19.1C1.9 16.1 1.9 11.4 4.9 8.4"/><path d="M7.8 16.2c-1.6-1.6-1.6-4.1 0-5.7"/><circle cx="12" cy="12" r="2"/></svg>', label: 'Recon', cls: 'tag-recon' },
+  utility: { emoji: '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>', label: 'Utility', cls: 'tag-utility' },
+  custom: { emoji: '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>', label: 'Custom', cls: 'tag-custom' },
 };
 
 async function renderFavGrid() {
@@ -1326,18 +1321,21 @@ async function renderFavGrid() {
     const m = TAG_META[fav.tag] || TAG_META.custom;
     const fileName = fav.devicePath ? fav.devicePath.split('/').pop() : (fav.name || 'script.txt');
     const pathHtml = fav.devicePath
-      ? `<div class="fav-device-path" title="${escHtml(fav.devicePath)}"><span class="fav-path-icon">📁</span><span class="fav-path-text">${escHtml(fav.devicePath)}</span></div>`
+      ? `<div class="fav-device-path" title="${escHtml(fav.devicePath)}"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg><span class="fav-path-text">${escHtml(fav.devicePath)}</span></div>`
       : '';
     const metaText = `Device File`;
-    return `<div class="fav-card ${m.cls}" id="fav-${fav.id}">
-      <div class="fav-card-top">
-        <span class="fav-tag-badge ${m.cls}">${m.emoji} ${m.label}</span>
+    return `<div class="fav-card ${m.cls} pro-ai-card" id="fav-${fav.id}" style="padding:14px; display:flex; flex-direction:column; gap:10px; background:var(--s2); border:1px solid rgba(255,170,0,0.25); border-radius:12px;">
+      <div class="fav-card-top" style="display:flex; justify-content:space-between; align-items:center;">
+        <span class="fav-tag-badge ${m.cls}" style="display:flex; align-items:center; gap:5px; font-size:0.68rem; font-weight:700;">${m.emoji} <span>${m.label.toUpperCase()}</span></span>
       </div>
-      <div class="fav-card-name" onclick="runFavDirectly('${fav.id}')">${escHtml(fileName)}</div>
-      <div class="fav-card-meta">${metaText}</div>
+      <div class="fav-card-name" onclick="runFavDirectly('${fav.id}')" style="cursor:pointer; font-weight:700; font-size:0.95rem; color:var(--white); font-family:var(--mono);">${escHtml(fileName)}</div>
+      <div class="fav-card-meta" style="font-family:var(--mono); font-size:0.7rem; color:var(--dim);">${metaText}</div>
       ${pathHtml}
-      <div style="display:flex;gap:6px;margin-top:auto;">
-        <button class="fav-sync-btn" onclick="event.stopPropagation();runFavDirectly('${fav.id}')" style="flex:1" title="Execute directly from memory card">⚡ Run</button>
+      <div style="display:flex; gap:6px; margin-top:auto;">
+        <button class="btn btn-primary" onclick="event.stopPropagation();runFavDirectly('${fav.id}')" style="flex:1; padding:8px 12px; font-size:0.75rem; background: linear-gradient(135deg, #ffaa00, #ff8800); color:#000; display:flex; align-items:center; justify-content:center; gap:6px;" title="Execute directly from memory card">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          <span>Run Payload</span>
+        </button>
       </div>
     </div>`;
   }).join('');
@@ -1971,26 +1969,21 @@ async function aiGenerate() {
   btn.disabled = true;
   btn.innerHTML = '<span class="spin"></span> Generating...';
 
-  const keyToUse = OPENROUTER_KEY || GROQ_KEY || localStorage.getItem('gc_openrouter_key') || localStorage.getItem('gc_groq_key') || '';
+  const keyToUse = GROQ_KEY || localStorage.getItem('gc_groq_key') || '';
   if (!keyToUse || keyToUse.length < 5) {
-    toast('No API key found. Go to Settings → save your OpenRouter or Groq key first.', 'err');
+    toast('No Groq API key found. Go to Settings → save your Groq key first.', 'err');
     btn.disabled = false;
     btn.innerHTML = '⚡ Generate DuckyScript';
     return;
   }
 
-  const isOrKey = keyToUse.startsWith('sk-or-') || Boolean(OPENROUTER_KEY);
-  const endpoint = isOrKey ? 'https://openrouter.ai/api/v1/chat/completions' : 'https://api.groq.com/openai/v1/chat/completions';
-  const modelToUse = isOrKey ? AGENT_MODEL : GROQ_MODEL;
+  const endpoint = 'https://api.groq.com/openai/v1/chat/completions';
+  const modelToUse = GROQ_MODEL;
 
   $('aiOutput').value = '';
   $('aiOutputCard').style.display = 'none';
 
   const headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + keyToUse };
-  if (isOrKey) {
-    headers['HTTP-Referer'] = window.location.origin || 'https://ghostchip.local';
-    headers['X-Title'] = 'GhostChip AI Agent';
-  }
 
   try {
     const res = await fetch(endpoint, {
@@ -2031,7 +2024,7 @@ async function aiGenerate() {
         top_p: 0.95,
         max_tokens: 2048,
         max_completion_tokens: 2048,
-        reasoning_effort: 'none',
+        reasoning_effort: 'default',
         stop: null
       })
     });
@@ -2058,21 +2051,16 @@ async function aiConvertOS(newOS) {
   const script = $('aiOutput').value.trim();
   if (!script) { toast('No script to convert', 'warn'); return; }
 
-  const keyToUse = OPENROUTER_KEY || GROQ_KEY || localStorage.getItem('gc_openrouter_key') || localStorage.getItem('gc_groq_key') || '';
-  if (!keyToUse || keyToUse.length < 5) { toast('No API key. Save in Settings.', 'err'); return; }
+  const keyToUse = GROQ_KEY || localStorage.getItem('gc_groq_key') || '';
+  if (!keyToUse || keyToUse.length < 5) { toast('No Groq API key. Save in Settings.', 'err'); return; }
 
-  const isOrKey = keyToUse.startsWith('sk-or-') || Boolean(OPENROUTER_KEY);
-  const endpoint = isOrKey ? 'https://openrouter.ai/api/v1/chat/completions' : 'https://api.groq.com/openai/v1/chat/completions';
-  const modelToUse = isOrKey ? AGENT_MODEL : GROQ_MODEL;
+  const endpoint = 'https://api.groq.com/openai/v1/chat/completions';
+  const modelToUse = GROQ_MODEL;
 
   const osNames = { windows: 'Windows', macos: 'macOS', linux: 'Linux' };
   toast(`Converting to ${osNames[newOS]}...`, 'ok', 2000);
 
   const headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + keyToUse };
-  if (isOrKey) {
-    headers['HTTP-Referer'] = window.location.origin || 'https://ghostchip.local';
-    headers['X-Title'] = 'GhostChip AI Agent';
-  }
 
   try {
     const res = await fetch(endpoint, {
@@ -2088,7 +2076,7 @@ async function aiConvertOS(newOS) {
         top_p: 1,
         max_tokens: 2048,
         max_completion_tokens: 2048,
-        reasoning_effort: 'low',
+        reasoning_effort: 'default',
         stop: null
       })
     });
@@ -3604,18 +3592,21 @@ async function renderToolFavGrid() {
     const m = TAG_META[fav.tag] || TAG_META.custom;
     const fileName = fav.devicePath ? fav.devicePath.split('/').pop() : (fav.name || 'script.txt');
     const pathHtml = fav.devicePath
-      ? `<div class="fav-device-path" title="${escHtml(fav.devicePath)}"><span class="fav-path-icon">📁</span><span class="fav-path-text">${escHtml(fav.devicePath)}</span></div>`
+      ? `<div class="fav-device-path" title="${escHtml(fav.devicePath)}"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg><span class="fav-path-text">${escHtml(fav.devicePath)}</span></div>`
       : '';
     const metaText = `Device File`;
-    return `<div class="fav-card ${m.cls}" id="tool-fav-${fav.id}">
-      <div class="fav-card-top">
-        <span class="fav-tag-badge ${m.cls}">${m.emoji} ${m.label}</span>
+    return `<div class="fav-card ${m.cls} pro-ai-card" id="tool-fav-${fav.id}" style="padding:14px; display:flex; flex-direction:column; gap:10px; background:var(--s2); border:1px solid rgba(255,170,0,0.25); border-radius:12px;">
+      <div class="fav-card-top" style="display:flex; justify-content:space-between; align-items:center;">
+        <span class="fav-tag-badge ${m.cls}" style="display:flex; align-items:center; gap:5px; font-size:0.68rem; font-weight:700;">${m.emoji} <span>${m.label.toUpperCase()}</span></span>
       </div>
-      <div class="fav-card-name" onclick="runFavDirectly('${fav.id}')">${escHtml(fileName)}</div>
-      <div class="fav-card-meta">${metaText}</div>
+      <div class="fav-card-name" onclick="runFavDirectly('${fav.id}')" style="cursor:pointer; font-weight:700; font-size:0.95rem; color:var(--white); font-family:var(--mono);">${escHtml(fileName)}</div>
+      <div class="fav-card-meta" style="font-family:var(--mono); font-size:0.7rem; color:var(--dim);">${metaText}</div>
       ${pathHtml}
-      <div style="display:flex;gap:6px;margin-top:auto;">
-        <button class="fav-sync-btn" onclick="event.stopPropagation();runFavDirectly('${fav.id}')" style="flex:1" title="Execute directly from memory card">⚡ Run</button>
+      <div style="display:flex; gap:6px; margin-top:auto;">
+        <button class="btn btn-primary" onclick="event.stopPropagation();runFavDirectly('${fav.id}')" style="flex:1; padding:8px 12px; font-size:0.75rem; background: linear-gradient(135deg, #ffaa00, #ff8800); color:#000; display:flex; align-items:center; justify-content:center; gap:6px;" title="Execute directly from memory card">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          <span>Run Payload</span>
+        </button>
       </div>
     </div>`;
   }).join('');
@@ -3673,15 +3664,23 @@ function renderVaultGrid() {
   }
 
   grid.innerHTML = filtered.map(item => {
-    return `<div class="fav-card tag-custom" id="vault-card-${item.name}">
-      <div class="fav-card-top">
-        <span class="fav-tag-badge tag-custom">🔐 Password</span>
-        <button class="fav-del-btn" onclick="event.stopPropagation(); deleteVaultEntry('${escHtml(item.name)}')" title="Delete" style="background:none;border:none;color:var(--dim2);cursor:pointer;font-size:0.75rem;">✕</button>
+    return `<div class="fav-card tag-custom pro-ai-card" id="vault-card-${item.name}" style="padding:14px; display:flex; flex-direction:column; gap:10px; background:var(--s2); border:1px solid rgba(0,255,65,0.25); border-radius:12px;">
+      <div class="fav-card-top" style="display:flex; justify-content:space-between; align-items:center;">
+        <span class="fav-tag-badge tag-custom" style="display:flex; align-items:center; gap:5px; font-size:0.68rem; font-weight:700; color:var(--g);">
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <span>CREDENTIAL</span>
+        </span>
+        <button class="fav-del-btn" onclick="event.stopPropagation(); deleteVaultEntry('${escHtml(item.name)}')" title="Delete" style="background:rgba(255,68,68,0.1); border:1px solid rgba(255,68,68,0.2); color:#ff4444; border-radius:6px; width:24px; height:24px; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
       </div>
-      <div class="fav-card-name" onclick="runVaultEntry('${escHtml(item.name)}')" style="cursor:pointer;">${escHtml(item.name)}</div>
-      <div class="fav-card-meta">DuckyScript: ${escHtml(item.path)}</div>
-      <div style="display:flex;gap:6px;margin-top:auto;width:100%;">
-        <button class="fav-sync-btn" onclick="event.stopPropagation(); runVaultEntry('${escHtml(item.name)}')" style="flex:1;" title="Type password via USB">⚡ Type</button>
+      <div class="fav-card-name" onclick="runVaultEntry('${escHtml(item.name)}')" style="cursor:pointer; font-weight:700; font-size:0.95rem; color:var(--white); font-family:var(--mono);">${escHtml(item.name)}</div>
+      <div class="fav-card-meta" style="font-family:var(--mono); font-size:0.7rem; color:var(--dim);">${escHtml(item.path)}</div>
+      <div style="display:flex; gap:6px; margin-top:auto; width:100%;">
+        <button class="btn btn-primary" onclick="event.stopPropagation(); runVaultEntry('${escHtml(item.name)}')" style="flex:1; padding:8px 12px; font-size:0.75rem; display:flex; align-items:center; justify-content:center; gap:6px;" title="Type password via USB">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          <span>Type via USB</span>
+        </button>
       </div>
     </div>`;
   }).join('');
@@ -3823,15 +3822,23 @@ function renderShortcutsGrid() {
   }
 
   grid.innerHTML = filtered.map(item => {
-    return `<div class="fav-card tag-recon" id="shortcut-card-${item.name}">
-      <div class="fav-card-top">
-        <span class="fav-tag-badge tag-recon">⚡ Shortcut</span>
-        <button class="fav-del-btn" onclick="event.stopPropagation(); deleteShortcutEntry('${escHtml(item.name)}')" title="Delete" style="background:none;border:none;color:var(--dim2);cursor:pointer;font-size:0.75rem;">✕</button>
+    return `<div class="fav-card tag-recon pro-ai-card" id="shortcut-card-${item.name}" style="padding:14px; display:flex; flex-direction:column; gap:10px; background:var(--s2); border:1px solid rgba(0,200,255,0.25); border-radius:12px;">
+      <div class="fav-card-top" style="display:flex; justify-content:space-between; align-items:center;">
+        <span class="fav-tag-badge tag-recon" style="display:flex; align-items:center; gap:5px; font-size:0.68rem; font-weight:700; color:#00c8ff;">
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          <span>SHORTCUT MACRO</span>
+        </span>
+        <button class="fav-del-btn" onclick="event.stopPropagation(); deleteShortcutEntry('${escHtml(item.name)}')" title="Delete" style="background:rgba(255,68,68,0.1); border:1px solid rgba(255,68,68,0.2); color:#ff4444; border-radius:6px; width:24px; height:24px; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
       </div>
-      <div class="fav-card-name" onclick="runShortcutEntry('${escHtml(item.name)}')" style="cursor:pointer;">${escHtml(item.name)}</div>
-      <div class="fav-card-meta">DuckyScript: ${escHtml(item.path)}</div>
-      <div style="display:flex;gap:6px;margin-top:auto;width:100%;">
-        <button class="fav-sync-btn" onclick="event.stopPropagation(); runShortcutEntry('${escHtml(item.name)}')" style="flex:1;" title="Execute shortcut immediately">⚡ Run</button>
+      <div class="fav-card-name" onclick="runShortcutEntry('${escHtml(item.name)}')" style="cursor:pointer; font-weight:700; font-size:0.95rem; color:var(--white); font-family:var(--mono);">${escHtml(item.name)}</div>
+      <div class="fav-card-meta" style="font-family:var(--mono); font-size:0.7rem; color:var(--dim);">${escHtml(item.path)}</div>
+      <div style="display:flex; gap:6px; margin-top:auto; width:100%;">
+        <button class="btn btn-primary" onclick="event.stopPropagation(); runShortcutEntry('${escHtml(item.name)}')" style="flex:1; padding:8px 12px; font-size:0.75rem; background: linear-gradient(135deg, #00c8ff, #0088ff); display:flex; align-items:center; justify-center; gap:6px;" title="Execute shortcut immediately">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          <span>Run Macro</span>
+        </button>
       </div>
     </div>`;
   }).join('');
@@ -3928,7 +3935,7 @@ let agentRunning = false;
 let agentAbort = false;
 let agentHistory = [];   // persists across runs within session
 let agentInspectorOpen = false;
-const AGENT_MODEL = 'qwen/qwen3.6-27b';
+const AGENT_MODEL = 'qwen/qwen3.8-27b';
 
 // ─── System Prompt ────────────────────────────────────────────
 const AGENT_SYSTEM_PROMPT = `You are GhostChip AI Agent — an autonomous HID operator for a GhostChip ESP32 device that physically injects keystrokes, manages SD card files & directories, controls WiFi, and drives an RGB LED.
@@ -3989,6 +3996,9 @@ get_device_info
 wifi_scan
   Triggers a WiFi AP scan. Input: none
 
+ble_scan
+  Scans nearby Bluetooth Low Energy (BLE) devices & Flipper Zero devices. Input: none
+
 wifi_connect
   Connects to a WiFi network. Input: {"ssid":"Name","password":"pass"}
 
@@ -4003,6 +4013,24 @@ get_script_from_editor
 
 send_script_to_editor
   Pushes script text into the editor tab. Input: script text
+
+execute_keystroke
+  Injects immediate HID keystroke/command directly without writing to SD card. Input: "GUI SPACE" or "CTRL ALT t" or "STRING hello"
+
+get_execution_status
+  Checks if device is currently executing a payload or idle. Input: none
+
+deauth_monitor
+  Monitors WiFi deauth attacks. Input: "start", "stop", or "get_logs"
+
+list_shortcuts
+  Lists saved payload shortcuts on SD card. Input: none
+
+run_shortcut
+  Executes a saved shortcut payload from /Shortcuts/ folder. Input: shortcut name (e.g. mac-spotlight)
+
+generate_enhanced_prompt
+  Converts a core instruction into a structured Master System Prompt using Qwen 3.6. Input: core request
 
 ## EXAMPLE SCENARIO: Create script in folder & run it
 User: Create a script called notes inside utility which should open notes in my mac and run it.
@@ -4047,12 +4075,11 @@ const agentTools = {
   },
 
   async generate_hid_script(input) {
-    const keyToUse = OPENROUTER_KEY || GROQ_KEY;
-    if (!keyToUse) return 'Error: No API key configured. Go to Settings and add your OpenRouter or Groq API key.';
+    const keyToUse = GROQ_KEY || localStorage.getItem('gc_groq_key') || '';
+    if (!keyToUse) return 'Error: No Groq API key configured. Go to Settings and add your Groq API key.';
 
-    const isOrKey = keyToUse.startsWith('sk-or-') || Boolean(OPENROUTER_KEY);
-    const endpoint = isOrKey ? 'https://openrouter.ai/api/v1/chat/completions' : 'https://api.groq.com/openai/v1/chat/completions';
-    const modelToUse = isOrKey ? AGENT_MODEL : GROQ_MODEL;
+    const endpoint = 'https://api.groq.com/openai/v1/chat/completions';
+    const modelToUse = GROQ_MODEL;
 
     const sysPrompt = `STRICT DUCKYSCRIPT SYNTAX RULES:
 1. ALL DuckyScript keywords and key names MUST be UPPERCASE (e.g. GUI SPACE, ENTER, STRING, DELAY 2000). NEVER write "GUI space".
@@ -4079,10 +4106,6 @@ const agentTools = {
 4. Output ONLY raw executable DuckyScript code lines. DO NOT output reasoning, thinking process, preamble, or markdown.`;
 
     const headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + keyToUse };
-    if (isOrKey) {
-      headers['HTTP-Referer'] = window.location.origin || 'https://ghostchip.local';
-      headers['X-Title'] = 'GhostChip AI Agent';
-    }
 
     try {
       const res = await fetch(endpoint, {
@@ -4098,7 +4121,7 @@ const agentTools = {
           top_p: 0.95,
           max_tokens: 2048,
           max_completion_tokens: 2048,
-          reasoning_effort: 'none',
+          reasoning_effort: 'default',
           stop: null
         })
       });
@@ -4272,17 +4295,77 @@ const agentTools = {
 
   async wifi_scan(_input) {
     try {
-      await deviceFetch('/wifi/scan', { method: 'POST' });
-      await new Promise(r => setTimeout(r, 3000));
-      const data = await deviceGet('/wifi/networks');
-      if (data && data.networks) {
-        return data.networks.map(n => `📶 ${n.ssid} (${n.rssi}dBm, ch${n.channel})`).join('\n');
+      let nets = null;
+      try {
+        nets = await deviceGet('/wifi/scan');
+      } catch (e1) {
+        try {
+          nets = await deviceGet('/scan');
+        } catch (e2) {
+          nets = await deviceGet('/wifiscan');
+        }
       }
-      return 'Scan triggered. Check device for results.';
+
+      let arr = [];
+      if (Array.isArray(nets)) {
+        arr = nets;
+      } else if (nets && Array.isArray(nets.networks)) {
+        arr = nets.networks;
+      } else if (nets && Array.isArray(nets.aps)) {
+        arr = nets.aps;
+      } else if (nets && Array.isArray(nets.result)) {
+        arr = nets.result;
+      }
+
+      if (arr && arr.length > 0) {
+        arr.sort((a, b) => (b.rssi || 0) - (a.rssi || 0));
+        return arr.map(n => `📶 ${n.ssid || '(hidden)'} [${n.secure ? '🔒 WPA/WPA2' : '🔓 OPEN'}] (${n.rssi || 0} dBm, CH ${n.channel || '?'})`).join('\n');
+      }
+
+      return 'WiFi scan complete: No networks found in range.';
     } catch (e) {
-      return 'WiFi scan triggered (result: ' + e.message + ')';
+      return 'WiFi scan failed: ' + e.message;
     }
   },
+  async scan_wifi(input) { return this.wifi_scan(input); },
+  async scan_networks(input) { return this.wifi_scan(input); },
+  async wifiscan(input) { return this.wifi_scan(input); },
+
+  async ble_scan(_input) {
+    try {
+      let devs = null;
+      try {
+        devs = await deviceGet('/blescan');
+      } catch (e1) {
+        try {
+          devs = await deviceGet('/ble/scan');
+        } catch (e2) {
+          devs = await deviceGet('/ble_scan');
+        }
+      }
+
+      let arr = [];
+      if (Array.isArray(devs)) {
+        arr = devs;
+      } else if (devs && Array.isArray(devs.devices)) {
+        arr = devs.devices;
+      } else if (devs && Array.isArray(devs.result)) {
+        arr = devs.result;
+      }
+
+      if (arr && arr.length > 0) {
+        arr.sort((a, b) => (b.rssi || 0) - (a.rssi || 0));
+        return arr.map(d => `${d.flipper ? '🐬 Flipper Zero' : '📱'} ${d.name || 'Unknown'} (${d.mac || 'no-mac'}) · ${d.rssi || 0} dBm`).join('\n');
+      }
+
+      return 'BLE scan complete: No BLE devices found in range.';
+    } catch (e) {
+      return 'BLE scan failed: ' + e.message;
+    }
+  },
+  async scan_ble(input) { return this.ble_scan(input); },
+  async blescan(input) { return this.ble_scan(input); },
+  async scan_bluetooth(input) { return this.ble_scan(input); },
 
   async wifi_connect(input) {
     let ssid, password;
@@ -4355,16 +4438,320 @@ const agentTools = {
     ta.value = input.trim();
     ta.dispatchEvent(new Event('input'));
     return `Script pushed to editor (${input.trim().split('\n').length} lines).`;
-  }
+  },
+
+  async execute_keystroke(input) {
+    let script = (input || '').trim();
+    if (!script) return 'Error: keystroke or script line is required';
+    try {
+      script = cleanDuckyScriptOutput(script);
+      await deviceFetch('/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'duckyscript=' + encodeURIComponent(script)
+      });
+      return `Keystroke injected: ${script}`;
+    } catch (e) {
+      return 'Error injecting keystroke: ' + e.message;
+    }
+  },
+  async send_keystroke(input) { return this.execute_keystroke(input); },
+  async press_keys(input) { return this.execute_keystroke(input); },
+  async inject_keystroke(input) { return this.execute_keystroke(input); },
+
+  async get_execution_status(_input) {
+    try {
+      const data = await deviceGet('/execstatus');
+      return JSON.stringify(data, null, 2);
+    } catch (e) {
+      return 'Could not get execution status: ' + e.message;
+    }
+  },
+  async script_status(input) { return this.get_execution_status(input); },
+
+  async deauth_monitor(input) {
+    const mode = (input || 'get_logs').toLowerCase().trim();
+    try {
+      if (mode.includes('start')) {
+        await deviceFetch('/deauth/start', { method: 'POST' });
+        return 'WiFi Deauth attack monitor started.';
+      } else if (mode.includes('stop')) {
+        await deviceFetch('/deauth/stop', { method: 'POST' });
+        return 'WiFi Deauth attack monitor stopped.';
+      } else {
+        const data = await deviceGet('/deauth/results');
+        if (data && data.events && data.events.length > 0) {
+          return data.events.map(e => `⚠ DEAUTH Attack detected from ${e.mac} (CH ${e.ch}, ${e.rssi} dBm)`).join('\n');
+        }
+        return 'No WiFi deauth attacks detected.';
+      }
+    } catch (e) {
+      return 'Deauth monitor query failed: ' + e.message;
+    }
+  },
+  async scan_deauth(input) { return this.deauth_monitor(input); },
+  async check_deauth(input) { return this.deauth_monitor(input); },
+
+  async list_shortcuts(_input) {
+    try {
+      await fmFetchPost('/fm/mkdir?path=%2FShortcuts').catch(() => { });
+    } catch (e) { }
+    return this.list_files('/Shortcuts');
+  },
+  async get_shortcuts(input) { return this.list_shortcuts(input); },
+
+  async run_shortcut(input) {
+    let name = (input || '').trim();
+    if (!name) return 'Error: shortcut name or filename required (e.g. mac-spotlight)';
+    try {
+      const parsed = JSON.parse(name);
+      if (parsed && (parsed.name || parsed.shortcut || parsed.file)) name = parsed.name || parsed.shortcut || parsed.file;
+    } catch {}
+    if (!name.endsWith('.txt')) name += '.txt';
+    let path = '/Shortcuts/' + name.replace(/^\/+/, '');
+    return this.run_script(path);
+  },
+  async execute_shortcut(input) { return this.run_shortcut(input); },
+
+  async generate_enhanced_prompt(input) {
+    let rawPrompt = (input || '').trim();
+    if (!rawPrompt) return 'Error: instruction prompt text required';
+    try {
+      if ($('peInput')) $('peInput').value = rawPrompt;
+      await peGenerate();
+      const out = $('peOutput') ? $('peOutput').value : '';
+      return out ? `Enhanced Master Prompt:\n\n${out}` : 'Prompt generated.';
+    } catch (e) {
+      return 'Error generating enhanced prompt: ' + e.message;
+    }
+  },
+  async enhance_prompt(input) { return this.generate_enhanced_prompt(input); }
 };
+
+// ─── PROMPT ENHANCER APP ───
+let peActiveStyle = 'professional';
+let peVoiceRec = null;
+
+function initPromptEnhancer() {
+  peActiveStyle = 'professional';
+}
+
+function peSetStyle(style, btn) {
+  peActiveStyle = style;
+  const picker = $('peStylePicker');
+  if (picker) {
+    picker.querySelectorAll('.fav-tag-opt').forEach(b => b.classList.remove('active'));
+  }
+  if (btn) btn.classList.add('active');
+}
+
+function peToggleVoice() {
+  const btn = $('peVoiceBtn');
+  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRec) {
+    toast('Speech recognition not supported in this browser.', 'warn');
+    return;
+  }
+
+  if (peVoiceRec) {
+    peVoiceRec.stop();
+    peVoiceRec = null;
+    if (btn) btn.innerHTML = '🎤 Voice Input';
+    toast('Voice stopped');
+    return;
+  }
+
+  try {
+    peVoiceRec = new SpeechRec();
+    peVoiceRec.continuous = false;
+    peVoiceRec.interimResults = false;
+    peVoiceRec.lang = 'en-US';
+
+    peVoiceRec.onstart = () => {
+      if (btn) btn.innerHTML = '<span class="spin"></span> Listening...';
+      toast('Listening for instruction... Speak now 🎙️', 'ok', 3000);
+    };
+
+    peVoiceRec.onresult = (e) => {
+      const transcript = e.results[0][0].transcript;
+      const inputEl = $('peInput');
+      if (inputEl) inputEl.value = transcript;
+      toast('Voice captured ✓', 'ok');
+    };
+
+    peVoiceRec.onerror = (e) => {
+      toast('Voice error: ' + e.error, 'err');
+    };
+
+    peVoiceRec.onend = () => {
+      peVoiceRec = null;
+      if (btn) btn.innerHTML = '🎤 Voice Input';
+    };
+
+    peVoiceRec.start();
+  } catch (e) {
+    toast('Voice failed: ' + e.message, 'err');
+  }
+}
+
+async function peGenerate() {
+  const promptInput = $('peInput') ? $('peInput').value.trim() : '';
+  if (!promptInput) {
+    toast('Enter or speak a prompt description first.', 'warn');
+    return;
+  }
+
+  const btn = $('peGenBtn');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spin"></span> Generating Master Prompt...';
+  }
+
+  const keyToUse = GROQ_KEY || localStorage.getItem('gc_groq_key') || '';
+  if (!keyToUse || keyToUse.length < 5) {
+    toast('No Groq API key found. Go to Settings → save your Groq key first.', 'err');
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '⚡ Generate Master Prompt';
+    }
+    return;
+  }
+
+  const endpoint = 'https://api.groq.com/openai/v1/chat/completions';
+  const modelToUse = GROQ_MODEL;
+
+  const stylePrompts = {
+    professional: 'Tone: Professional, authoritative, structured. Include Role, Clear Objective, Context, Deliverable Format, and Step-by-Step constraints.',
+    developer: 'Tone: Senior Software Engineer / Developer. Include Tech Stack, Code Quality Requirements, Edge Cases, Error Handling, and Clean Output Format.',
+    pentest: 'Tone: Cybersecurity / Ethical Hacking / Pentest Expert. Focus on methodology, reconnaissance, exploitation vector analysis, and precise remediation steps.',
+    creative: 'Tone: Highly Creative, Engaging, Dynamic. Focus on captivating hooks, storytelling, rich imagery, and unique perspectives.',
+    concise: 'Tone: Direct, Minimalist, Bullet-point focus. Zero fluff, max actionability, strict constraints.'
+  };
+
+  const styleContext = stylePrompts[peActiveStyle] || stylePrompts.professional;
+
+  const headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + keyToUse };
+
+  try {
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        model: modelToUse,
+        messages: [
+          {
+            role: 'system',
+            content: `STRICT PROMPT ENGINEER INSTRUCTION: You are a World-Class Master AI Prompt Engineer. The user will provide a core instruction request. Transform it into a detailed, structured, highly effective Master System Prompt. ${styleContext} Output ONLY raw prompt text — DO NOT write preambles, explanations, markdown fences (\`\`\`), or self-talk.`
+          },
+          { role: 'user', content: 'Transform this core request into a Master System Prompt:\n' + promptInput }
+        ],
+        temperature: 0.6,
+        top_p: 0.95,
+        max_tokens: 2048,
+        max_completion_tokens: 2048,
+        reasoning_effort: 'default',
+        stop: null
+      })
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error?.message || 'API error: ' + res.status);
+    }
+
+    const data = await res.json();
+    let raw = data.choices?.[0]?.message?.content?.trim() || '';
+    raw = raw.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+    raw = raw.replace(/```[\w]*\n?/g, '').trim();
+
+    const outEl = $('peOutput');
+    const cardEl = $('peOutputCard');
+    if (outEl) outEl.value = raw;
+    if (cardEl) cardEl.style.display = 'block';
+
+    toast('Master Prompt generated ✓', 'ok');
+  } catch (e) {
+    toast('Prompt generation failed: ' + e.message, 'err');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '⚡ Generate Master Prompt';
+    }
+  }
+}
+
+function buildPromptDuckyScriptPayload(text) {
+  const lines = text.split('\n');
+  const validLines = lines.map(l => l.trim()).filter(Boolean);
+  const dsLines = ['REM --- Enhanced Master Prompt Payload ---'];
+
+  validLines.forEach((l, idx) => {
+    dsLines.push('STRING ' + l);
+    if (idx < validLines.length - 1) {
+      dsLines.push('SHIFT ENTER');
+      dsLines.push('DELAY 200');
+    }
+  });
+
+  dsLines.push('ENTER');
+  dsLines.push('DELAY 2000');
+
+  return dsLines.join('\n');
+}
+
+async function peTypeHid() {
+  const text = $('peOutput') ? $('peOutput').value.trim() : '';
+  if (!text) {
+    toast('No prompt generated yet.', 'warn');
+    return;
+  }
+
+  toast('⚡ Injecting Master Prompt via HID...', 'ok', 2000);
+  const payload = buildPromptDuckyScriptPayload(text);
+
+  try {
+    await deviceFetch('/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'duckyscript=' + encodeURIComponent(payload)
+    });
+    toast('Master Prompt injected via HID ✓', 'ok');
+  } catch (e) {
+    toast('HID injection failed: ' + e.message, 'err');
+  }
+}
+
+function peCopy() {
+  const text = $('peOutput') ? $('peOutput').value.trim() : '';
+  if (!text) { toast('Nothing to copy', 'warn'); return; }
+  navigator.clipboard.writeText(text).then(() => toast('Prompt copied ✓', 'ok', 2000));
+}
+
+function peToEditor() {
+  const text = $('peOutput') ? $('peOutput').value.trim() : '';
+  if (!text) { toast('No prompt generated yet', 'warn'); return; }
+  
+  const generatedDs = buildPromptDuckyScriptPayload(text);
+  $('editor').value = generatedDs;
+  updateLines();
+  localStorage.setItem('gc_script', generatedDs);
+  closeAllTools();
+  goPage('scripts', document.querySelectorAll('.nav-item')[0]);
+  toast('Master Prompt payload sent to Editor ✓', 'ok', 2000);
+}
 
 // ─── Agent UI Helpers ─────────────────────────────────────────
 function appendAgentLog(type, label, text, codeText) {
   const log = $('agentLog');
   if (!log) return;
   const icons = {
-    user: '👤', thought: '🧠', action: '🔧', observation: '📡',
-    final: '✅', error: '❌', thinking: '⏳'
+    user: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+    thought: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a7 7 0 0 1 7 7c0 2.38-1.19 4.47-3 5.74V17a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1v-2.26C6.19 13.47 5 11.38 5 9a7 7 0 0 1 7-7z"/><line x1="9" y1="21" x2="15" y2="21"/></svg>',
+    action: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>',
+    observation: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M4.9 19.1C1.9 16.1 1.9 11.4 4.9 8.4"/><path d="M7.8 16.2c-1.6-1.6-1.6-4.1 0-5.7"/><circle cx="12" cy="12" r="2"/></svg>',
+    final: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>',
+    error: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
+    thinking: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'
   };
   const labels = {
     user: 'You', thought: 'Reasoning', action: 'Tool Call',
@@ -4391,9 +4778,7 @@ function appendAgentLog(type, label, text, codeText) {
   return entry;
 }
 
-function escHtml(s) {
-  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
+
 
 function agentSetStatus(state, text) {
   const dot = $('agentDot');
@@ -4429,21 +4814,16 @@ function updateAgentInspector(toolName, toolInput, toolResult) {
 // ─── Main ReAct Loop ──────────────────────────────────────────
 async function runAgent(userMessage) {
   if (agentRunning) return;
-  const keyToUse = OPENROUTER_KEY || GROQ_KEY;
+  const keyToUse = GROQ_KEY || localStorage.getItem('gc_groq_key') || '';
   if (!keyToUse) {
-    appendAgentLog('error', 'Error', 'No API key found. Please add your OpenRouter or Groq API key in Settings.');
+    appendAgentLog('error', 'Error', 'No Groq API key found. Please add your Groq API key in Settings.');
     return;
   }
 
-  const isOrKey = keyToUse.startsWith('sk-or-') || Boolean(OPENROUTER_KEY);
-  const endpoint = isOrKey ? 'https://openrouter.ai/api/v1/chat/completions' : 'https://api.groq.com/openai/v1/chat/completions';
-  const modelToUse = isOrKey ? AGENT_MODEL : GROQ_MODEL;
+  const endpoint = 'https://api.groq.com/openai/v1/chat/completions';
+  const modelToUse = GROQ_MODEL;
 
   const headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + keyToUse };
-  if (isOrKey) {
-    headers['HTTP-Referer'] = window.location.origin || 'https://ghostchip.local';
-    headers['X-Title'] = 'GhostChip AI Agent';
-  }
 
   agentRunning = true;
   agentAbort = false;
@@ -4481,7 +4861,7 @@ async function runAgent(userMessage) {
             top_p: 0.95,
             max_tokens: 4096,
             max_completion_tokens: 4096,
-            reasoning_effort: 'none',
+            reasoning_effort: 'default',
             stop: null
           })
         });
