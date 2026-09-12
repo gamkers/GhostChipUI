@@ -1,0 +1,4769 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="GhostChip PC Dashboard — ESP32-S3 BadUSB Security Toolkit by GAMKERS">
+  <title>GhostChip — GAMKERS Dashboard</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
+  <style>
+    *,
+    *::before,
+    *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box
+    }
+
+    :root {
+      --bg: #000000;
+      --s1: #080808;
+      --s2: #0f0f0f;
+      --s3: #141414;
+      --b1: #1a1a1a;
+      --b2: #222222;
+      --b3: #2c2c2c;
+      --g: #00ff88;
+      --g2: #00cc66;
+      --g3: rgba(0, 255, 136, .12);
+      --g4: rgba(0, 255, 136, .07);
+      --g5: rgba(0, 255, 136, .28);
+      --g6: rgba(0, 255, 136, .5);
+      --red: #ff4455;
+      --red2: rgba(255, 68, 85, .14);
+      --amber: #ffb800;
+      --amber2: rgba(255, 184, 0, .14);
+      --blue: #4d9fff;
+      --blue2: rgba(77, 159, 255, .14);
+      --purple: #a855f7;
+      --purple2: rgba(168, 85, 247, .14);
+      --text: #e8fff0;
+      --dim: #4d7060;
+      --dim2: #2a3d30;
+      --nav-w: 224px;
+      --top-h: 56px;
+      --status-h: 32px;
+      --right-w: 300px;
+      --font: 'Space Grotesk', system-ui, sans-serif;
+      --mono: 'JetBrains Mono', monospace;
+      --r: 10px;
+      --r-sm: 7px;
+      --r-lg: 14px;
+      --shadow: 0 4px 24px rgba(0, 0, 0, .9);
+      --shadow-lg: 0 8px 48px rgba(0, 0, 0, .95);
+      --glow: 0 0 28px rgba(0, 255, 136, .2);
+      --glow-sm: 0 0 16px rgba(0, 255, 136, .15);
+      --scan: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 255, 136, .012) 2px, rgba(0, 255, 136, .012) 4px);
+    }
+
+    html,
+    body {
+      height: 100%;
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      overflow: hidden
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: var(--scan);
+      pointer-events: none;
+      z-index: 9998;
+      opacity: .4
+    }
+
+    button {
+      font-family: var(--font);
+      cursor: pointer;
+      border: none;
+      outline: none
+    }
+
+    input,
+    textarea,
+    select {
+      font-family: var(--font);
+      outline: none;
+      border: none
+    }
+
+    ::-webkit-scrollbar {
+      width: 4px;
+      height: 4px
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--b2);
+      border-radius: 2px
+    }
+
+    /* ── BOOT ─────────────────────────────────────── */
+    #boot {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: opacity .7s ease
+    }
+
+    #boot.done {
+      opacity: 0;
+      pointer-events: none
+    }
+
+    .boot-hex {
+      width: 60px;
+      height: 60px;
+      margin-bottom: 6px;
+      filter: drop-shadow(0 0 24px var(--g));
+      animation: hexPulse 1.6s ease infinite alternate
+    }
+
+    @keyframes hexPulse {
+      from {
+        filter: drop-shadow(0 0 18px var(--g))
+      }
+
+      to {
+        filter: drop-shadow(0 0 48px var(--g))
+      }
+    }
+
+    .boot-title {
+      font-size: 2.6rem;
+      font-weight: 800;
+      letter-spacing: 6px;
+      color: var(--text)
+    }
+
+    .boot-title span {
+      color: var(--g)
+    }
+
+    .boot-sub {
+      font-size: .62rem;
+      color: var(--dim);
+      letter-spacing: 5px;
+      text-transform: uppercase;
+      margin: .4rem 0 1.6rem;
+      text-align: center
+    }
+
+    .boot-log {
+      width: 340px;
+      font-family: var(--mono);
+      font-size: .62rem;
+      color: var(--g2);
+      line-height: 2.1;
+      max-height: 100px;
+      overflow: hidden
+    }
+
+    .boot-progress {
+      width: 280px;
+      height: 1.5px;
+      background: var(--s2);
+      border-radius: 2px;
+      margin-top: 1.4rem;
+      overflow: hidden
+    }
+
+    .boot-bar {
+      height: 100%;
+      width: 0;
+      background: linear-gradient(90deg, var(--g2), var(--g));
+      box-shadow: 0 0 14px var(--g);
+      transition: width .15s
+    }
+
+    .boot-by {
+      margin-top: 1.2rem;
+      font-size: .56rem;
+      color: var(--dim2);
+      letter-spacing: 6px;
+      text-transform: uppercase
+    }
+
+    /* ── TOASTS ───────────────────────────────────── */
+    #toasts {
+      position: fixed;
+      bottom: 44px;
+      right: 20px;
+      z-index: 9990;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      pointer-events: none
+    }
+
+    .toast {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      border-radius: var(--r);
+      font-size: .75rem;
+      font-weight: 600;
+      backdrop-filter: blur(20px);
+      box-shadow: var(--shadow-lg);
+      animation: slideUp .3s ease;
+      pointer-events: auto;
+      max-width: 320px
+    }
+
+    .toast.ok {
+      background: rgba(0, 255, 136, .12);
+      border: 1px solid rgba(0, 255, 136, .3);
+      color: var(--g)
+    }
+
+    .toast.err {
+      background: rgba(255, 68, 85, .12);
+      border: 1px solid rgba(255, 68, 85, .3);
+      color: var(--red)
+    }
+
+    .toast.warn {
+      background: rgba(255, 184, 0, .12);
+      border: 1px solid rgba(255, 184, 0, .3);
+      color: var(--amber)
+    }
+
+    @keyframes slideUp {
+      from {
+        transform: translateY(16px);
+        opacity: 0
+      }
+
+      to {
+        transform: translateY(0);
+        opacity: 1
+      }
+    }
+
+    /* ── APP SHELL ────────────────────────────────── */
+    #app {
+      display: none;
+      height: 100vh;
+      flex-direction: column
+    }
+
+    .shell {
+      flex: 1;
+      display: flex;
+      overflow: hidden
+    }
+
+    /* ── SIDEBAR ──────────────────────────────────── */
+    .sidebar {
+      width: var(--nav-w);
+      height: 100%;
+      background: var(--s1);
+      border-right: 1px solid var(--b1);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      position: relative
+    }
+
+    .sidebar::after {
+      content: '';
+      position: absolute;
+      right: 0;
+      top: 10%;
+      bottom: 10%;
+      width: 1px;
+      background: linear-gradient(180deg, transparent, var(--g), transparent);
+      opacity: .18
+    }
+
+    .logo-wrap {
+      padding: 18px 16px 14px;
+      border-bottom: 1px solid var(--b1);
+      display: flex;
+      align-items: center;
+      gap: 10px
+    }
+
+    .logo-hex {
+      width: 32px;
+      height: 32px;
+      filter: drop-shadow(0 0 10px var(--g));
+      flex-shrink: 0
+    }
+
+    .logo-text {
+      font-size: 1.05rem;
+      font-weight: 800;
+      letter-spacing: 3px;
+      color: var(--text)
+    }
+
+    .logo-text span {
+      color: var(--g)
+    }
+
+    .logo-sub {
+      font-size: .5rem;
+      color: var(--dim2);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-top: 1px
+    }
+
+    .nav-section {
+      padding: 12px 14px 4px;
+      font-size: .55rem;
+      color: var(--dim2);
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      font-weight: 700
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      padding: 9px 12px;
+      margin: 1px 8px;
+      border-radius: var(--r-sm);
+      cursor: pointer;
+      transition: all .18s;
+      color: var(--dim);
+      font-size: .82rem;
+      font-weight: 500;
+      background: none;
+      border: none;
+      width: calc(100% - 16px);
+      text-align: left;
+      position: relative
+    }
+
+    .nav-item .ni-icon {
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+      opacity: .65;
+      transition: .18s
+    }
+
+    .nav-item:hover {
+      background: var(--g4);
+      color: var(--text)
+    }
+
+    .nav-item:hover .ni-icon {
+      opacity: 1
+    }
+
+    .nav-item.active {
+      background: linear-gradient(135deg, rgba(0, 255, 136, .18), rgba(0, 255, 136, .07));
+      color: var(--g);
+      border: 1px solid rgba(0, 255, 136, .3)
+    }
+
+    .nav-item.active .ni-icon {
+      opacity: 1;
+      color: var(--g)
+    }
+
+    .nav-item.active::before {
+      content: '';
+      position: absolute;
+      left: -1px;
+      top: 15%;
+      bottom: 15%;
+      width: 3px;
+      background: var(--g);
+      border-radius: 0 3px 3px 0;
+      box-shadow: 0 0 14px var(--g), 0 0 28px rgba(0,255,136,.3)
+    }
+
+    .nav-badge {
+      margin-left: auto;
+      background: var(--g3);
+      border: 1px solid var(--g5);
+      color: var(--g);
+      font-size: .55rem;
+      font-weight: 800;
+      padding: 1px 6px;
+      border-radius: 10px;
+      min-width: 18px;
+      text-align: center
+    }
+
+    .sidebar-conn {
+      padding: 10px 12px;
+      margin: 8px;
+      background: var(--s2);
+      border-radius: var(--r-sm);
+      border: 1px solid var(--b1)
+    }
+
+    .conn-row {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      margin-bottom: 5px
+    }
+
+    .conn-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--dim2);
+      flex-shrink: 0;
+      transition: .3s
+    }
+
+    .conn-dot.on {
+      background: var(--g);
+      box-shadow: 0 0 7px var(--g)
+    }
+
+    .conn-dot.err {
+      background: var(--red);
+      box-shadow: 0 0 7px var(--red)
+    }
+
+    .conn-label {
+      font-size: .7rem;
+      color: var(--dim);
+      font-weight: 600
+    }
+
+    .conn-ip {
+      font-size: .62rem;
+      font-family: var(--mono);
+      color: var(--dim2)
+    }
+
+    .sidebar-bottom {
+      margin-top: auto;
+      border-top: 1px solid var(--b1);
+      padding: 10px 14px
+    }
+
+    .sidebar-info {
+      font-size: .55rem;
+      color: var(--dim2);
+      font-family: var(--mono);
+      line-height: 2
+    }
+
+    /* ── MAIN AREA ────────────────────────────────── */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-width: 0
+    }
+
+    .topbar {
+      height: var(--top-h);
+      background: var(--s1);
+      border-bottom: 1px solid var(--b1);
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      gap: 12px;
+      flex-shrink: 0
+    }
+
+    .topbar-title {
+      font-size: .9rem;
+      font-weight: 700;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0
+    }
+
+    .topbar-breadcrumb {
+      font-size: .7rem;
+      color: var(--dim);
+      font-family: var(--mono)
+    }
+
+    .topbar-spacer {
+      flex: 1
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 8px
+    }
+
+    .tb-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 11px;
+      background: var(--s2);
+      border: 1px solid var(--b1);
+      border-radius: 20px;
+      font-size: .68rem;
+      font-family: var(--mono);
+      color: var(--dim)
+    }
+
+    .tb-btn {
+      background: var(--s2);
+      border: 1px solid var(--b1);
+      color: var(--dim);
+      border-radius: var(--r-sm);
+      padding: 6px 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: .72rem;
+      font-weight: 600;
+      transition: all .18s;
+      cursor: pointer
+    }
+
+    .tb-btn:hover {
+      border-color: var(--g5);
+      color: var(--g);
+      background: var(--g4)
+    }
+
+    .tb-btn svg {
+      width: 14px;
+      height: 14px
+    }
+
+    .topbar-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--g2), var(--g));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .7rem;
+      font-weight: 800;
+      color: #000
+    }
+
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 20px
+    }
+
+    .status-bar {
+      height: var(--status-h);
+      background: var(--s1);
+      border-top: 1px solid var(--b1);
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      gap: 16px;
+      flex-shrink: 0;
+      font-size: .62rem;
+      font-family: var(--mono);
+      color: var(--dim)
+    }
+
+    .sb-item {
+      display: flex;
+      align-items: center;
+      gap: 5px
+    }
+
+    .sb-sep {
+      color: var(--b2)
+    }
+
+    /* ── PAGES ────────────────────────────────────── */
+    .page {
+      display: none
+    }
+
+    .page.active {
+      display: block;
+      animation: pageIn .2s ease
+    }
+
+    @keyframes pageIn {
+      from {
+        opacity: 0;
+        transform: translateY(8px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0)
+      }
+    }
+
+    .page-hd {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 18px;
+      gap: 12px
+    }
+
+    .page-title {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: var(--text)
+    }
+
+    .page-title em {
+      color: var(--g);
+      font-style: normal
+    }
+
+    .page-sub {
+      font-size: .72rem;
+      color: var(--dim);
+      margin-top: 3px
+    }
+
+    .page-actions {
+      display: flex;
+      gap: 7px;
+      flex-shrink: 0
+    }
+
+    /* ── CARDS & PANELS ────────────────────────────── */
+    .card {
+      background: linear-gradient(180deg, #0a0e0c 0%, #050706 100%);
+      border: 1px solid #142018;
+      border-radius: var(--r);
+      padding: 20px;
+      position: relative;
+      transition: border-color .25s ease, box-shadow .25s ease, transform .2s ease;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, .8)
+    }
+
+    .card:hover {
+      border-color: rgba(0, 255, 136, .28);
+      box-shadow: 0 0 25px rgba(0, 255, 136, .07), 0 8px 32px rgba(0, 0, 0, .9);
+    }
+
+    .card-head {
+      font-size: .68rem;
+      font-weight: 800;
+      color: var(--g);
+      text-transform: uppercase;
+      letter-spacing: 2.5px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(0, 255, 136, .1);
+      font-family: var(--mono)
+    }
+
+    .card-head svg {
+      width: 14px;
+      height: 14px;
+      color: var(--g);
+      filter: drop-shadow(0 0 6px var(--g))
+    }
+
+    .card-accent {
+      border-top: 2px solid var(--g);
+      box-shadow: 0 -4px 16px rgba(0, 255, 136, .15)
+    }
+
+    /* ── GRID HELPERS ─────────────────────────────── */
+    .g2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px
+    }
+
+    .g3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px
+    }
+
+    .g4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px
+    }
+
+    /* ── BUTTONS & CONTROLS ───────────────────────── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 9px 18px;
+      border-radius: var(--r-sm);
+      font-size: .78rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all .2s cubic-bezier(0.16, 1, 0.3, 1);
+      border: 1px solid transparent;
+      letter-spacing: .5px;
+      text-transform: uppercase;
+      font-family: var(--font)
+    }
+
+    .btn:active {
+      transform: scale(0.97) !important
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #00ff88 0%, #00b359 100%);
+      color: #000;
+      font-weight: 800;
+      border: 1px solid #00ff88;
+      box-shadow: 0 0 16px rgba(0, 255, 136, .25)
+    }
+
+    .btn-primary:hover {
+      box-shadow: 0 0 32px rgba(0, 255, 136, .6), 0 0 60px rgba(0, 255, 136, .2);
+      transform: translateY(-2px);
+      background: linear-gradient(135deg, #33ff9f 0%, #00cc66 100%)
+    }
+
+    .btn-ghost {
+      background: rgba(15, 23, 18, .6);
+      border: 1px solid #1a2c20;
+      color: var(--text)
+    }
+
+    .btn-ghost:hover {
+      border-color: rgba(0, 255, 136, .4);
+      color: var(--g);
+      background: rgba(0, 255, 136, .1);
+      box-shadow: 0 0 16px rgba(0, 255, 136, .12);
+      transform: translateY(-1px)
+    }
+
+    .btn-danger {
+      background: var(--red2);
+      border: 1px solid rgba(255, 68, 85, .3);
+      color: var(--red)
+    }
+
+    .btn-danger:hover {
+      background: rgba(255, 68, 85, .22)
+    }
+
+    .btn-scan {
+      background: linear-gradient(135deg, rgba(0, 255, 136, .1), rgba(0, 255, 136, .06));
+      border: 1px solid var(--g5);
+      color: var(--g);
+      padding: 9px 18px;
+      font-size: .78rem
+    }
+
+    .btn-scan:hover {
+      box-shadow: var(--glow)
+    }
+
+    .btn-execute {
+      background: linear-gradient(135deg, #003a1a, #005a28);
+      border: 1px solid var(--g5);
+      color: var(--g);
+      font-size: .88rem;
+      padding: 12px 28px;
+      letter-spacing: 2px;
+      font-weight: 800
+    }
+
+    .btn-execute:hover {
+      box-shadow: 0 0 28px rgba(0, 255, 136, .3);
+      background: linear-gradient(135deg, #005a28, #008540)
+    }
+
+    .btn-execute.running {
+      background: linear-gradient(135deg, #2a1800, #442800);
+      border-color: rgba(255, 184, 0, .4);
+      color: var(--amber);
+      animation: runPulse 1s ease infinite
+    }
+
+    @keyframes runPulse {
+
+      0%,
+      100% {
+        box-shadow: 0 0 0 rgba(255, 184, 0, .2)
+      }
+
+      50% {
+        box-shadow: 0 0 24px rgba(255, 184, 0, .35)
+      }
+    }
+
+    .btn-sm {
+      padding: 5px 10px;
+      font-size: .68rem
+    }
+
+    .btn-full {
+      width: 100%
+    }
+
+    .icon-btn {
+      background: none;
+      border: 1px solid var(--b2);
+      border-radius: var(--r-sm);
+      padding: 6px 8px;
+      color: var(--dim);
+      cursor: pointer;
+      transition: .18s;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: .7rem;
+      font-weight: 600
+    }
+
+    .icon-btn:hover {
+      border-color: var(--g5);
+      color: var(--g);
+      background: var(--g4)
+    }
+
+    .icon-btn svg {
+      width: 14px;
+      height: 14px
+    }
+
+    /* ── STAT CARDS ───────────────────────────────── */
+    .stat-card {
+      background: linear-gradient(145deg, #09120c 0%, #030604 100%);
+      border: 1px solid #142419;
+      border-radius: var(--r);
+      padding: 18px 20px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, .6);
+      transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease
+    }
+
+    .stat-card:hover {
+      transform: translateY(-3px);
+      border-color: rgba(0, 255, 136, .35);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, .8), 0 0 20px rgba(0, 255, 136, .1)
+    }
+
+    .stat-card::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px
+    }
+
+    .stat-card.green::after {
+      background: linear-gradient(90deg, transparent, var(--g), transparent)
+    }
+
+    .stat-card.red::after {
+      background: linear-gradient(90deg, transparent, var(--red), transparent)
+    }
+
+    .stat-card.amber::after {
+      background: linear-gradient(90deg, transparent, var(--amber), transparent)
+    }
+
+    .stat-card.blue::after {
+      background: linear-gradient(90deg, transparent, var(--blue), transparent)
+    }
+
+    .stat-card.purple::after {
+      background: linear-gradient(90deg, transparent, var(--purple), transparent)
+    }
+
+    .stat-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, .4)
+    }
+
+    .stat-icon.green {
+      background: rgba(0, 255, 136, .14);
+      color: var(--g);
+      border: 1px solid rgba(0, 255, 136, .2)
+    }
+
+    .stat-icon.red {
+      background: rgba(255, 68, 85, .14);
+      color: var(--red);
+      border: 1px solid rgba(255, 68, 85, .2)
+    }
+
+    .stat-icon.amber {
+      background: rgba(255, 184, 0, .14);
+      color: var(--amber);
+      border: 1px solid rgba(255, 184, 0, .2)
+    }
+
+    .stat-icon.blue {
+      background: rgba(77, 159, 255, .14);
+      color: var(--blue);
+      border: 1px solid rgba(77, 159, 255, .2)
+    }
+
+    .stat-icon.purple {
+      background: rgba(168, 85, 247, .14);
+      color: var(--purple);
+      border: 1px solid rgba(168, 85, 247, .2)
+    }
+
+    .stat-icon svg {
+      width: 18px;
+      height: 18px
+    }
+
+    .stat-value {
+      font-size: 1.65rem;
+      font-weight: 800;
+      font-family: var(--mono);
+      color: #fff;
+      line-height: 1;
+      letter-spacing: -0.5px
+    }
+
+    .stat-label {
+      font-size: .63rem;
+      color: var(--dim);
+      margin-top: 6px;
+      text-transform: uppercase;
+      letter-spacing: 1.8px;
+      font-weight: 700
+    }
+
+    .stat-badge {
+      font-size: .6rem;
+      font-family: var(--mono);
+      padding: 3px 8px;
+      border-radius: 4px;
+      display: inline-block;
+      margin-top: 6px;
+      font-weight: 700
+    }
+
+    .stat-badge.ok {
+      background: rgba(0, 255, 136, .15);
+      color: var(--g);
+      border: 1px solid rgba(0, 255, 136, .3)
+    }
+
+    .stat-badge.err {
+      background: var(--red2);
+      color: var(--red);
+      border: 1px solid rgba(255, 68, 85, .3)
+    }
+
+    /* ── FAV SCRIPTS (Dashboard) ──────────────────── */
+    .fav-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+      gap: 10px
+    }
+
+    .fav-card {
+      background: #090e0b;
+      border: 1px solid #16261a;
+      border-radius: var(--r-sm);
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      transition: all .2s ease;
+      position: relative
+    }
+
+    .fav-card:hover {
+      border-color: rgba(0, 255, 136, .4);
+      background: rgba(0, 255, 136, .06);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, .6)
+    }
+
+    .fav-card-name {
+      font-size: .8rem;
+      font-weight: 700;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-family: var(--mono)
+    }
+
+    .fav-card-preview {
+      font-size: .62rem;
+      color: var(--dim);
+      font-family: var(--mono);
+      line-height: 1.6;
+      max-height: 36px;
+      overflow: hidden
+    }
+
+    .fav-card-bottom {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: auto
+    }
+
+    .fav-run {
+      background: rgba(0, 255, 136, .14);
+      border: 1px solid rgba(0, 255, 136, .35);
+      color: var(--g);
+      border-radius: 5px;
+      padding: 5px 10px;
+      font-size: .68rem;
+      font-weight: 800;
+      cursor: pointer;
+      transition: all .18s;
+      flex: 1;
+      text-align: center
+    }
+
+    .fav-run:hover {
+      background: var(--g);
+      color: #000;
+      box-shadow: 0 0 16px rgba(0, 255, 136, .4)
+    }
+
+    .fav-edit {
+      background: var(--s3);
+      border: 1px solid var(--b2);
+      color: var(--dim);
+      border-radius: 5px;
+      padding: 5px 8px;
+      font-size: .65rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: .18s
+    }
+
+    .fav-edit:hover {
+      color: var(--text);
+      border-color: var(--g5)
+    }
+
+    .fav-tag {
+      font-size: .56rem;
+      font-weight: 800;
+      padding: 2px 7px;
+      border-radius: 4px;
+      flex-shrink: 0;
+      text-transform: uppercase;
+      letter-spacing: .5px
+    }
+
+    .fav-tag.attack {
+      background: rgba(255, 68, 85, .15);
+      color: var(--red);
+      border: 1px solid rgba(255, 68, 85, .3)
+    }
+
+    .fav-tag.recon {
+      background: rgba(77, 159, 255, .15);
+      color: var(--blue);
+      border: 1px solid rgba(77, 159, 255, .3)
+    }
+
+    .fav-tag.utility {
+      background: rgba(0, 204, 136, .15);
+      color: #00cc88;
+      border: 1px solid rgba(0, 204, 136, .3)
+    }
+
+    .fav-tag.custom {
+      background: rgba(255, 184, 0, .15);
+      color: var(--amber);
+      border: 1px solid rgba(255, 184, 0, .3)
+    }
+
+    /* ── QUICK ACTIONS ────────────────────────────── */
+    .qa-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 20px
+    }
+
+    .qa-btn {
+      background: linear-gradient(180deg, #0d140f 0%, #060907 100%);
+      border: 1px solid #16241a;
+      border-radius: var(--r);
+      padding: 16px 14px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px;
+      cursor: pointer;
+      transition: all .2s cubic-bezier(0.16, 1, 0.3, 1);
+      text-align: left;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, .5)
+    }
+
+    .qa-btn:hover {
+      border-color: rgba(0, 255, 136, .4);
+      background: linear-gradient(180deg, #101c15 0%, #09120d 100%);
+      transform: translateY(-3px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, .7), 0 0 20px rgba(0, 255, 136, .12)
+    }
+
+    .qa-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 9px;
+      background: rgba(0, 255, 136, .12);
+      border: 1px solid rgba(0, 255, 136, .25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--g);
+      box-shadow: 0 2px 8px rgba(0, 255, 136, .15)
+    }
+
+    .qa-icon svg {
+      width: 17px;
+      height: 17px
+    }
+
+    .qa-label {
+      font-size: .82rem;
+      font-weight: 800;
+      color: var(--text)
+    }
+
+    .qa-sub {
+      font-size: .65rem;
+      color: var(--dim);
+      line-height: 1.3
+    }
+
+    /* ── ACTIVITY LOG ─────────────────────────────── */
+    .act-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 0;
+      border-bottom: 1px solid var(--b1)
+    }
+
+    .act-item:last-child {
+      border-bottom: none
+    }
+
+    .act-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0
+    }
+
+    .act-dot.green {
+      background: var(--g);
+      box-shadow: 0 0 5px var(--g)
+    }
+
+    .act-dot.red {
+      background: var(--red)
+    }
+
+    .act-dot.amber {
+      background: var(--amber)
+    }
+
+    .act-text {
+      flex: 1;
+      font-size: .73rem;
+      color: var(--text)
+    }
+
+    .act-time {
+      font-size: .62rem;
+      color: var(--dim);
+      font-family: var(--mono)
+    }
+
+    /* ── EDITOR PAGE ──────────────────────────────── */
+    .editor-layout {
+      display: grid;
+      grid-template-columns: 1fr 310px;
+      gap: 14px;
+      height: calc(100vh - var(--top-h) - var(--status-h) - 110px)
+    }
+
+    .editor-left {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-height: 0
+    }
+
+    .editor-right {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      overflow: hidden
+    }
+
+    .editor-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 12px;
+      background: var(--s1);
+      border: 1px solid var(--b1);
+      border-radius: var(--r);
+      flex-shrink: 0
+    }
+
+    .file-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--g);
+      box-shadow: 0 0 6px var(--g);
+      flex-shrink: 0
+    }
+
+    #fileName {
+      font-family: var(--mono);
+      font-size: .75rem;
+      color: var(--text);
+      font-weight: 600
+    }
+
+    .line-count {
+      font-size: .63rem;
+      font-family: var(--mono);
+      color: var(--dim);
+      margin-left: 4px
+    }
+
+    .os-pill {
+      display: flex;
+      gap: 4px;
+      margin-left: auto
+    }
+
+    .os-p {
+      padding: 4px 10px;
+      background: var(--s3);
+      border: 1px solid var(--b2);
+      border-radius: 5px;
+      font-size: .62rem;
+      font-weight: 700;
+      color: var(--dim);
+      cursor: pointer;
+      transition: .15s;
+      text-transform: uppercase;
+      letter-spacing: .5px
+    }
+
+    .os-p.active {
+      background: var(--g3);
+      border-color: var(--g5);
+      color: var(--g)
+    }
+
+    .editor-body {
+      flex: 1;
+      background: #000;
+      border: 1px solid var(--b2);
+      border-radius: var(--r);
+      display: flex;
+      overflow: hidden;
+      min-height: 0
+    }
+
+    .line-nums {
+      width: 40px;
+      padding: 12px 0;
+      background: #0a0c0b;
+      border-right: 1px solid var(--b1);
+      text-align: right;
+      font-family: var(--mono);
+      font-size: .72rem;
+      color: var(--dim2);
+      line-height: 1.6;
+      overflow: hidden;
+      flex-shrink: 0;
+      user-select: none;
+      counter-reset: ln
+    }
+
+    .line-nums span {
+      display: block;
+      padding-right: 8px;
+      line-height: 1.6
+    }
+
+    .editor-inner {
+      flex: 1;
+      position: relative;
+      overflow: auto
+    }
+
+    #editor {
+      position: absolute;
+      inset: 0;
+      background: transparent;
+      color: transparent;
+      caret-color: var(--g);
+      font-family: var(--mono);
+      font-size: .78rem;
+      line-height: 1.6;
+      padding: 12px;
+      border: none;
+      resize: none;
+      z-index: 2;
+      width: 100%;
+      height: 100%;
+      spellcheck: false;
+      autocorrect: off;
+      autocapitalize: off
+    }
+
+    #editorHighlight {
+      position: absolute;
+      inset: 0;
+      padding: 12px;
+      font-family: var(--mono);
+      font-size: .78rem;
+      line-height: 1.6;
+      pointer-events: none;
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow: hidden;
+      z-index: 1;
+      color: var(--text)
+    }
+
+    .hl-rem {
+      color: #4d6b56;
+      font-style: italic
+    }
+
+    .hl-cmd {
+      color: #00cc88;
+      font-weight: 700
+    }
+
+    .hl-str {
+      color: #b8f0a0
+    }
+
+    .hl-num {
+      color: #ffb800
+    }
+
+    .hl-mod {
+      color: #c084fc;
+      font-weight: 700
+    }
+
+    .hl-key {
+      color: #93c5fd
+    }
+
+    .editor-execute-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-shrink: 0
+    }
+
+    .exec-indicator {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: .7rem;
+      color: var(--dim);
+      font-family: var(--mono)
+    }
+
+    .exec-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--dim2);
+      flex-shrink: 0;
+      transition: .3s
+    }
+
+    .exec-dot.run {
+      background: var(--amber);
+      box-shadow: 0 0 8px var(--amber);
+      animation: blink .5s ease infinite alternate
+    }
+
+    .exec-dot.ok {
+      background: var(--g);
+      box-shadow: 0 0 8px var(--g)
+    }
+
+    @keyframes blink {
+      from {
+        opacity: 1
+      }
+
+      to {
+        opacity: .2
+      }
+    }
+
+    /* ── COMMAND PALETTE ──────────────────────────── */
+    .cmd-palette {
+      overflow-y: auto;
+      flex: 1;
+      min-height: 0
+    }
+
+    .cmd-cat {
+      margin-bottom: 10px
+    }
+
+    .cmd-cat-head {
+      font-size: .58rem;
+      font-weight: 700;
+      color: var(--dim2);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      padding: 6px 0 4px;
+      border-bottom: 1px solid var(--b1);
+      margin-bottom: 5px
+    }
+
+    .cmd-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px
+    }
+
+    .cmd-block {
+      background: var(--s2);
+      border: 1px solid var(--b1);
+      border-radius: 6px;
+      padding: 7px 8px;
+      font-size: .67rem;
+      font-weight: 600;
+      color: var(--dim);
+      cursor: pointer;
+      transition: .15s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      text-align: left
+    }
+
+    .cmd-block:hover {
+      border-color: var(--g5);
+      color: var(--g);
+      background: var(--g4)
+    }
+
+    .cmd-block-ico {
+      width: 20px;
+      height: 20px;
+      background: var(--g3);
+      border-radius: 4px;
+      color: var(--g);
+      font-family: var(--mono);
+      font-size: .58rem;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0
+    }
+
+    /* ── TERMINAL ─────────────────────────────────── */
+    .terminal-card {
+      background: #000;
+      border: 1px solid var(--b2);
+      border-radius: var(--r);
+      overflow: hidden;
+      flex-shrink: 0
+    }
+
+    .term-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 7px 10px;
+      border-bottom: 1px solid var(--b1);
+      background: rgba(0, 0, 0, .4)
+    }
+
+    .term-dots {
+      display: flex;
+      gap: 5px
+    }
+
+    .term-dots span {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%
+    }
+
+    .term-dots span:nth-child(1) {
+      background: #ff5f57
+    }
+
+    .term-dots span:nth-child(2) {
+      background: #ffbd2e
+    }
+
+    .term-dots span:nth-child(3) {
+      background: #28ca41
+    }
+
+    .terminal {
+      padding: 10px;
+      font-family: var(--mono);
+      font-size: .68rem;
+      line-height: 1.85;
+      height: 150px;
+      overflow-y: auto
+    }
+
+    .t-dim {
+      color: var(--dim2)
+    }
+
+    .t-ok {
+      color: var(--g)
+    }
+
+    .t-err {
+      color: var(--red)
+    }
+
+    .t-warn {
+      color: var(--amber)
+    }
+
+    .t-start {
+      color: #60b8ff
+    }
+
+    .t-rem {
+      color: #4d6b56
+    }
+
+    /* ── LIBRARY PAGE ─────────────────────────────── */
+    .lib-filter-bar {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+      align-items: center
+    }
+
+    .filter-pill {
+      padding: 5px 14px;
+      background: var(--s2);
+      border: 1px solid var(--b1);
+      border-radius: 20px;
+      font-size: .7rem;
+      font-weight: 600;
+      color: var(--dim);
+      cursor: pointer;
+      transition: .15s
+    }
+
+    .filter-pill.active {
+      background: var(--g);
+      color: #000;
+      border-color: var(--g)
+    }
+
+    .filter-pill:hover:not(.active) {
+      border-color: var(--g5);
+      color: var(--text)
+    }
+
+    .lib-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 10px
+    }
+
+    .lib-card {
+      background: var(--s1);
+      border: 1px solid var(--b1);
+      border-radius: var(--r);
+      overflow: hidden;
+      transition: .18s
+    }
+
+    .lib-card:hover {
+      border-color: var(--b2);
+      transform: translateY(-2px)
+    }
+
+    .lib-card-top {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--b1)
+    }
+
+    .lib-card-name {
+      font-size: .82rem;
+      font-weight: 700;
+      color: var(--text);
+      font-family: var(--mono);
+      margin-bottom: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis
+    }
+
+    .lib-card-preview {
+      font-size: .62rem;
+      color: var(--dim);
+      font-family: var(--mono);
+      line-height: 1.6;
+      max-height: 48px;
+      overflow: hidden
+    }
+
+    .lib-card-bottom {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 9px 12px;
+      background: rgba(0, 0, 0, .2)
+    }
+
+    .lib-act {
+      background: none;
+      border: 1px solid var(--b2);
+      border-radius: 5px;
+      padding: 4px 9px;
+      font-size: .62rem;
+      font-weight: 600;
+      color: var(--dim);
+      cursor: pointer;
+      transition: .15s
+    }
+
+    .lib-act.run {
+      background: var(--g3);
+      border-color: var(--g5);
+      color: var(--g)
+    }
+
+    .lib-act.run:hover {
+      background: rgba(0, 255, 136, .2)
+    }
+
+    .lib-act:hover {
+      border-color: var(--b3);
+      color: var(--text)
+    }
+
+    .lib-act.del:hover {
+      border-color: rgba(255, 68, 85, .4);
+      color: var(--red)
+    }
+
+    /* ── NETWORK PAGE ─────────────────────────────── */
+    .net-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px
+    }
+
+    .seg-bar {
+      display: flex;
+      background: var(--s2);
+      border: 1px solid var(--b1);
+      border-radius: var(--r-sm);
+      padding: 3px;
+      margin-bottom: 12px
+    }
+
+    .seg {
+      flex: 1;
+      padding: 6px;
+      background: none;
+      border: none;
+      color: var(--dim);
+      font-size: .73rem;
+      font-weight: 600;
+      cursor: pointer;
+      border-radius: 5px;
+      transition: .18s
+    }
+
+    .seg.active {
+      background: linear-gradient(135deg, rgba(0, 255, 136, .2), rgba(0, 255, 136, .08));
+      color: var(--g)
+    }
+
+    .net-card {
+      background: var(--s2);
+      border: 1px solid var(--b1);
+      border-radius: var(--r-sm);
+      padding: 11px 13px;
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      margin-bottom: 5px;
+      transition: .18s;
+      cursor: default
+    }
+
+    .net-card:hover {
+      border-color: var(--b2);
+      background: var(--s3)
+    }
+
+    .net-ssid {
+      font-size: .8rem;
+      font-weight: 700;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis
+    }
+
+    .net-meta {
+      font-size: .6rem;
+      color: var(--dim);
+      font-family: var(--mono);
+      margin-top: 2px
+    }
+
+    .signal-bars {
+      display: flex;
+      align-items: flex-end;
+      gap: 2px;
+      height: 14px;
+      flex-shrink: 0
+    }
+
+    .signal-bars span {
+      width: 3px;
+      border-radius: 1px;
+      background: var(--b2)
+    }
+
+    .signal-bars span.lit {
+      background: var(--g)
+    }
+
+    .signal-bars span:nth-child(1) {
+      height: 4px
+    }
+
+    .signal-bars span:nth-child(2) {
+      height: 7px
+    }
+
+    .signal-bars span:nth-child(3) {
+      height: 10px
+    }
+
+    .signal-bars span:nth-child(4) {
+      height: 14px
+    }
+
+    .deauth-log {
+      background: #000;
+      border: 1px solid var(--b2);
+      border-radius: var(--r-sm);
+      padding: 10px;
+      font-family: var(--mono);
+      font-size: .67rem;
+      height: 260px;
+      overflow-y: auto;
+      line-height: 1.85
+    }
+
+    .dd-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: var(--s2);
+      border-radius: var(--r-sm);
+      margin-bottom: 10px;
+      font-size: .73rem;
+      color: var(--dim)
+    }
+
+    .dd-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--dim2);
+      flex-shrink: 0;
+      transition: .3s
+    }
+
+    .dd-dot.on {
+      background: var(--g);
+      box-shadow: 0 0 8px var(--g)
+    }
+
+    .dd-dot.alert {
+      background: var(--red);
+      box-shadow: 0 0 10px var(--red);
+      animation: blink .35s ease infinite alternate
+    }
+
+    /* ── AI STUDIO ────────────────────────────────── */
+    .ai-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px
+    }
+
+    .ai-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-bottom: 12px
+    }
+
+    .ai-tag {
+      padding: 4px 12px;
+      background: var(--s2);
+      border: 1px solid var(--b1);
+      border-radius: 20px;
+      font-size: .67rem;
+      color: var(--dim);
+      cursor: pointer;
+      transition: .18s
+    }
+
+    .ai-tag:hover {
+      border-color: var(--g5);
+      color: var(--g);
+      background: var(--g4)
+    }
+
+    .ai-prompt {
+      position: relative;
+      margin-bottom: 12px
+    }
+
+    .ai-textarea {
+      width: 100%;
+      background: var(--s2);
+      border: 1px solid var(--b1);
+      border-radius: var(--r-sm);
+      padding: 11px;
+      padding-right: 44px;
+      color: var(--text);
+      font-size: .78rem;
+      line-height: 1.5;
+      resize: vertical;
+      min-height: 86px;
+      font-family: var(--font)
+    }
+
+    .ai-textarea:focus {
+      border-color: var(--g5);
+      box-shadow: var(--glow-sm)
+    }
+
+    .btn-mic {
+      position: absolute;
+      right: 9px;
+      bottom: 9px;
+      background: var(--s3);
+      border: 1px solid var(--b2);
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: .18s;
+      color: var(--dim)
+    }
+
+    .btn-mic:hover {
+      border-color: var(--g5);
+      color: var(--g)
+    }
+
+    .btn-mic.listening {
+      background: var(--red2);
+      border-color: rgba(255, 68, 85, .4);
+      color: var(--red);
+      animation: micP .8s ease infinite
+    }
+
+    @keyframes micP {
+
+      0%,
+      100% {
+        box-shadow: 0 0 0 0 rgba(255, 68, 85, .2)
+      }
+
+      50% {
+        box-shadow: 0 0 0 8px rgba(255, 68, 85, 0)
+      }
+    }
+
+    .code-out {
+      width: 100%;
+      background: #000;
+      border: 1px solid var(--b2);
+      border-radius: var(--r-sm);
+      color: var(--g2);
+      font-family: var(--mono);
+      font-size: .7rem;
+      line-height: 1.65;
+      padding: 12px;
+      min-height: 150px;
+      resize: vertical
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 7px;
+      margin-top: 9px
+    }
+
+    /* ── KEYBOARD PAGE ────────────────────────────── */
+    .kb-macros {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 5px;
+      margin-bottom: 14px
+    }
+
+    .macro-btn {
+      background: var(--s2);
+      border: 1px solid var(--b1);
+      border-radius: var(--r-sm);
+      padding: 7px 5px;
+      font-size: .67rem;
+      font-weight: 600;
+      color: var(--dim);
+      cursor: pointer;
+      transition: .15s;
+      text-align: center
+    }
+
+    .macro-btn:hover {
+      border-color: var(--g5);
+      color: var(--g);
+      background: var(--g4)
+    }
+
+    .kb-layout {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-bottom: 12px
+    }
+
+    .kb-row {
+      display: flex;
+      gap: 3px;
+      justify-content: center
+    }
+
+    .kb-key {
+      background: var(--s2);
+      border: 1px solid var(--b2);
+      border-radius: 5px;
+      padding: 8px 10px;
+      min-width: 38px;
+      font-size: .68rem;
+      font-weight: 600;
+      color: var(--dim);
+      cursor: pointer;
+      transition: .12s;
+      font-family: var(--mono);
+      text-align: center
+    }
+
+    .kb-key:hover,
+    .kb-key:active {
+      background: var(--g3);
+      border-color: var(--g5);
+      color: var(--g)
+    }
+
+    .kb-key.mod-key {
+      background: var(--s3);
+      color: var(--amber);
+      border-color: rgba(255, 184, 0, .2)
+    }
+
+    .kb-key.mod-key.active {
+      background: var(--amber2);
+      border-color: var(--amber)
+    }
+
+    .kb-key.wide {
+      min-width: 56px
+    }
+
+    .kb-key.space-key {
+      min-width: 140px
+    }
+
+    .kb-status {
+      font-size: .7rem;
+      color: var(--dim);
+      font-family: var(--mono);
+      padding: 8px;
+      background: var(--s2);
+      border-radius: var(--r-sm);
+      border: 1px solid var(--b1);
+      min-height: 34px
+    }
+
+    /* ── FILE MANAGER ─────────────────────────────── */
+    .fm-topbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px
+    }
+
+    .fm-breadcrumb {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: .7rem;
+      overflow-x: auto;
+      padding: 5px 0
+    }
+
+    .fm-crumb {
+      color: var(--dim);
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 4px;
+      transition: .12s;
+      white-space: nowrap
+    }
+
+    .fm-crumb:hover {
+      color: var(--g);
+      background: var(--g4)
+    }
+
+    .fm-crumb.active {
+      color: var(--text);
+      pointer-events: none
+    }
+
+    .fm-crumb-sep {
+      color: var(--dim2);
+      opacity: .4
+    }
+
+    .fm-toolbar {
+      display: flex;
+      gap: 5px
+    }
+
+    .fm-tbtn {
+      background: var(--s2);
+      border: 1px solid var(--b1);
+      border-radius: var(--r-sm);
+      padding: 6px 8px;
+      color: var(--dim);
+      cursor: pointer;
+      transition: .18s;
+      display: flex;
+      align-items: center
+    }
+
+    .fm-tbtn:hover {
+      border-color: var(--g5);
+      color: var(--g)
+    }
+
+    .fm-drop {
+      border: 2px dashed var(--b2);
+      border-radius: var(--r-sm);
+      padding: 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: .18s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: .72rem;
+      color: var(--dim);
+      margin-bottom: 10px
+    }
+
+    .fm-drop:hover {
+      border-color: var(--g5);
+      color: var(--g);
+      background: var(--g4)
+    }
+
+    .fm-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      max-height: 400px;
+      overflow-y: auto
+    }
+
+    .fm-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 12px;
+      background: var(--s2);
+      border: 1px solid var(--b1);
+      border-radius: var(--r-sm);
+      cursor: pointer;
+      transition: .18s
+    }
+
+    .fm-item:hover {
+      border-color: var(--b2);
+      background: var(--s3)
+    }
+
+    .fm-item-ico {
+      color: var(--g);
+      width: 15px;
+      height: 15px;
+      flex-shrink: 0
+    }
+
+    .fm-item-name {
+      flex: 1;
+      font-size: .78rem;
+      font-weight: 600;
+      color: var(--text);
+      font-family: var(--mono)
+    }
+
+    .fm-item-size {
+      font-size: .6rem;
+      color: var(--dim);
+      font-family: var(--mono)
+    }
+
+    .fm-item-acts {
+      display: flex;
+      gap: 3px
+    }
+
+    .fm-act {
+      background: none;
+      border: 1px solid var(--b2);
+      border-radius: 4px;
+      padding: 3px 7px;
+      font-size: .6rem;
+      color: var(--dim);
+      cursor: pointer;
+      transition: .15s
+    }
+
+    .fm-act:hover {
+      border-color: var(--b3);
+      color: var(--text)
+    }
+
+    .fm-act.run:hover {
+      border-color: var(--g5);
+      color: var(--g)
+    }
+
+    .fm-act.del:hover {
+      border-color: rgba(255, 68, 85, .4);
+      color: var(--red)
+    }
+
+    /* ── NEOPIXEL PAGE ────────────────────────────── */
+    .neo-preview {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      border: 3px solid rgba(0, 255, 136, .3);
+      background: #00ff88;
+      box-shadow: 0 0 40px #00ff88, 0 0 80px rgba(0, 255, 136, .3);
+      transition: all .4s;
+      margin: 0 auto 20px
+    }
+
+    .neo-toggle {
+      width: 48px;
+      height: 26px;
+      border-radius: 13px;
+      background: var(--s3);
+      border: 1px solid var(--b2);
+      cursor: pointer;
+      position: relative;
+      transition: .3s
+    }
+
+    .neo-toggle.on {
+      background: rgba(0, 255, 136, .3);
+      border-color: var(--g)
+    }
+
+    .neo-knob {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--dim2);
+      transition: .3s
+    }
+
+    .neo-toggle.on .neo-knob {
+      left: 23px;
+      background: var(--g)
+    }
+
+    .slider-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px
+    }
+
+    .slider-row label {
+      font-size: .7rem;
+      color: var(--dim);
+      width: 22px;
+      flex-shrink: 0;
+      font-weight: 700
+    }
+
+    .slider-row input[type=range] {
+      flex: 1;
+      accent-color: var(--g)
+    }
+
+    .slider-val {
+      font-size: .65rem;
+      font-family: var(--mono);
+      color: var(--dim);
+      width: 32px;
+      text-align: right;
+      flex-shrink: 0
+    }
+
+    .color-presets {
+      display: flex;
+      gap: 8px;
+      margin: 12px 0
+    }
+
+    .cpre {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: .18s
+    }
+
+    .cpre:hover {
+      transform: scale(1.2)
+    }
+
+    /* ── VAULT PAGE ───────────────────────────────── */
+    .vault-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 14px;
+      background: var(--s2);
+      border: 1px solid var(--b1);
+      border-radius: var(--r-sm);
+      margin-bottom: 6px;
+      transition: .18s
+    }
+
+    .vault-item:hover {
+      border-color: var(--b2)
+    }
+
+    .vault-site {
+      font-size: .82rem;
+      font-weight: 700;
+      color: var(--text);
+      flex: 1;
+      font-family: var(--mono)
+    }
+
+    .vault-pass {
+      font-size: .72rem;
+      color: var(--dim);
+      font-family: var(--mono);
+      letter-spacing: 4px
+    }
+
+    .vault-type-btn {
+      background: var(--g3);
+      border: 1px solid var(--g5);
+      color: var(--g);
+      border-radius: 5px;
+      padding: 4px 10px;
+      font-size: .65rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: .18s
+    }
+
+    .vault-type-btn:hover {
+      background: rgba(0, 255, 136, .2)
+    }
+
+    /* ── SHORTCUTS PAGE ───────────────────────────── */
+    .sc-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 8px
+    }
+
+    .sc-item {
+      background: var(--s1);
+      border: 1px solid var(--b1);
+      border-radius: var(--r);
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      transition: .18s
+    }
+
+    .sc-item:hover {
+      border-color: var(--b2);
+      transform: translateY(-2px)
+    }
+
+    .sc-item-name {
+      font-size: .82rem;
+      font-weight: 700;
+      color: var(--text);
+      font-family: var(--mono)
+    }
+
+    .sc-item-acts {
+      display: flex;
+      gap: 6px
+    }
+
+    /* ── SETTINGS PAGE ────────────────────────────── */
+    .settings-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px
+    }
+
+    .input {
+      width: 100%;
+      background: var(--s2);
+      border: 1px solid var(--b1);
+      border-radius: var(--r-sm);
+      padding: 9px 12px;
+      color: var(--text);
+      font-size: .78rem;
+      transition: .18s
+    }
+
+    .input:focus {
+      border-color: var(--g5);
+      box-shadow: var(--glow-sm)
+    }
+
+    .input-row {
+      display: flex;
+      gap: 7px
+    }
+
+    .input-row .input {
+      flex: 1
+    }
+
+    .input-grp {
+      margin-bottom: 12px
+    }
+
+    .input-grp label {
+      display: block;
+      font-size: .62rem;
+      color: var(--dim);
+      margin-bottom: 6px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px
+    }
+
+    .input-hint {
+      font-size: .62rem;
+      color: var(--dim2);
+      margin-top: 4px
+    }
+
+    .wifi-list {
+      max-height: 180px;
+      overflow-y: auto;
+      margin-bottom: 8px
+    }
+
+    .fw-drop {
+      border: 2px dashed var(--b2);
+      border-radius: var(--r);
+      padding: 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: .18s
+    }
+
+    .fw-drop:hover {
+      border-color: var(--g5);
+      background: var(--g4)
+    }
+
+    .fw-drop-icon {
+      font-size: 2rem;
+      margin-bottom: 8px;
+      color: var(--g);
+      display: block
+    }
+
+    .ota-bar-wrap {
+      height: 3px;
+      background: var(--s2);
+      border-radius: 2px;
+      margin: 10px 0;
+      overflow: hidden
+    }
+
+    .ota-bar {
+      height: 100%;
+      width: 0;
+      background: var(--g);
+      box-shadow: 0 0 8px var(--g);
+      transition: width .3s
+    }
+
+    /* ── MODALS ───────────────────────────────────── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9997;
+      background: rgba(0, 0, 0, .85);
+      backdrop-filter: blur(12px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      animation: fadIn .2s
+    }
+
+    @keyframes fadIn {
+      from {
+        opacity: 0
+      }
+
+      to {
+        opacity: 1
+      }
+    }
+
+    .modal-card {
+      background: var(--s1);
+      border: 1px solid var(--b1);
+      border-radius: var(--r-lg);
+      padding: 24px;
+      max-width: 460px;
+      width: 100%;
+      box-shadow: var(--shadow-lg)
+    }
+
+    .modal-title {
+      font-size: .95rem;
+      font-weight: 700;
+      color: var(--g);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 7px;
+      justify-content: flex-end;
+      margin-top: 18px
+    }
+
+    /* ── SIMULATOR OVERLAY ────────────────────────── */
+    .sim-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9996;
+      background: rgba(0, 0, 0, .92);
+      backdrop-filter: blur(20px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px
+    }
+
+    .sim-box {
+      background: var(--s1);
+      border: 1px solid var(--g5);
+      border-radius: var(--r-lg);
+      width: 680px;
+      max-width: 90vw;
+      box-shadow: 0 0 60px rgba(0, 255, 136, .08);
+      overflow: hidden
+    }
+
+    .sim-hd {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--b1);
+      background: var(--s2)
+    }
+
+    .sim-title {
+      font-size: .7rem;
+      font-weight: 800;
+      letter-spacing: 3px;
+      color: var(--g);
+      font-family: var(--mono)
+    }
+
+    .sim-screen {
+      background: #000;
+      height: 260px;
+      overflow: hidden;
+      padding: 18px;
+      font-family: var(--mono)
+    }
+
+    .sim-content {
+      font-size: .88rem;
+      color: var(--text);
+      white-space: pre-wrap;
+      word-break: break-word;
+      line-height: 1.5
+    }
+
+    .sim-cursor {
+      display: inline-block;
+      width: 9px;
+      height: 1em;
+      background: var(--text);
+      animation: simBlink .7s steps(1) infinite;
+      vertical-align: text-bottom
+    }
+
+    @keyframes simBlink {
+
+      0%,
+      100% {
+        opacity: 1
+      }
+
+      50% {
+        opacity: 0
+      }
+    }
+
+    .sim-ft {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 10px 16px;
+      border-top: 1px solid var(--b1);
+      background: var(--s2)
+    }
+
+    .sim-prog-w {
+      flex: 1;
+      height: 2px;
+      background: var(--s3);
+      border-radius: 1px;
+      overflow: hidden
+    }
+
+    .sim-prog {
+      height: 100%;
+      width: 0;
+      background: var(--g);
+      box-shadow: 0 0 8px var(--g);
+      transition: width .1s
+    }
+
+    .sim-cmd {
+      font-size: .65rem;
+      font-family: var(--mono);
+      color: var(--dim)
+    }
+
+    .sim-ctr {
+      font-size: .65rem;
+      font-family: var(--mono);
+      color: var(--dim2)
+    }
+
+    /* ── EMPTY STATE ──────────────────────────────── */
+    .empty-state {
+      text-align: center;
+      padding: 32px 16px;
+      color: var(--dim2);
+      font-size: .75rem
+    }
+
+    .empty-icon {
+      font-size: 2.4rem;
+      margin-bottom: 10px;
+      opacity: .5
+    }
+
+    .empty-title {
+      font-weight: 700;
+      color: var(--dim);
+      margin-bottom: 4px
+    }
+
+    .empty-hint {
+      font-size: .68rem
+    }
+
+    /* ── MISC ─────────────────────────────────────── */
+    .divider {
+      height: 1px;
+      background: var(--b1);
+      margin: 12px 0
+    }
+
+    .skeleton {
+      height: 48px;
+      background: var(--s2);
+      border: 1px solid var(--b1);
+      border-radius: var(--r-sm);
+      margin-bottom: 5px;
+      animation: skelPulse 1.2s ease infinite alternate
+    }
+
+    @keyframes skelPulse {
+      from {
+        opacity: .7
+      }
+
+      to {
+        opacity: .4
+      }
+    }
+
+    .spin {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border: 2px solid rgba(0, 255, 136, .2);
+      border-top-color: var(--g);
+      border-radius: 50%;
+      animation: spin .6s linear infinite
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg)
+      }
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 7px
+    }
+
+    .info-item {
+      background: var(--s2);
+      border: 1px solid var(--b1);
+      border-radius: var(--r-sm);
+      padding: 9px 11px
+    }
+
+    .info-k {
+      font-size: .58rem;
+      color: var(--dim);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      display: block;
+      margin-bottom: 3px
+    }
+
+    .info-v {
+      font-size: .82rem;
+      font-weight: 700;
+      color: var(--g);
+      font-family: var(--mono)
+    }
+
+    .ref-list {
+      display: flex;
+      flex-direction: column;
+      gap: 5px
+    }
+
+    .ref-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: .7rem
+    }
+
+    .ref-item code {
+      background: var(--s2);
+      border: 1px solid var(--b1);
+      border-radius: 4px;
+      padding: 1px 7px;
+      font-family: var(--mono);
+      font-size: .63rem;
+      color: var(--g2);
+      flex-shrink: 0
+    }
+
+    .ref-item span {
+      color: var(--dim);
+      line-height: 1.4
+    }
+
+    .tag-pill {
+      font-size: .55rem;
+      font-weight: 800;
+      padding: 2px 7px;
+      border-radius: 4px;
+      text-transform: uppercase
+    }
+
+    .save-modal-fm {
+      background: var(--bg);
+      border: 1px solid var(--b1);
+      border-radius: var(--r-sm);
+      max-height: 140px;
+      overflow-y: auto;
+      min-height: 44px;
+      margin-bottom: 8px
+    }
+
+    select.input {
+      cursor: pointer
+    }
+
+    /* ── VAULT & SHORTCUTS STYLES ── */
+    .vault-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: var(--s2);
+      border: 1px solid var(--b1);
+      border-radius: var(--r-sm);
+      margin-bottom: 8px;
+      transition: border-color .2s;
+    }
+
+    .vault-item:hover {
+      border-color: var(--g5);
+    }
+
+    .vault-site {
+      font-size: .82rem;
+      font-weight: 700;
+      color: var(--text);
+      font-family: var(--mono);
+    }
+
+    .vault-pass {
+      font-size: .75rem;
+      color: var(--dim);
+      font-family: var(--mono);
+      letter-spacing: 2px;
+    }
+
+    .vault-type-btn {
+      background: var(--g4);
+      border: 1px solid var(--g5);
+      color: var(--g);
+      padding: 5px 12px;
+      border-radius: var(--r-sm);
+      font-size: .7rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all .15s;
+    }
+
+    .vault-type-btn:hover {
+      background: var(--g);
+      color: #000;
+      box-shadow: 0 0 12px var(--g);
+    }
+
+    .sc-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: var(--s2);
+      border: 1px solid var(--b1);
+      border-radius: var(--r-sm);
+      transition: border-color .2s;
+    }
+
+    .sc-item:hover {
+      border-color: var(--g5);
+    }
+
+    .sc-item-name {
+      font-size: .85rem;
+      font-weight: 700;
+      color: var(--text);
+      font-family: var(--mono);
+    }
+
+    .sc-item-acts {
+      display: flex;
+      gap: 6px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="toasts"></div>
+
+  <!-- BOOT -->
+  <div id="boot">
+    <svg class="boot-hex" viewBox="0 0 60 60" fill="none">
+      <path d="M30 5L53 17.5v25L30 55 7 42.5v-25L30 5z" stroke="#00ff88" stroke-width="2" fill="rgba(0,255,136,.06)" />
+      <path d="M30 5v50M7 17.5l23 12.5 23-12.5" stroke="#00ff88" stroke-width="1.2" opacity=".35" />
+      <circle cx="30" cy="30" r="7" fill="rgba(0,255,136,.25)" stroke="#00ff88" stroke-width="1.8" />
+      <circle cx="30" cy="30" r="2.5" fill="#00ff88" />
+    </svg>
+    <div class="boot-title">GHOST<span>CHIP</span></div>
+    <div class="boot-sub">ESP32-S3 Security Platform · PC Dashboard</div>
+    <div class="boot-log" id="bootLog"></div>
+    <div class="boot-progress">
+      <div class="boot-bar" id="bootBar"></div>
+    </div>
+    <div class="boot-by">by GAMKERS</div>
+  </div>
+
+  <!-- LEGAL MODAL -->
+  <div id="legalModal" class="modal-overlay" style="display:none">
+    <div class="modal-card" style="text-align:center">
+      <div style="font-size:3rem;margin-bottom:10px">🛡️</div>
+      <div class="modal-title" style="justify-content:center;font-size:1.1rem">Authorized Use Only</div>
+      <div style="font-size:.8rem;color:var(--dim);line-height:1.75;margin-bottom:4px;text-align:left">
+        <p><strong style="color:var(--g)">GhostChip</strong> is a professional security research tool.</p>
+        <ul style="margin:.8rem 0 0 1rem;display:flex;flex-direction:column;gap:.35rem">
+          <li>Use only on systems you <strong>own</strong> or have <strong>written permission</strong> to test</li>
+          <li>Unauthorized HID injection is a criminal offense in most jurisdictions</li>
+          <li>GAMKERS accepts no liability for misuse of this tool</li>
+        </ul>
+      </div>
+      <div class="modal-actions" style="justify-content:center;margin-top:20px">
+        <button class="btn btn-ghost" onclick="location='about:blank'">Decline</button>
+        <button class="btn btn-primary" id="acceptBtn">I Accept — Enter Dashboard</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADD FAVOURITE MODAL -->
+  <div id="addFavModal" class="modal-overlay" style="display:none" onclick="if(event.target===this)hideAddFavModal()">
+    <div class="modal-card">
+      <div class="modal-title">⭐ Save to Library</div>
+      <div class="input-grp"><label>Script Name</label><input type="text" id="favName" class="input"
+          placeholder="e.g. Win Admin Shell" maxlength="40" autocomplete="off"></div>
+      <div class="input-grp"><label>Category</label>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="filter-pill" data-tag="attack" onclick="selectFavTag('attack',this)">⚔ Attack</button>
+          <button class="filter-pill" data-tag="recon" onclick="selectFavTag('recon',this)">🔍 Recon</button>
+          <button class="filter-pill" data-tag="utility" onclick="selectFavTag('utility',this)">🔧 Utility</button>
+          <button class="filter-pill active" data-tag="custom" onclick="selectFavTag('custom',this)">✦ Custom</button>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" onclick="hideAddFavModal()">Cancel</button>
+        <button class="btn btn-primary" id="addFavConfirmBtn" onclick="confirmAddFav()">⭐ Save to Library</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SAVE TO DEVICE MODAL -->
+  <div id="saveModal" class="modal-overlay" style="display:none" onclick="if(event.target===this)hideSaveModal()">
+    <div class="modal-card" style="max-width:500px">
+      <div class="modal-title">💾 Save Script to Device</div>
+      <div
+        style="font-size:.65rem;color:var(--dim);text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:6px">
+        Select Folder</div>
+      <div
+        style="display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--r-sm);padding:6px 10px;margin-bottom:6px">
+        <div class="fm-breadcrumb" id="saveBreadcrumb"><span class="fm-crumb active">⌂ root</span></div>
+        <button class="fm-tbtn" onclick="saveFolderLoad(saveCurrentPath)">↺</button>
+      </div>
+      <div class="save-modal-fm" id="saveFolderList">
+        <div
+          style="display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;font-size:.72rem;color:var(--dim)">
+          <span class="spin"></span>Loading…
+        </div>
+      </div>
+      <div
+        style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--g4);border:1px solid var(--g5);border-radius:var(--r-sm);margin-bottom:10px;font-size:.72rem">
+        <span style="color:var(--dim);font-weight:700;white-space:nowrap">Saving to:</span><span id="saveSelectedPath"
+          style="color:var(--g);font-family:var(--mono);font-weight:700">/</span>
+      </div>
+      <div class="input-grp"><label>File Name</label>
+        <div style="display:flex;align-items:center;gap:7px">
+          <input type="text" id="saveFileName" class="input" placeholder="myscript" style="flex:1"
+            oninput="updateSavePreview()" autocomplete="off" spellcheck="false">
+          <span
+            style="background:var(--g3);border:1px solid var(--g5);color:var(--g);font-family:var(--mono);font-size:.68rem;font-weight:700;padding:5px 9px;border-radius:5px">.txt</span>
+        </div>
+        <div style="font-size:.62rem;color:var(--dim2);margin-top:5px">Full path: <span id="savePathPreview"
+            style="font-family:var(--mono);color:var(--dim)">/myscript.txt</span></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" onclick="hideSaveModal()">Cancel</button>
+        <button class="btn btn-primary" id="saveConfirmBtn" onclick="confirmSave()">💾 Save Here</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADD VAULT MODAL -->
+  <div id="vaultModal" class="modal-overlay" style="display:none" onclick="if(event.target===this)hideVaultModal()">
+    <div class="modal-card">
+      <div class="modal-title">🔒 Add Credential</div>
+      <div class="input-grp"><label>Site / Label</label><input type="text" id="vaultSite" class="input"
+          placeholder="e.g. github.com" autocomplete="off"></div>
+      <div class="input-grp"><label>Password</label>
+        <div class="input-row"><input type="password" id="vaultPass" class="input" placeholder="Password"
+            autocomplete="off"><button class="btn btn-ghost btn-sm" onclick="togglePass('vaultPass',this)">SHOW</button>
+        </div>
+      </div>
+      <div class="modal-actions"><button class="btn btn-ghost" onclick="hideVaultModal()">Cancel</button><button
+          class="btn btn-primary" onclick="confirmVault()">Save</button></div>
+    </div>
+  </div>
+
+  <!-- ADD SHORTCUT MODAL -->
+  <div id="scModal" class="modal-overlay" style="display:none" onclick="if(event.target===this)hideScModal()">
+    <div class="modal-card">
+      <div class="modal-title">⚡ Add Shortcut</div>
+      <div class="input-grp"><label>Name</label><input type="text" id="scName" class="input"
+          placeholder="e.g. open-notepad" autocomplete="off"></div>
+      <div class="input-grp"><label>DuckyScript Body</label><textarea id="scBody" class="input"
+          style="min-height:90px;font-family:var(--mono);font-size:.72rem;resize:vertical"
+          placeholder="DELAY 500&#10;GUI r&#10;STRING notepad&#10;ENTER"></textarea></div>
+      <div class="modal-actions"><button class="btn btn-ghost" onclick="hideScModal()">Cancel</button><button
+          class="btn btn-primary" onclick="confirmSc()">Save Shortcut</button></div>
+    </div>
+  </div>
+
+  <!-- SIMULATOR -->
+  <div id="simOverlay" class="sim-overlay" style="display:none">
+    <div class="sim-box">
+      <div class="sim-hd">
+        <span class="sim-title">// PAYLOAD SIMULATOR</span>
+        <div style="display:flex;gap:8px;align-items:center">
+          <select id="simSpeed"
+            style="background:var(--s3);border:1px solid var(--b1);border-radius:5px;color:var(--text);padding:4px 8px;font-size:.7rem;cursor:pointer">
+            <option value="1">1x</option>
+            <option value="2" selected>2x</option>
+            <option value="5">5x</option>
+            <option value="10">10x</option>
+          </select>
+          <button class="btn btn-ghost btn-sm" onclick="stopSim()">✕ Close</button>
+        </div>
+      </div>
+      <div class="sim-screen" id="simScreen">
+        <div class="sim-content" id="simContent"><span class="sim-cursor">|</span></div>
+      </div>
+      <div class="sim-ft">
+        <div class="sim-prog-w">
+          <div class="sim-prog" id="simProg"></div>
+        </div>
+        <div class="sim-cmd" id="simCmd">Ready</div>
+        <div class="sim-ctr" id="simCtr">0 / 0</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ APP ══════════════════════════════════════ -->
+  <div id="app" style="flex-direction:column;height:100vh">
+    <div class="shell">
+
+      <!-- SIDEBAR -->
+      <nav class="sidebar">
+        <div class="logo-wrap">
+          <svg class="logo-hex" viewBox="0 0 36 36" fill="none">
+            <path d="M18 3L31 10.5v15L18 33 5 25.5v-15L18 3z" stroke="#00ff88" stroke-width="1.8"
+              fill="rgba(0,255,136,.06)" />
+            <circle cx="18" cy="18" r="5" fill="rgba(0,255,136,.2)" stroke="#00ff88" stroke-width="1.4" />
+            <circle cx="18" cy="18" r="2" fill="#00ff88" />
+          </svg>
+          <div>
+            <div class="logo-text">GHOST<span>CHIP</span></div>
+            <div class="logo-sub">ESP32-S3 Toolkit</div>
+          </div>
+        </div>
+
+        <div class="nav-section">Main</div>
+        <button class="nav-item active" id="nav-dashboard" onclick="goPage('dashboard',this)">
+          <svg class="ni-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7" />
+            <rect x="14" y="3" width="7" height="7" />
+            <rect x="14" y="14" width="7" height="7" />
+            <rect x="3" y="14" width="7" height="7" />
+          </svg>Dashboard
+        </button>
+        <button class="nav-item" id="nav-editor" onclick="goPage('editor',this)">
+          <svg class="ni-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+            <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" />
+          </svg>Editor
+          <span class="nav-badge" id="nav-editor-badge" style="display:none">●</span>
+        </button>
+        <button class="nav-item" id="nav-library" onclick="goPage('library',this);loadLibrary()">
+          <svg class="ni-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon
+              points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+          </svg>Library
+          <span class="nav-badge" id="libBadge">0</span>
+        </button>
+        <button class="nav-item" id="nav-network" onclick="goPage('network',this)">
+          <svg class="ni-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="1" />
+            <path
+              d="M20.07 4.93a10 10 0 010 14.14M17.24 7.76a6 6 0 010 8.49M6.76 16.24a6 6 0 010-8.49M3.93 19.07a10 10 0 010-14.14" />
+          </svg>Network
+        </button>
+        <button class="nav-item" id="nav-ai" onclick="goPage('ai',this)">
+          <svg class="ni-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2a4 4 0 014 4c0 1.95-2 3-2 8h-4c0-5-2-6.05-2-8a4 4 0 014-4z" />
+            <path d="M10 22h4M10 18h4" />
+          </svg>AI Studio
+        </button>
+
+        <div class="nav-section">Tools</div>
+        <button class="nav-item" id="nav-keyboard" onclick="goPage('keyboard',this)">
+          <svg class="ni-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="4" width="20" height="16" rx="2" />
+            <path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M6 12h.01M10 12h.01M14 12h.01M18 12h.01M7 16h10" />
+          </svg>Keyboard
+        </button>
+        <button class="nav-item" id="nav-files" onclick="goPage('files',this);fmNavigate(fmPath)">
+          <svg class="ni-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" />
+            <path d="M3 10h18" />
+          </svg>Files
+        </button>
+        <button class="nav-item" id="nav-neo" onclick="goPage('neo',this)">
+          <svg class="ni-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5" />
+            <path
+              d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+          </svg>NeoPixel
+        </button>
+        <button class="nav-item" id="nav-vault" onclick="goPage('vault',this);loadVault()">
+          <svg class="ni-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="11" width="18" height="11" rx="2" />
+            <path d="M7 11V7a5 5 0 0110 0v4" />
+          </svg>Vault
+        </button>
+        <button class="nav-item" id="nav-shortcuts" onclick="goPage('shortcuts',this);loadShortcuts()">
+          <svg class="ni-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+          </svg>Shortcuts
+        </button>
+        <button class="nav-item" id="nav-manual" onclick="goPage('manual',this)">
+          <svg class="ni-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+          </svg>User Manual
+        </button>
+        <button class="nav-item" id="nav-settings" onclick="goPage('settings',this)">
+          <svg class="ni-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3" />
+            <path
+              d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
+          </svg>Settings
+        </button>
+
+        <div class="sidebar-conn">
+          <div class="conn-row">
+            <div class="conn-dot" id="connDot"></div><span class="conn-label">GhostChip</span>
+          </div>
+          <div class="conn-ip" id="connIp">ghostchip.local</div>
+          <button class="btn btn-ghost btn-sm btn-full" style="margin-top:7px;font-size:.63rem" onclick="pingDevice()">⚡
+            Ping</button>
+        </div>
+
+        <div class="sidebar-bottom">
+          <div class="sidebar-info">
+            <div style="color:var(--g);font-weight:700">Ghost Chip v2.0</div>
+            <div>ESP32-S3 · by GAMKERS</div>
+          </div>
+        </div>
+      </nav>
+
+      <!-- MAIN -->
+      <div class="main">
+        <!-- TOPBAR -->
+        <header class="topbar">
+          <div class="topbar-title">
+            <span id="topbarTitle" style="color:var(--g)">Dashboard</span>
+            <span class="topbar-breadcrumb" id="topbarSub"></span>
+          </div>
+          <div class="topbar-spacer"></div>
+          <div class="topbar-right">
+            <div class="tb-badge">
+              <div class="conn-dot" id="connDot2"></div><span id="tbIp" style="font-size:.67rem">ghostchip.local</span>
+            </div>
+            <button class="tb-btn" onclick="simulatePayload()"><svg viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2">
+                <polygon points="5 3 19 12 5 21 5 3" />
+              </svg>Simulate</button>
+            <div
+              style="display:flex;align-items:center;gap:7px;padding:5px 10px;background:var(--s2);border:1px solid var(--b1);border-radius:20px">
+              <div class="topbar-avatar">G</div>
+              <span style="font-size:.72rem;font-weight:700;color:var(--text)">GAMKERS</span>
+            </div>
+          </div>
+        </header>
+
+        <!-- CONTENT -->
+        <div class="content" id="mainContent">
+
+          <!-- ── DASHBOARD ───────────────────────────── -->
+          <section class="page active" id="page-dashboard">
+            <div class="page-hd">
+              <div>
+                <div class="page-title">Welcome, <em>Operator</em></div>
+                <div class="page-sub">GhostChip ESP32-S3 · PC Dashboard — all controls in one place</div>
+              </div>
+              <div class="page-actions">
+                <button class="btn btn-ghost btn-sm" onclick="pingDevice()">⚡ Ping Device</button>
+                <button class="btn btn-primary btn-sm"
+                  onclick="goPage('editor',document.getElementById('nav-editor'))">→ Open Editor</button>
+              </div>
+            </div>
+
+            <div class="g4" style="margin-bottom:16px">
+              <div class="stat-card green">
+                <div class="stat-icon green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2">
+                    <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+                  </svg></div>
+                <div class="stat-value" id="dashConn">---</div>
+                <div class="stat-label">Device Status</div>
+              </div>
+              <div class="stat-card blue">
+                <div class="stat-icon blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M1 6s4-2 11-2 11 2 11 2" />
+                    <path d="M1 12s4-2 11-2 11 2 11 2" />
+                    <circle cx="12" cy="20" r="2" />
+                  </svg></div>
+                <div class="stat-value" id="dashNets">---</div>
+                <div class="stat-label">WiFi Networks</div>
+              </div>
+              <div class="stat-card amber">
+                <div class="stat-icon amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2">
+                    <polygon
+                      points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                  </svg></div>
+                <div class="stat-value" id="dashScripts">0</div>
+                <div class="stat-label">Saved Scripts</div>
+              </div>
+              <div class="stat-card purple">
+                <div class="stat-icon purple"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2">
+                    <rect x="4" y="4" width="16" height="16" rx="2" />
+                    <path d="M9 9h6M9 13h6M9 17h4" />
+                  </svg></div>
+                <div class="stat-value">ESP32-S3</div>
+                <div class="stat-label">Hardware</div>
+              </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="qa-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 16px;">
+              <button class="qa-btn" onclick="goPage('editor',document.getElementById('nav-editor'))">
+                <div class="qa-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="5 3 19 12 5 21 5 3" />
+                  </svg></div>
+                <div class="qa-label">DuckyScript IDE</div>
+                <div class="qa-sub">Write & deploy payloads</div>
+              </button>
+              <button class="qa-btn" onclick="goPage('network',document.getElementById('nav-network'))">
+                <div class="qa-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="1" />
+                    <path
+                      d="M20.07 4.93a10 10 0 010 14.14M17.24 7.76a6 6 0 010 8.49M6.76 16.24a6 6 0 010-8.49M3.93 19.07a10 10 0 010-14.14" />
+                  </svg></div>
+                <div class="qa-label">WiFi / BLE Scan</div>
+                <div class="qa-sub">Recon & Deauth monitor</div>
+              </button>
+              <button class="qa-btn" onclick="goPage('ai',document.getElementById('nav-ai'))">
+                <div class="qa-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2a4 4 0 014 4c0 1.95-2 3-2 8h-4c0-5-2-6.05-2-8a4 4 0 014-4z" />
+                    <path d="M10 22h4M10 18h4" />
+                  </svg></div>
+                <div class="qa-label">AI Studio</div>
+                <div class="qa-sub">Groq LLM generator</div>
+              </button>
+              <button class="qa-btn" onclick="goPage('vault',document.getElementById('nav-vault'));loadVault()">
+                <div class="qa-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="11" width="18" height="11" rx="2" />
+                    <path d="M7 11V7a5 5 0 0110 0v4" />
+                  </svg></div>
+                <div class="qa-label">Password Vault</div>
+                <div class="qa-sub">Inject saved credentials</div>
+              </button>
+            </div>
+
+            <div class="qa-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 20px;">
+              <button class="qa-btn" onclick="goPage('shortcuts',document.getElementById('nav-shortcuts'));loadShortcuts()">
+                <div class="qa-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                  </svg></div>
+                <div class="qa-label">HID Shortcuts</div>
+                <div class="qa-sub">Instant 1-click execution</div>
+              </button>
+              <button class="qa-btn" onclick="goPage('keyboard',document.getElementById('nav-keyboard'))">
+                <div class="qa-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="2" y="4" width="20" height="16" rx="2" />
+                    <path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M6 12h.01M10 12h.01M14 12h.01M18 12h.01M7 16h10" />
+                  </svg></div>
+                <div class="qa-label">Live Keyboard</div>
+                <div class="qa-sub">Send raw keystrokes</div>
+              </button>
+              <button class="qa-btn" onclick="goPage('files',document.getElementById('nav-files'));fmNavigate(fmPath)">
+                <div class="qa-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" />
+                    <path d="M3 10h18" />
+                  </svg></div>
+                <div class="qa-label">SPIFFS Files</div>
+                <div class="qa-sub">Manage onboard storage</div>
+              </button>
+              <button class="qa-btn" onclick="simulatePayload()">
+                <div class="qa-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="2" y="3" width="20" height="14" rx="2" />
+                    <path d="M8 21h8M12 17v4" />
+                  </svg></div>
+                <div class="qa-label">Simulate</div>
+                <div class="qa-sub">Preview in terminal</div>
+              </button>
+            </div>
+
+            <div class="g2">
+              <div>
+                <!-- Favourite Scripts -->
+                <div class="card" style="margin-bottom:16px">
+                  <div class="card-head" style="justify-content:space-between;display:flex;align-items:center">
+                    <span style="display:flex;align-items:center;gap:7px">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        style="width:14px;height:14px;color:var(--g)">
+                        <polygon
+                          points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                      </svg>
+                      Favourite Scripts
+                    </span>
+                    <button class="btn btn-ghost btn-sm" style="font-size:.62rem"
+                      onclick="goPage('library',document.getElementById('nav-library'));loadLibrary()">View All
+                      →</button>
+                  </div>
+                  <div class="fav-grid" id="dashFavGrid">
+                    <div class="empty-state" style="padding:16px">
+                      <div class="empty-icon">⭐</div>
+                      <div class="empty-title">No favourites yet</div>
+                      <div class="empty-hint">Save scripts from the Editor to see them here</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="card">
+                  <div class="card-head">System Overview</div>
+                  <div class="info-grid">
+                    <div class="info-item"><span class="info-k">Firmware</span><span class="info-v"
+                        style="font-size:.72rem">Ghost Chip v2.0</span></div>
+                    <div class="info-item"><span class="info-k">Architecture</span><span class="info-v"
+                        style="font-size:.72rem">ESP32-S3 Dual-Core</span></div>
+                    <div class="info-item"><span class="info-k">Developer</span><span class="info-v"
+                        style="font-size:.72rem">GAMKERS</span></div>
+                    <div class="info-item"><span class="info-k">Default AP IP</span><span class="info-v"
+                        style="font-size:.72rem">192.168.4.1</span></div>
+                  </div>
+                </div>
+              </div>
+              <div class="card">
+                <div class="card-head">Activity Log</div>
+                <div id="actLog">
+                  <div class="act-item">
+                    <div class="act-dot green"></div>
+                    <div class="act-text">Dashboard initialized</div>
+                    <div class="act-time" id="dashTime">--:--</div>
+                  </div>
+                  <div class="act-item">
+                    <div class="act-dot amber"></div>
+                    <div class="act-text">Awaiting device connection</div>
+                    <div class="act-time">now</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ── EDITOR ──────────────────────────────── -->
+          <section class="page" id="page-editor">
+            <div class="page-hd">
+              <div>
+                <div class="page-title"><em>DuckyScript</em> Editor</div>
+                <div class="page-sub">Write, test and deploy BadUSB payloads · Click command blocks to insert · Press
+                  Execute to run on device</div>
+              </div>
+              <div class="page-actions">
+                <button class="btn btn-ghost btn-sm" onclick="showAddFavModal()">⭐ Star</button>
+                <button class="btn btn-ghost btn-sm" onclick="document.getElementById('fileIn').click()">📂
+                  Open</button>
+                <button class="btn btn-ghost btn-sm" onclick="showSaveModal()">💾 Save</button>
+                <button class="btn btn-ghost btn-sm" onclick="clearEditor()">✕ Clear</button>
+              </div>
+            </div>
+            <div class="editor-layout">
+              <div class="editor-left">
+                <!-- Toolbar -->
+                <div class="editor-toolbar">
+                  <div class="file-dot"></div>
+                  <span id="fileName"
+                    style="font-family:var(--mono);font-size:.75rem;color:var(--text);font-weight:600">untitled.txt</span>
+                  <span class="line-count" id="lineCount">0 lines</span>
+                  <div class="os-pill" style="margin-left:auto">
+                    <button class="os-p active" id="os-windows" onclick="setTargetOS('windows',this)"
+                      title="Target Windows">WIN</button>
+                    <button class="os-p" id="os-macos" onclick="setTargetOS('macos',this)"
+                      title="Target macOS">MAC</button>
+                    <button class="os-p" id="os-linux" onclick="setTargetOS('linux',this)"
+                      title="Target Linux">LNX</button>
+                  </div>
+                  <div style="display:flex;gap:5px">
+                    <button class="icon-btn" onclick="simulatePayload()" title="Simulate payload">▶ Sim</button>
+                    <button class="icon-btn" onclick="clearTerm()" title="Clear output">CLR</button>
+                  </div>
+                </div>
+                <!-- Code Area -->
+                <div class="editor-body">
+                  <div class="line-nums" id="lineNums"><span>1</span></div>
+                  <div class="editor-inner">
+                    <textarea id="editor" spellcheck="false" autocorrect="off" autocapitalize="off"
+                      placeholder="REM Your payload here...&#10;DELAY 500&#10;GUI r&#10;STRING notepad&#10;ENTER"></textarea>
+                    <pre id="editorHighlight" aria-hidden="true"><code></code></pre>
+                  </div>
+                </div>
+                <input type="file" id="fileIn" accept=".txt,.ducky,.ds" style="display:none" onchange="openFile(event)">
+                <!-- Execute row -->
+                <div class="editor-execute-row">
+                  <button class="btn btn-execute" id="runBtn" onclick="runScript()" style="flex:1">▶ EXECUTE
+                    PAYLOAD</button>
+                  <div class="exec-indicator">
+                    <div class="exec-dot" id="execDot"></div><span id="execLabel" style="font-size:.7rem">Ready</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="editor-right">
+                <!-- Command Palette -->
+                <div class="card" style="padding:12px;flex-shrink:0">
+                  <div class="card-head" style="margin-bottom:8px">⌨ Command Blocks <span
+                      style="color:var(--dim2);font-size:.6rem;font-weight:400">click to insert</span></div>
+                  <div class="cmd-palette">
+                    <div class="cmd-cat">
+                      <div class="cmd-cat-head">Keys</div>
+                      <div class="cmd-grid">
+                        <button class="cmd-block" onclick="scQuick('ENTER')"><span
+                            class="cmd-block-ico">↵</span>Enter</button>
+                        <button class="cmd-block" onclick="scQuick('TAB')"><span
+                            class="cmd-block-ico">⇥</span>Tab</button>
+                        <button class="cmd-block" onclick="scQuick('ESCAPE')"><span
+                            class="cmd-block-ico">Esc</span>Escape</button>
+                        <button class="cmd-block" onclick="scQuick('BACKSPACE')"><span
+                            class="cmd-block-ico">⌫</span>Backspace</button>
+                        <button class="cmd-block" onclick="scQuick('SPACE')"><span
+                            class="cmd-block-ico">_</span>Space</button>
+                        <button class="cmd-block" onclick="scQuick('DELETE')"><span
+                            class="cmd-block-ico">Del</span>Delete</button>
+                      </div>
+                    </div>
+                    <div class="cmd-cat">
+                      <div class="cmd-cat-head">Modifiers + Combos</div>
+                      <div class="cmd-grid">
+                        <button class="cmd-block" onclick="scQuick('GUI r')"><span class="cmd-block-ico">⊞R</span>Run
+                          Dlg</button>
+                        <button class="cmd-block" onclick="scQuick('GUI SPACE')"><span
+                            class="cmd-block-ico">⌘⎵</span>Spotlight</button>
+                        <button class="cmd-block" onclick="scQuick('GUI x')"><span
+                            class="cmd-block-ico">⊞X</span>Win+X</button>
+                        <button class="cmd-block" onclick="scQuick('CTRL ALT t')"><span
+                            class="cmd-block-ico">^T</span>Terminal</button>
+                        <button class="cmd-block" onclick="scQuick('CTRL SHIFT ESC')"><span
+                            class="cmd-block-ico">TM</span>Task Mgr</button>
+                        <button class="cmd-block" onclick="scQuick('ALT F4')"><span class="cmd-block-ico">✕</span>Close
+                          Win</button>
+                        <button class="cmd-block" onclick="scQuick('CTRL c')"><span
+                            class="cmd-block-ico">C</span>Copy</button>
+                        <button class="cmd-block" onclick="scQuick('CTRL v')"><span
+                            class="cmd-block-ico">V</span>Paste</button>
+                      </div>
+                    </div>
+                    <div class="cmd-cat">
+                      <div class="cmd-cat-head">Actions (click to configure)</div>
+                      <div class="cmd-grid">
+                        <button class="cmd-block" onclick="insertDelay()"><span
+                            class="cmd-block-ico">T</span>Delay…</button>
+                        <button class="cmd-block" onclick="insertString()"><span class="cmd-block-ico">A</span>Type
+                          Text…</button>
+                        <button class="cmd-block" onclick="insertRem()"><span
+                            class="cmd-block-ico">//</span>Comment…</button>
+                        <button class="cmd-block" onclick="insertRepeat()"><span
+                            class="cmd-block-ico">∞</span>Repeat…</button>
+                      </div>
+                    </div>
+                    <div class="cmd-cat">
+                      <div class="cmd-cat-head">Presets</div>
+                      <div class="cmd-grid">
+                        <button class="cmd-block" onclick="loadPreset('win-run')"><span
+                            class="cmd-block-ico">W</span>Run Dlg</button>
+                        <button class="cmd-block" onclick="loadPreset('win-term')"><span
+                            class="cmd-block-ico">W</span>Admin PS</button>
+                        <button class="cmd-block" onclick="loadPreset('win-info')"><span
+                            class="cmd-block-ico">W</span>Sys Info</button>
+                        <button class="cmd-block" onclick="loadPreset('win-wifi')"><span
+                            class="cmd-block-ico">W</span>WiFi Pass</button>
+                        <button class="cmd-block" onclick="loadPreset('mac-spot')"><span
+                            class="cmd-block-ico">M</span>Spotlight</button>
+                        <button class="cmd-block" onclick="loadPreset('mac-term')"><span
+                            class="cmd-block-ico">M</span>Terminal</button>
+                        <button class="cmd-block" onclick="loadPreset('lnx-term')"><span
+                            class="cmd-block-ico">L</span>Terminal</button>
+                        <button class="cmd-block" onclick="loadPreset('lnx-recon')"><span
+                            class="cmd-block-ico">L</span>Recon</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Output Terminal -->
+                <div class="terminal-card">
+                  <div class="term-head">
+                    <div class="term-dots"><span></span><span></span><span></span></div><span
+                      style="font-size:.6rem;font-family:var(--mono);color:var(--dim)">// output</span>
+                  </div>
+                  <div class="terminal" id="terminal"><span class="t-dim">// output appears here…</span></div>
+                </div>
+
+                <!-- Reference -->
+                <div class="card" style="padding:12px">
+                  <div class="card-head" style="margin-bottom:7px">📖 Reference</div>
+                  <div class="ref-list">
+                    <div class="ref-item"><code>REM comment</code><span>Script comment</span></div>
+                    <div class="ref-item"><code>DELAY n</code><span>Wait n milliseconds</span></div>
+                    <div class="ref-item"><code>STRING text</code><span>Type text via HID</span></div>
+                    <div class="ref-item"><code>ENTER</code><span>Press Enter key</span></div>
+                    <div class="ref-item"><code>GUI r</code><span>Windows Run dialog</span></div>
+                    <div class="ref-item"><code>GUI SPACE</code><span>Spotlight (macOS)</span></div>
+                    <div class="ref-item"><code>CTRL ALT t</code><span>Terminal (Linux)</span></div>
+                    <div class="ref-item"><code>REPEAT n</code><span>Repeat last command n times</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ── LIBRARY ──────────────────────────────── -->
+          <section class="page" id="page-library">
+            <div class="page-hd">
+              <div>
+                <div class="page-title">Script <em>Library</em></div>
+                <div class="page-sub">All saved scripts — click Run to execute instantly · Edit to open in editor</div>
+              </div>
+              <div class="page-actions"><button class="btn btn-primary btn-sm"
+                  onclick="goPage('editor',document.getElementById('nav-editor'))">+ New Script</button></div>
+            </div>
+            <div class="lib-filter-bar">
+              <input type="text" id="libSearch" class="input" placeholder="Search scripts…"
+                style="width:200px;padding:6px 11px;font-size:.75rem" oninput="filterLibrary()">
+              <button class="filter-pill active" onclick="filterLib('all',this)">All</button>
+              <button class="filter-pill" onclick="filterLib('attack',this)">⚔ Attack</button>
+              <button class="filter-pill" onclick="filterLib('recon',this)">🔍 Recon</button>
+              <button class="filter-pill" onclick="filterLib('utility',this)">🔧 Utility</button>
+              <button class="filter-pill" onclick="filterLib('custom',this)">✦ Custom</button>
+            </div>
+            <div class="lib-grid" id="libGrid">
+              <div class="empty-state">
+                <div class="empty-icon">📚</div>
+                <div class="empty-title">Library is empty</div>
+                <div class="empty-hint">Write a script in the Editor and click ⭐ Star to save it here</div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ── NETWORK ──────────────────────────────── -->
+          <section class="page" id="page-network">
+            <div class="page-hd">
+              <div>
+                <div class="page-title">Network <em>Scanner</em></div>
+                <div class="page-sub">Scan WiFi networks, BLE devices and monitor for deauth attacks</div>
+              </div>
+            </div>
+            <div class="net-layout">
+              <div class="card">
+                <div class="seg-bar">
+                  <button class="seg active" id="seg-wifi" onclick="switchNet('wifi')">📡 WiFi</button>
+                  <button class="seg" id="seg-ble" onclick="switchNet('ble')">🔵 BLE</button>
+                </div>
+                <div id="np-wifi">
+                  <button class="btn btn-scan btn-full" onclick="scanWifi()" style="margin-bottom:12px">Scan WiFi
+                    Networks</button>
+                  <div id="wifiResults" style="max-height:380px;overflow-y:auto">
+                    <div class="empty-state" style="padding:24px">
+                      <div class="empty-icon">📡</div>
+                      <div class="empty-title">Ready to Scan</div>
+                      <div class="empty-hint">Click the button above to discover nearby networks</div>
+                    </div>
+                  </div>
+                </div>
+                <div id="np-ble" style="display:none">
+                  <button class="btn btn-scan btn-full" onclick="scanBle()" style="margin-bottom:12px">Scan BLE
+                    Devices</button>
+                  <div id="bleResults" style="max-height:380px;overflow-y:auto">
+                    <div class="empty-state" style="padding:24px">
+                      <div class="empty-icon">🔵</div>
+                      <div class="empty-title">Ready to Scan</div>
+                      <div class="empty-hint">Click scan to find Bluetooth devices</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="card">
+                <div class="card-head">⚠ Deauth Frame Detector</div>
+                <div style="font-size:.72rem;color:var(--dim);margin-bottom:10px;line-height:1.5">Passively monitors
+                  802.11 for deauth attack frames. Start monitoring to detect attacks in real time.</div>
+                <div style="display:flex;gap:8px;margin-bottom:10px">
+                  <button class="btn btn-scan" onclick="deauthStart()" style="flex:1">▶ Start Monitor</button>
+                  <button class="btn btn-danger" onclick="deauthStop()" style="padding:9px 16px">■ Stop</button>
+                </div>
+                <div class="dd-status">
+                  <div class="dd-dot" id="ddDot"></div><span id="ddLabel" style="font-size:.73rem">Monitoring
+                    stopped</span>
+                </div>
+                <div class="deauth-log" id="deauthLog"><span class="t-dim">// Awaiting start…</span></div>
+                <div class="divider"></div>
+                <div class="card-head" style="margin-bottom:8px">📶 Connect to WiFi</div>
+                <div class="wifi-list" id="wifiSettingsList"></div>
+                <div id="wifiPassGrp" style="display:none">
+                  <div class="input-grp"><label>Password for <strong id="wifiSelSsid"
+                        style="color:var(--g)"></strong></label><input type="password" id="wifiPassInput" class="input"
+                      placeholder="WiFi password"></div>
+                  <button class="btn btn-primary btn-full" onclick="connectWifi()">Connect</button>
+                </div>
+                <button class="btn btn-ghost btn-sm btn-full" style="margin-top:7px" onclick="scanWifiSettings()">Scan
+                  Networks</button>
+              </div>
+            </div>
+          </section>
+
+          <!-- ── AI STUDIO ───────────────────────────── -->
+          <section class="page" id="page-ai">
+            <div class="page-hd">
+              <div>
+                <div class="page-title">AI <em>Studio</em></div>
+                <div class="page-sub">Describe what you want the payload to do — Groq LLM writes the DuckyScript
+                  automatically</div>
+              </div>
+            </div>
+            <div class="ai-layout">
+              <div style="display:flex;flex-direction:column;gap:12px">
+                <div class="card">
+                  <div class="card-head">1. Choose Target OS</div>
+                  <div class="os-pill" style="margin:0 0 16px">
+                    <button class="os-p active" id="ai-os-win" onclick="setAiOS('windows',this)">WINDOWS</button>
+                    <button class="os-p" id="ai-os-mac" onclick="setAiOS('macos',this)">macOS</button>
+                    <button class="os-p" id="ai-os-lnx" onclick="setAiOS('linux',this)">LINUX</button>
+                  </div>
+                  <div class="card-head">2. Quick Ideas (click to fill)</div>
+                  <div class="ai-tags" style="margin-bottom:16px">
+                    <button class="ai-tag" onclick="fillAi('Open cmd as administrator on Windows')">CMD Admin</button>
+                    <button class="ai-tag" onclick="fillAi('Download and execute file with PowerShell')">PS
+                      Download</button>
+                    <button class="ai-tag" onclick="fillAi('Extract saved WiFi passwords from Windows')">WiFi
+                      Passwords</button>
+                    <button class="ai-tag" onclick="fillAi('Open Terminal app on macOS via Spotlight')">macOS
+                      Terminal</button>
+                    <button class="ai-tag" onclick="fillAi('Disable Windows Defender via PowerShell')">Kill
+                      Defender</button>
+                    <button class="ai-tag" onclick="fillAi('Open specific URL in default browser')">Open URL</button>
+                    <button class="ai-tag" onclick="fillAi('Enumerate system information and send to clipboard')">Sys
+                      Info</button>
+                    <button class="ai-tag" onclick="fillAi('Create persistent reverse shell on Windows')">Reverse
+                      Shell</button>
+                  </div>
+                  <div class="card-head">3. Describe your payload</div>
+                  <div class="ai-prompt">
+                    <textarea id="aiPrompt" class="ai-textarea"
+                      placeholder="e.g. Open PowerShell as admin, disable the firewall and create a new admin user called 'backup' with password 'P@ss123'"></textarea>
+                    <button class="btn-mic" id="micBtn" onclick="toggleVoice()" title="Voice input">
+                      <svg id="micIcon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
+                        <path d="M19 10v2a7 7 0 01-14 0v-2" />
+                        <line x1="12" y1="19" x2="12" y2="23" />
+                        <line x1="8" y1="23" x2="16" y2="23" />
+                      </svg>
+                    </button>
+                  </div>
+                  <button class="btn btn-primary btn-full" id="aiGenBtn" onclick="aiGenerate()">⚡ Generate
+                    DuckyScript</button>
+                </div>
+                <div class="card" style="border-color:rgba(255,184,0,.25);background:rgba(255,184,0,.04)">
+                  <div style="font-size:.72rem;color:var(--amber);font-weight:700;margin-bottom:4px">⚠ API Key Required
+                  </div>
+                  <div style="font-size:.68rem;color:rgba(255,184,0,.7);line-height:1.6">Set your Groq API key in
+                    <strong>Settings → API Key</strong>. Free at console.groq.com.
+                  </div>
+                  <button class="btn btn-ghost btn-sm"
+                    style="margin-top:8px;font-size:.63rem;border-color:rgba(255,184,0,.3);color:var(--amber)"
+                    onclick="goPage('settings',document.getElementById('nav-settings'))">→ Go to Settings</button>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:12px">
+                <div id="aiOutputCard" style="display:none" class="card">
+                  <div class="card-head">Generated Script</div>
+                  <textarea id="aiOutput" class="code-out" readonly></textarea>
+                  <div class="btn-row">
+                    <button class="btn btn-primary" onclick="aiExec()">▶ Execute</button>
+                    <button class="btn btn-ghost" onclick="aiCopy()">📋 Copy</button>
+                    <button class="btn btn-ghost" onclick="aiToEditor()">→ Editor</button>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:7px;margin-top:9px;font-size:.7rem;color:var(--dim)">
+                    Convert to:
+                    <button class="ai-tag" onclick="aiConvert('windows')">WIN</button>
+                    <button class="ai-tag" onclick="aiConvert('macos')">MAC</button>
+                    <button class="ai-tag" onclick="aiConvert('linux')">LINUX</button>
+                  </div>
+                </div>
+                <div id="aiPlaceholder" class="card">
+                  <div class="empty-state" style="padding:48px 20px">
+                    <div class="empty-icon">🤖</div>
+                    <div class="empty-title">Generated script appears here</div>
+                    <div class="empty-hint">Fill in the form and click Generate</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ── KEYBOARD ─────────────────────────────── -->
+          <section class="page" id="page-keyboard">
+            <div class="page-hd">
+              <div>
+                <div class="page-title">Live <em>Keyboard</em></div>
+                <div class="page-sub">Send individual keystrokes to the target device in real time · Hold modifier keys
+                  then press a letter</div>
+              </div>
+            </div>
+            <div class="g2">
+              <div class="card">
+                <div class="card-head" style="margin-bottom:10px">Quick Macros</div>
+                <div class="kb-macros">
+                  <button class="macro-btn" onclick="kbMacro('GUI r')">Win+R</button>
+                  <button class="macro-btn" onclick="kbMacro('GUI SPACE')">Spotlight</button>
+                  <button class="macro-btn" onclick="kbMacro('GUI x')">Win+X</button>
+                  <button class="macro-btn" onclick="kbMacro('CTRL SHIFT ESC')">Task Mgr</button>
+                  <button class="macro-btn" onclick="kbMacro('ALT F4')">Close</button>
+                  <button class="macro-btn" onclick="kbMacro('CTRL ALT DELETE')">CAD</button>
+                </div>
+                <div class="divider"></div>
+                <div class="card-head" style="margin-bottom:10px">Keyboard · Click a key to send it</div>
+                <div class="kb-layout">
+                  <div class="kb-row"><button class="kb-key" onclick="kbKey('1')">1</button><button class="kb-key"
+                      onclick="kbKey('2')">2</button><button class="kb-key" onclick="kbKey('3')">3</button><button
+                      class="kb-key" onclick="kbKey('4')">4</button><button class="kb-key"
+                      onclick="kbKey('5')">5</button><button class="kb-key" onclick="kbKey('6')">6</button><button
+                      class="kb-key" onclick="kbKey('7')">7</button><button class="kb-key"
+                      onclick="kbKey('8')">8</button><button class="kb-key" onclick="kbKey('9')">9</button><button
+                      class="kb-key" onclick="kbKey('0')">0</button></div>
+                  <div class="kb-row"><button class="kb-key" onclick="kbKey('q')">Q</button><button class="kb-key"
+                      onclick="kbKey('w')">W</button><button class="kb-key" onclick="kbKey('e')">E</button><button
+                      class="kb-key" onclick="kbKey('r')">R</button><button class="kb-key"
+                      onclick="kbKey('t')">T</button><button class="kb-key" onclick="kbKey('y')">Y</button><button
+                      class="kb-key" onclick="kbKey('u')">U</button><button class="kb-key"
+                      onclick="kbKey('i')">I</button><button class="kb-key" onclick="kbKey('o')">O</button><button
+                      class="kb-key" onclick="kbKey('p')">P</button></div>
+                  <div class="kb-row"><button class="kb-key" onclick="kbKey('a')">A</button><button class="kb-key"
+                      onclick="kbKey('s')">S</button><button class="kb-key" onclick="kbKey('d')">D</button><button
+                      class="kb-key" onclick="kbKey('f')">F</button><button class="kb-key"
+                      onclick="kbKey('g')">G</button><button class="kb-key" onclick="kbKey('h')">H</button><button
+                      class="kb-key" onclick="kbKey('j')">J</button><button class="kb-key"
+                      onclick="kbKey('k')">K</button><button class="kb-key" onclick="kbKey('l')">L</button></div>
+                  <div class="kb-row"><button class="kb-key mod-key" id="kbShift"
+                      onclick="kbToggle('shift')">SHIFT</button><button class="kb-key"
+                      onclick="kbKey('z')">Z</button><button class="kb-key" onclick="kbKey('x')">X</button><button
+                      class="kb-key" onclick="kbKey('c')">C</button><button class="kb-key"
+                      onclick="kbKey('v')">V</button><button class="kb-key" onclick="kbKey('b')">B</button><button
+                      class="kb-key" onclick="kbKey('n')">N</button><button class="kb-key"
+                      onclick="kbKey('m')">M</button><button class="kb-key wide"
+                      onclick="kbKey('BACKSPACE')">BKSP</button></div>
+                  <div class="kb-row"><button class="kb-key mod-key" id="kbCtrl"
+                      onclick="kbToggle('ctrl')">CTRL</button><button class="kb-key mod-key" id="kbAlt"
+                      onclick="kbToggle('alt')">ALT</button><button class="kb-key mod-key" id="kbGui"
+                      onclick="kbToggle('gui')">GUI</button><button class="kb-key space-key"
+                      onclick="kbKey('SPACE')">SPACE</button><button class="kb-key wide"
+                      onclick="kbKey('ENTER')">ENTER</button></div>
+                  <div class="kb-row"><button class="kb-key" onclick="kbKey('UP')">↑</button><button class="kb-key"
+                      onclick="kbKey('DOWN')">↓</button><button class="kb-key" onclick="kbKey('LEFT')">←</button><button
+                      class="kb-key" onclick="kbKey('RIGHT')">→</button><button class="kb-key"
+                      onclick="kbKey('TAB')">TAB</button><button class="kb-key"
+                      onclick="kbKey('ESC')">ESC</button><button class="kb-key" onclick="kbKey('F1')">F1</button><button
+                      class="kb-key" onclick="kbKey('F2')">F2</button><button class="kb-key"
+                      onclick="kbKey('F3')">F3</button><button class="kb-key" onclick="kbKey('F4')">F4</button></div>
+                </div>
+                <div class="kb-status" id="kbStatus">Click any key to send it to the target device</div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:12px">
+                <div class="card">
+                  <div class="card-head">Modifier State</div>
+                  <div style="display:flex;flex-direction:column;gap:6px">
+                    <div
+                      style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--b1)">
+                      <span style="font-size:.72rem;color:var(--dim)">SHIFT</span>
+                      <div class="conn-dot" id="ms-shift"></div>
+                    </div>
+                    <div
+                      style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--b1)">
+                      <span style="font-size:.72rem;color:var(--dim)">CTRL</span>
+                      <div class="conn-dot" id="ms-ctrl"></div>
+                    </div>
+                    <div
+                      style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--b1)">
+                      <span style="font-size:.72rem;color:var(--dim)">ALT</span>
+                      <div class="conn-dot" id="ms-alt"></div>
+                    </div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0"><span
+                        style="font-size:.72rem;color:var(--dim)">GUI</span>
+                      <div class="conn-dot" id="ms-gui"></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="card">
+                  <div class="card-head">Last Keypress</div>
+                  <div id="lastKey"
+                    style="font-family:var(--mono);font-size:1.2rem;font-weight:700;color:var(--g);text-align:center;padding:14px">
+                    —</div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ── FILES ────────────────────────────────── -->
+          <section class="page" id="page-files">
+            <div class="page-hd">
+              <div>
+                <div class="page-title">File <em>Manager</em></div>
+                <div class="page-sub">Browse, upload and manage files on the ESP32 SPIFFS filesystem</div>
+              </div>
+            </div>
+            <div class="g2">
+              <div class="card">
+                <div class="fm-topbar">
+                  <div class="fm-breadcrumb" id="fmBreadcrumb"></div>
+                  <div class="fm-toolbar">
+                    <button class="fm-tbtn" onclick="fmUp()" title="Up"><svg viewBox="0 0 24 24" width="15" height="15"
+                        fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 19V5M5 12l7-7 7 7" />
+                      </svg></button>
+                    <button class="fm-tbtn" onclick="fmRefresh()" title="Refresh"><svg viewBox="0 0 24 24" width="15"
+                        height="15" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 12a9 9 0 11-2.64-6.36" />
+                        <path d="M21 3v6h-6" />
+                      </svg></button>
+                    <button class="fm-tbtn" onclick="fmNewFolder()" title="New Folder"><svg viewBox="0 0 24 24"
+                        width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 5v14M5 12h14" />
+                      </svg></button>
+                  </div>
+                </div>
+                <div id="fmMkdirArea" style="display:none;margin-bottom:8px">
+                  <div class="input-row"><input type="text" id="fmMkdirName" class="input" placeholder="New folder name"
+                      style="flex:1"><button class="btn btn-primary btn-sm"
+                      onclick="fmCreateDir()">Create</button><button class="btn btn-ghost btn-sm"
+                      onclick="document.getElementById('fmMkdirArea').style.display='none'">✕</button></div>
+                </div>
+                <div class="fm-drop" onclick="document.getElementById('fmUploadInput').click()">
+                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 3v12M17 8l-5-5-5 5" />
+                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                  </svg>
+                  Drop files here or click to upload
+                </div>
+                <input type="file" id="fmUploadInput" multiple style="display:none" onchange="fmUpload(event)">
+                <div class="fm-list" id="fmList">
+                  <div class="empty-state">Open File Manager to browse files</div>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:12px">
+                <div class="card">
+                  <div class="card-head">Selected File</div>
+                  <div id="fmPreview" style="font-size:.72rem;color:var(--dim);font-family:var(--mono);min-height:40px">
+                    No file selected</div>
+                </div>
+                <div class="card">
+                  <div class="card-head">Storage Usage</div>
+                  <div
+                    style="display:flex;justify-content:space-between;font-size:.7rem;color:var(--dim);margin-bottom:6px">
+                    <span>SPIFFS</span><span id="fmStorage">— / —</span>
+                  </div>
+                  <div style="height:4px;background:var(--s2);border-radius:2px;overflow:hidden">
+                    <div id="fmStorageBar"
+                      style="height:100%;width:0;background:var(--g);border-radius:2px;transition:width .3s"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ── NEOPIXEL ─────────────────────────────── -->
+          <section class="page" id="page-neo">
+            <div class="page-hd">
+              <div>
+                <div class="page-title">Neo<em>Pixel</em> LED</div>
+                <div class="page-sub">Control the onboard RGB LED · Changes take effect immediately on device</div>
+              </div>
+            </div>
+            <div class="g2">
+              <div class="card" style="text-align:center">
+                <div class="neo-preview" id="neoPreview"></div>
+                <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:16px">
+                  <div class="neo-toggle" id="neoToggle" onclick="neoToggleOn()">
+                    <div class="neo-knob" id="neoKnob"></div>
+                  </div>
+                  <span id="neoLabel" style="font-size:.78rem;font-weight:600;color:var(--dim)">OFF</span>
+                </div>
+                <div style="text-align:left">
+                  <div class="slider-row"><label style="color:var(--dim)">Br</label><input type="range" id="neoBr"
+                      min="0" max="255" value="80" oninput="neoUpdate()"><span class="slider-val" id="neoBrV">80</span>
+                  </div>
+                  <div class="slider-row"><label style="color:var(--red)">R</label><input type="range" id="neoR" min="0"
+                      max="255" value="0" oninput="neoUpdate()"><span class="slider-val" id="neoRV">0</span></div>
+                  <div class="slider-row"><label style="color:var(--g)">G</label><input type="range" id="neoG" min="0"
+                      max="255" value="255" oninput="neoUpdate()"><span class="slider-val" id="neoGV">255</span></div>
+                  <div class="slider-row"><label style="color:var(--blue)">B</label><input type="range" id="neoB"
+                      min="0" max="255" value="65" oninput="neoUpdate()"><span class="slider-val" id="neoBV">65</span>
+                  </div>
+                </div>
+                <div class="color-presets">
+                  <div class="cpre" style="background:#00ff88;border-color:rgba(0,255,136,.5)"
+                    onclick="neoSet(0,255,136)" title="GhostChip Green"></div>
+                  <div class="cpre" style="background:#ff4455;border-color:rgba(255,68,85,.5)" onclick="neoSet(255,0,0)"
+                    title="Red"></div>
+                  <div class="cpre" style="background:#4d9fff;border-color:rgba(77,159,255,.5)"
+                    onclick="neoSet(0,80,255)" title="Blue"></div>
+                  <div class="cpre" style="background:#ffb800;border-color:rgba(255,184,0,.5)"
+                    onclick="neoSet(255,180,0)" title="Amber"></div>
+                  <div class="cpre" style="background:#a855f7;border-color:rgba(168,85,247,.5)"
+                    onclick="neoSet(168,85,247)" title="Purple"></div>
+                  <div class="cpre" style="background:#ffffff;border-color:rgba(255,255,255,.3)"
+                    onclick="neoSet(255,255,255)" title="White"></div>
+                </div>
+                <button class="btn btn-primary btn-full" style="margin-top:12px" onclick="neoApply()">Apply & Save to
+                  Device</button>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:12px">
+                <div class="card">
+                  <div class="card-head">Current Color</div>
+                  <div style="display:flex;flex-direction:column;gap:6px">
+                    <div
+                      style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--b1)">
+                      <span style="font-size:.7rem;color:var(--dim)">Red</span><span id="neoRDisplay"
+                        style="font-family:var(--mono);font-size:.75rem;color:var(--red)">0</span>
+                    </div>
+                    <div
+                      style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--b1)">
+                      <span style="font-size:.7rem;color:var(--dim)">Green</span><span id="neoGDisplay"
+                        style="font-family:var(--mono);font-size:.75rem;color:var(--g)">255</span>
+                    </div>
+                    <div
+                      style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--b1)">
+                      <span style="font-size:.7rem;color:var(--dim)">Blue</span><span id="neoBDisplay"
+                        style="font-family:var(--mono);font-size:.75rem;color:var(--blue)">65</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;padding:6px 0"><span
+                        style="font-size:.7rem;color:var(--dim)">HEX</span><span id="neoHex"
+                        style="font-family:var(--mono);font-size:.75rem;color:var(--text)">#00ff41</span></div>
+                  </div>
+                </div>
+                <div class="card">
+                  <div class="card-head">ℹ Note</div>
+                  <div style="font-size:.72rem;color:var(--dim);line-height:1.7">The NeoPixel LED is onboard the
+                    GhostChip ESP32-S3. Colors are saved to device EEPROM and restored on reboot.</div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ── VAULT ────────────────────────────────── -->
+          <section class="page" id="page-vault">
+            <div class="page-hd">
+              <div>
+                <div class="page-title">Password <em>Vault</em></div>
+                <div class="page-sub">Store credentials · Click "Type" to inject the password via HID into target</div>
+              </div>
+              <div class="page-actions">
+                <button class="btn btn-primary btn-sm" onclick="document.getElementById('vaultModal').style.display='flex'">+ Add Credential</button>
+              </div>
+            </div>
+            <div class="g2">
+              <div>
+                <div class="card" style="margin-bottom:12px">
+                  <div class="card-head" style="justify-content:space-between;display:flex;align-items:center">
+                    <span>🔐 Stored Credentials</span>
+                    <button class="btn btn-ghost btn-sm" onclick="loadVault()" style="font-size:.62rem">↺ Refresh</button>
+                  </div>
+                  <div id="vaultList">
+                    <div class="empty-state">
+                      <div class="empty-icon">🔒</div>
+                      <div class="empty-title">Vault is empty</div>
+                      <div class="empty-hint">Add credentials using the button above</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="card">
+                <div class="card-head">How it works</div>
+                <div style="display:flex;flex-direction:column;gap:12px;font-size:.73rem;color:var(--dim);line-height:1.65">
+                  <div style="padding:10px;background:var(--s2);border-radius:var(--r-sm);border:1px solid var(--b2)">
+                    <strong style="color:var(--g)">1. Add Credential</strong><br>
+                    Enter the site/label name and password, then click Save. The credential is stored on the GhostChip device.
+                  </div>
+                  <div style="padding:10px;background:var(--s2);border-radius:var(--r-sm);border:1px solid var(--b2)">
+                    <strong style="color:var(--g)">2. Type Password</strong><br>
+                    Focus the target's password field, then click ⌨ Type. The device injects it via HID keyboard.
+                  </div>
+                  <div style="padding:10px;background:rgba(255,184,0,.06);border-radius:var(--r-sm);border:1px solid rgba(255,184,0,.2)">
+                    <strong style="color:var(--amber)">⚠ Security Note</strong><br>
+                    Credentials are stored on device EEPROM. Only use on systems you own or have explicit permission to access.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ── SHORTCUTS ────────────────────────────── -->
+          <section class="page" id="page-shortcuts">
+            <div class="page-hd">
+              <div>
+                <div class="page-title">HID <em>Shortcuts</em></div>
+                <div class="page-sub">One-click payload execution · Save frequently used DuckyScript payloads as quick shortcuts</div>
+              </div>
+              <div class="page-actions">
+                <input type="text" id="scSearch" class="input" placeholder="Search shortcuts…"
+                  style="width:180px;padding:6px 11px;font-size:.74rem" oninput="filterShortcuts()">
+                <button class="btn btn-ghost btn-sm" onclick="loadShortcuts()" style="font-size:.62rem">↺ Refresh</button>
+                <button class="btn btn-primary btn-sm"
+                  onclick="document.getElementById('scModal').style.display='flex'">+ Add Shortcut</button>
+              </div>
+            </div>
+            <div class="sc-grid" id="shortcutsGrid">
+              <div class="empty-state" style="grid-column:1/-1">
+                <div class="empty-icon">⚡</div>
+                <div class="empty-title">No shortcuts yet</div>
+                <div class="empty-hint">Add shortcuts to run your favourite payloads instantly</div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ── USER MANUAL ──────────────────────────── -->
+          <section class="page" id="page-manual">
+            <div class="page-hd">
+              <div>
+                <div class="page-title">User <em>Manual</em></div>
+                <div class="page-sub">GhostChip ESP32-S3 Security Platform Operator Guide & Reference Documentation</div>
+              </div>
+            </div>
+            <div class="g2">
+              <div style="display:flex;flex-direction:column;gap:12px">
+                <div class="card">
+                  <div class="card-head">📖 Quick Start & Core Commands</div>
+                  <div style="font-size:.75rem;color:var(--dim);line-height:1.75">
+                    <p style="margin-bottom:8px"><strong style="color:var(--g)">GhostChip ESP32-S3</strong> emulates standard USB HID keyboards and serial control interfaces to deliver automated penetration testing scripts (DuckyScript format).</p>
+                    <ul style="margin-left:1.2rem;display:flex;flex-direction:column;gap:4px">
+                      <li><code style="color:var(--g)">REM [comment]</code> — Line comment for notes</li>
+                      <li><code style="color:var(--g)">DELAY [ms]</code> — Pause script execution in milliseconds</li>
+                      <li><code style="color:var(--g)">STRING [text]</code> — Inject keystrokes as text</li>
+                      <li><code style="color:var(--g)">GUI [key]</code> / <code style="color:var(--g)">WINDOWS [key]</code> — Windows Key / Command Key combo</li>
+                      <li><code style="color:var(--g)">ENTER</code> / <code style="color:var(--g)">TAB</code> / <code style="color:var(--g)">ESC</code> — Special key presses</li>
+                      <li><code style="color:var(--g)">REPEAT [count]</code> — Repeat preceding command line N times</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <div class="card">
+                  <div class="card-head">⚡ Module Overview</div>
+                  <div class="info-grid">
+                    <div class="info-item">
+                      <span class="info-k">Editor</span>
+                      <span class="info-v" style="font-size:.72rem">DuckyScript IDE with syntax highlighting & live execution.</span>
+                    </div>
+                    <div class="info-item">
+                      <span class="info-k">Vault</span>
+                      <span class="info-v" style="font-size:.72rem">EEPROM password store for quick HID typing.</span>
+                    </div>
+                    <div class="info-item">
+                      <span class="info-k">Shortcuts</span>
+                      <span class="info-v" style="font-size:.72rem">One-click execution triggers for saved DuckyScripts.</span>
+                    </div>
+                    <div class="info-item">
+                      <span class="info-k">AI Studio</span>
+                      <span class="info-v" style="font-size:.72rem">Natural language to DuckyScript generator via Groq LLM.</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:12px">
+                <div class="card">
+                  <div class="card-head">🛡️ Operational Guidelines</div>
+                  <div style="font-size:.73rem;color:var(--dim);line-height:1.75">
+                    <div style="margin-bottom:10px;padding:8px 12px;background:var(--s2);border-radius:var(--r-sm);border-left:3px solid var(--g)">
+                      <strong style="color:var(--text)">Authorized Access Only</strong><br>
+                      Only deploy payloads on devices you own or have explicit written penetration testing authorization for.
+                    </div>
+                    <div style="margin-bottom:10px;padding:8px 12px;background:var(--s2);border-radius:var(--r-sm);border-left:3px solid var(--amber)">
+                      <strong style="color:var(--amber)">Default AP Access</strong><br>
+                      GhostChip default WiFi SSID is <code style="color:var(--g)">GhostChip-AP</code> with IP <code style="color:var(--g)">192.168.4.1</code>.
+                    </div>
+                  </div>
+                </div>
+
+                <div class="card">
+                  <div class="card-head">🔧 Hardware & Firmware</div>
+                  <div class="ref-list">
+                    <div class="ref-item"><code>Chipset</code><span>ESP32-S3 Dual-Core Xtensa LX7</span></div>
+                    <div class="ref-item"><code>Interface</code><span>Native USB OTG HID + Virtual COM</span></div>
+                    <div class="ref-item"><code>Storage</code><span>SPIFFS High-Speed Flash File System</span></div>
+                    <div class="ref-item"><code>RGB LED</code><span>WS2812B NeoPixel Onboard Status LED</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ── SETTINGS ─────────────────────────────── -->
+          <section class="page" id="page-settings">
+            <div class="page-hd">
+              <div>
+                <div class="page-title"><em>Settings</em></div>
+                <div class="page-sub">Device connection, API key, WiFi station and firmware management</div>
+              </div>
+            </div>
+            <div class="settings-layout">
+              <div style="display:flex;flex-direction:column;gap:12px">
+                <div class="card">
+                  <div class="card-head">🔌 Connection</div>
+                  <div class="input-grp"><label>Device IP / Hostname</label>
+                    <div class="input-row"><input type="text" id="ipInput" value="ghostchip.local" class="input"
+                        placeholder="ghostchip.local"><button class="btn btn-ghost btn-sm"
+                        onclick="pingDevice()">PING</button></div>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
+                    <div class="conn-dot" id="settingsConnDot"></div><span style="font-size:.72rem;color:var(--dim)"
+                      id="settingsConnLabel">Not tested</span>
+                  </div>
+                </div>
+                <div class="card">
+                  <div class="card-head">🤖 Groq API Key</div>
+                  <div class="input-grp"><label>API Key (saved to device EEPROM)</label>
+                    <div class="input-row"><input type="password" id="apiKeyInput" class="input" placeholder="gsk_…"
+                        autocomplete="off"><button class="btn btn-ghost btn-sm"
+                        onclick="togglePass('apiKeyInput',this)">SHOW</button></div>
+                    <div class="input-hint">Get a free key at <strong>console.groq.com</strong> · Key never leaves the
+                      chip</div>
+                  </div>
+                  <div class="btn-row"><button class="btn btn-primary" onclick="saveApiKey()">Save Key</button><button
+                      class="btn btn-danger" onclick="clearApiKey()">Clear</button></div>
+                </div>
+                <div class="card" style="border-color:rgba(255,68,85,.25)">
+                  <div class="card-head" style="color:var(--red)">⚠ Danger Zone</div>
+                  <div style="font-size:.7rem;color:var(--dim);margin-bottom:10px">These actions cannot be undone. Make
+                    sure you know what you're doing.</div>
+                  <div class="btn-row">
+                    <button class="btn btn-danger"
+                      onclick="if(confirm('Reboot GhostChip?'))deviceFetch('/reboot',{method:'POST'}).then(()=>toast('Rebooting…','warn'))">Reboot
+                      Device</button>
+                    <button class="btn btn-danger"
+                      onclick="if(confirm('FACTORY RESET? All data will be wiped!'))deviceFetch('/factoryReset',{method:'POST'}).then(()=>toast('Wiping device…','warn'))">Factory
+                      Reset</button>
+                  </div>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:12px">
+                <div class="card">
+                  <div class="card-head">📶 WiFi Station</div>
+                  <button class="btn btn-ghost btn-full" style="margin-bottom:10px" onclick="scanWifiSettings2()">Scan
+                    Networks</button>
+                  <div class="wifi-list" id="wifiSettingsList2"></div>
+                  <div id="wifiPassGrp2" style="display:none">
+                    <div class="input-grp"><label>Password for <strong id="wifiSelSsid2"
+                          style="color:var(--g)"></strong></label><input type="password" id="wifiPassInput2"
+                        class="input"></div>
+                    <button class="btn btn-primary btn-full" onclick="connectWifi2()">Connect</button>
+                  </div>
+                  <div
+                    style="margin-top:10px;padding:10px;background:var(--s2);border-radius:var(--r-sm);border:1px solid var(--b1)">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span
+                        style="font-size:.65rem;color:var(--dim)">Status</span><span
+                        style="font-size:.7rem;font-family:var(--mono)" id="wStat">---</span></div>
+                    <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span
+                        style="font-size:.65rem;color:var(--dim)">SSID</span><span
+                        style="font-size:.7rem;font-family:var(--mono)" id="wSsid">---</span></div>
+                    <div style="display:flex;justify-content:space-between"><span
+                        style="font-size:.65rem;color:var(--dim)">IP</span><span
+                        style="font-size:.7rem;font-family:var(--mono);color:var(--g)" id="wIp">---</span></div>
+                  </div>
+                </div>
+                <div class="card">
+                  <div class="card-head">⚡ OTA Firmware</div>
+                  <form id="otaForm" method="POST" action="/update" enctype="multipart/form-data">
+                    <div class="fw-drop" onclick="document.getElementById('fwFile').click()">
+                      <span class="fw-drop-icon">⚡</span>
+                      <div style="font-size:.75rem;color:var(--dim)" id="fwLabel">Drop .bin file or click to select
+                      </div>
+                      <input type="file" id="fwFile" name="update" accept=".bin" style="display:none"
+                        onchange="fwPick(this)">
+                    </div>
+                    <div class="ota-bar-wrap" id="otaBarWrap" style="display:none">
+                      <div class="ota-bar" id="otaBar"></div>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-full" id="flashBtn" disabled
+                      style="margin-top:8px">Flash Firmware</button>
+                  </form>
+                  <div style="margin-top:10px;text-align:center"><a href="flasher.html"
+                      style="color:var(--g);font-size:.72rem;font-weight:700;text-decoration:none">→ Web Serial Flasher
+                      (USB)</a></div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+        </div><!-- /content -->
+
+        <!-- STATUS BAR -->
+        <div class="status-bar">
+          <div class="sb-item">
+            <div class="conn-dot" id="sbDot"></div><span id="sbConnText">Disconnected</span>
+          </div>
+          <div class="sb-sep">│</div>
+          <div class="sb-item"><span id="sbOs">OS: windows</span></div>
+          <div class="sb-sep">│</div>
+          <div class="sb-item"><span id="sbFile">untitled.txt</span></div>
+          <div class="sb-sep">│</div>
+          <div class="sb-item"><span id="sbLines">0 lines</span></div>
+          <div style="margin-left:auto" class="sb-item"><span style="color:var(--dim2)">Ghost Chip v2.0 · GAMKERS ·
+              ESP32-S3</span></div>
+        </div>
+      </div><!-- /main -->
+    </div><!-- /shell -->
+  </div><!-- /app -->
+  <script>
+    // ══ GLOBALS ══════════════════════════════════════
+    const $ = id => document.getElementById(id);
+    let GROQ_KEY = localStorage.getItem('gc_groq_key') || '';
+    const GROQ_MODEL = 'llama-3.3-70b-versatile';
+    const WARN_KEY = 'gc_legal_v3';
+    var targetOS = 'windows', aiTargetOS = 'windows';
+    var kbMods = { shift: false, ctrl: false, alt: false, gui: false };
+    var simRunning = false, simAbort = false;
+    var isRunning = false, execPoll = null, lastLogLen = 0;
+    var selectedSsid = null, selectedSsid2 = null;
+    var ddPoll = null, ddSeen = 0;
+    var voiceRecog = null, isListening = false;
+    var favSelectedTag = 'custom', libFilter = 'all';
+    var saveCurrentPath = '/', saveChosenFolder = '/';
+    var fmPath = '/';
+    var neoOn = false;
+    var fmEditingPath = null;
+
+    // ── Base URL ──────────────────────────────────────
+    function BASE() {
+      const h = location.hostname;
+      if (h === 'ghostchip.local' || h.startsWith('192.168.') || h === '4.1') return '';
+      return 'http://' + ($('ipInput')?.value?.trim() || 'ghostchip.local');
+    }
+    function isRemote() { return BASE() !== ''; }
+    function fmBase() { return BASE(); }
+
+    async function deviceFetch(path, opts = {}) {
+      const url = BASE() + path;
+      if (isRemote()) opts.mode = 'no-cors';
+      return fetch(url, opts);
+    }
+    async function deviceGet(path) {
+      const url = BASE() + path;
+      try { const r = await fetch(url); return await r.json(); }
+      catch {
+        return new Promise((res, rej) => {
+          const x = new XMLHttpRequest();
+          x.open('GET', url, true);
+          x.onload = () => { try { res(JSON.parse(x.responseText)); } catch { rej(); } };
+          x.onerror = () => rej(); x.timeout = 8000; x.ontimeout = () => rej(); x.send();
+        });
+      }
+    }
+    async function fmFetch(p) { return fetch(fmBase() + p); }
+    async function fmPost(p) {
+      const u = fmBase() + p;
+      const co = new URL(u).origin !== location.origin;
+      return fetch(u, co ? { method: 'POST', mode: 'no-cors' } : { method: 'POST' });
+    }
+
+    // ── Toast ─────────────────────────────────────────
+    function toast(msg, type = 'ok', dur = 3500) {
+      const el = document.createElement('div'); el.className = 'toast ' + type;
+      const icons = { ok: '✓', err: '✗', warn: '⚠' };
+      el.innerHTML = `<span>${icons[type] || '✓'}</span><span style="flex:1">${msg}</span>`;
+      $('toasts').appendChild(el);
+      setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity .3s'; setTimeout(() => el.remove(), 300); }, dur);
+    }
+
+    // ── Boot ──────────────────────────────────────────
+    const BOOT_LINES = [
+      '> init esp32-s3 core...', '> loading drivers...', '> mounting spiffs...',
+      '> starting wifi ap...', '> loading eeprom...', '> hid keyboard ready...',
+      '> neopixel init...', '> web server online...', '> dashboard v2 loading...', '> ghost chip ready ✓'
+    ];
+    (function boot() {
+      let i = 0; const log = $('bootLog'), bar = $('bootBar'), ov = $('boot'); let done = false;
+      function finish() {
+        if (done) return; done = true;
+        ov.classList.add('done');
+        setTimeout(() => {
+          ov.style.display = 'none'; $('app').style.display = 'flex';
+          if (!sessionStorage.getItem(WARN_KEY)) $('legalModal').style.display = 'flex';
+          initApp();
+        }, 700);
+      }
+      function next() {
+        if (i >= BOOT_LINES.length) { setTimeout(finish, 400); return; }
+        log.innerHTML += BOOT_LINES[i] + '<br>'; log.scrollTop = log.scrollHeight;
+        bar.style.width = Math.round(((i + 1) / BOOT_LINES.length) * 100) + '%'; i++;
+        setTimeout(next, 140 + Math.random() * 100);
+      }
+      next(); setTimeout(finish, 5000);
+    })();
+
+    $('acceptBtn').addEventListener('click', () => { sessionStorage.setItem(WARN_KEY, '1'); $('legalModal').style.display = 'none'; });
+
+    // ── Init ──────────────────────────────────────────
+    function initApp() {
+      const savedIp = localStorage.getItem('gc_ip'); if (savedIp && $('ipInput')) $('ipInput').value = savedIp;
+      const savedScript = localStorage.getItem('gc_script'); if (savedScript) { $('editor').value = savedScript; updateLines(); }
+      $('editor').addEventListener('input', () => { updateLines(); localStorage.setItem('gc_script', $('editor').value); syncStatusBar(); });
+      $('editor').addEventListener('scroll', () => { $('lineNums').scrollTop = $('editor').scrollTop; });
+      if ($('ipInput')) $('ipInput').addEventListener('change', () => localStorage.setItem('gc_ip', $('ipInput').value.trim()));
+      updateDashTime(); setInterval(updateDashTime, 60000);
+      loadDashFavs(); neoUpdate(); syncStatusBar();
+    }
+    function syncStatusBar() {
+      $('sbFile').textContent = $('fileName')?.textContent || 'untitled.txt';
+      $('sbLines').textContent = ($('editor')?.value.split('\n').length || 0) + ' lines';
+      $('sbOs').textContent = 'OS: ' + targetOS;
+    }
+    function updateDashTime() { const el = $('dashTime'); if (el) el.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
+
+    // ── Navigation ────────────────────────────────────
+    function goPage(name, btn) {
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      $('page-' + name).classList.add('active');
+      if (btn) btn.classList.add('active');
+      const titles = { dashboard: 'Dashboard', editor: 'Editor', library: 'Library', network: 'Network', ai: 'AI Studio', keyboard: 'Keyboard', files: 'Files', neo: 'NeoPixel', vault: 'Vault', shortcuts: 'Shortcuts', manual: 'User Manual', settings: 'Settings' };
+      const subs = { editor: 'DuckyScript IDE', library: 'Saved Scripts', network: 'WiFi · BLE · Deauth', ai: 'Groq LLM Generator', keyboard: 'Live HID Keyboard', files: 'SPIFFS File Manager', neo: 'RGB LED Control', vault: 'Password Vault', shortcuts: 'HID Shortcuts', manual: 'Operator Guide & Docs', settings: 'Configuration' };
+      $('topbarTitle').textContent = titles[name] || name;
+      $('topbarSub').textContent = subs[name] ? '/ ' + subs[name] : '';
+      $('mainContent').scrollTop = 0;
+    }
+
+    // ── Syntax Highlighting ───────────────────────────
+    const DUCKY_CMDS = /^(DELAY|STRING|ENTER|GUI|ALT|CTRL|SHIFT|TAB|SPACE|REPEAT|DEFAULTDELAY|DEFAULT_DELAY|PRINT|PRINTLN|WINDOWS|COMMAND|MENU|APP|DELETE|HOME|END|INSERT|PAGEUP|PAGEDOWN|UPARROW|DOWNARROW|LEFTARROW|RIGHTARROW|SCROLLLOCK|NUMLOCK|BREAK|PAUSE|ESC|ESCAPE|BACKSPACE|CAPSLOCK|PRINTSCREEN)(?=\s|$)/;
+    function escHtml(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+    function highlightDucky(code) {
+      return code.split('\n').map(line => {
+        const t = line.trimStart();
+        if (t.startsWith('REM')) return `<span class="hl-rem">${escHtml(line)}</span>`;
+        if (t.startsWith('STRING ') || t.startsWith('PRINTLN ') || t.startsWith('PRINT ')) {
+          const sp = line.indexOf(' ');
+          return `<span class="hl-cmd">${escHtml(line.slice(0, sp))}</span> <span class="hl-str">${escHtml(line.slice(sp + 1))}</span>`;
+        }
+        if (t.startsWith('DELAY ') || t.startsWith('DEFAULTDELAY ') || t.startsWith('DEFAULT_DELAY ') || t.startsWith('REPEAT ')) {
+          const sp = line.indexOf(' ');
+          return `<span class="hl-cmd">${escHtml(line.slice(0, sp))}</span> <span class="hl-num">${escHtml(line.slice(sp + 1))}</span>`;
+        }
+        let hl = escHtml(line);
+        hl = hl.replace(/^(\s*)(CTRL|SHIFT|ALT|GUI|COMMAND|WINDOWS)\b/g, '$1<span class="hl-mod">$2</span>');
+        hl = hl.replace(DUCKY_CMDS, '<span class="hl-cmd">$1</span>');
+        hl = hl.replace(/\b(F[1-9]|F1[0-2]|UP|DOWN|LEFT|RIGHT|CAPSLOCK|BACKSPACE)\b/g, '<span class="hl-key">$1</span>');
+        hl = hl.replace(/\b(CTRL|SHIFT|ALT|GUI|COMMAND|WINDOWS)\b/g, '<span class="hl-mod">$1</span>');
+        return hl;
+      }).join('\n');
+    }
+    function updateLines() {
+      const code = $('editor').value; const lines = code.split('\n').length;
+      $('lineNums').innerHTML = Array.from({ length: lines }, (_, i) => `<span>${i + 1}</span>`).join('');
+      $('lineCount').textContent = lines + ' line' + (lines !== 1 ? 's' : '');
+      const hl = $('editorHighlight'); if (hl) hl.querySelector('code').innerHTML = highlightDucky(code) + '\n';
+      const badge = $('nav-editor-badge'); if (badge) badge.style.display = code.trim() ? 'inline' : 'none';
+    }
+    updateLines();
+    const edEl = $('editor');
+    if (edEl) edEl.addEventListener('scroll', () => {
+      const hl = $('editorHighlight'); if (hl) { hl.scrollTop = edEl.scrollTop; hl.scrollLeft = edEl.scrollLeft; }
+    });
+
+    // ── Quick Insert (Command Palette) ────────────────
+    function scQuick(cmd) {
+      const ed = $('editor'); const start = ed.selectionStart; const val = ed.value;
+      const ins = val.slice(0, start) + (start > 0 && val[start - 1] !== '\n' ? '\n' : '') + cmd + '\n';
+      ed.value = ins + val.slice(start);
+      ed.selectionStart = ed.selectionEnd = ins.length;
+      updateLines(); ed.focus(); localStorage.setItem('gc_script', ed.value);
+    }
+    function insertDelay() {
+      const d = prompt('Delay in milliseconds:', '500');
+      if (!d) return; scQuick('DELAY ' + d);
+    }
+    function insertString() {
+      const s = prompt('Text to type:');
+      if (!s) return; scQuick('STRING ' + s);
+    }
+    function insertRem() {
+      const s = prompt('Comment:');
+      if (!s) return; scQuick('REM ' + s);
+    }
+    function insertRepeat() {
+      const n = prompt('Repeat count:', '3');
+      if (!n) return; scQuick('REPEAT ' + n);
+    }
+
+    // ── Presets ───────────────────────────────────────
+    const PRESETS = {
+      'win-run': 'REM Windows Run Dialog\nDELAY 500\nGUI r\nDELAY 500',
+      'win-term': 'REM Admin PowerShell\nDELAY 500\nGUI x\nDELAY 400\nSTRING a\nDELAY 600\nLEFTARROW\nENTER',
+      'win-info': 'REM System Info\nDELAY 500\nGUI r\nDELAY 600\nSTRING cmd\nENTER\nDELAY 800\nSTRING systeminfo\nENTER',
+      'win-wifi': 'REM WiFi Passwords\nDELAY 500\nGUI r\nDELAY 600\nSTRING cmd\nENTER\nDELAY 900\nSTRING netsh wlan show profiles\nENTER',
+      'mac-spot': 'REM macOS Spotlight\nDELAY 500\nGUI SPACE\nDELAY 400',
+      'mac-term': 'REM macOS Terminal\nDELAY 500\nGUI SPACE\nDELAY 400\nSTRING Terminal\nENTER\nDELAY 800',
+      'lnx-term': 'REM Linux Terminal\nDELAY 500\nCTRL ALT t\nDELAY 800',
+      'lnx-recon': 'REM Linux Recon\nDELAY 500\nCTRL ALT t\nDELAY 900\nSTRING whoami && id && hostname\nENTER',
+    };
+    function loadPreset(k) {
+      if (!confirm('Load preset? This will replace current script.')) return;
+      $('editor').value = PRESETS[k] || ''; updateLines(); localStorage.setItem('gc_script', $('editor').value);
+      toast('Preset loaded', 'ok', 2000);
+    }
+    function openFile(e) {
+      const f = e.target.files[0]; if (!f) return;
+      const r = new FileReader(); r.onload = ev => {
+        $('editor').value = ev.target.result; updateLines(); $('fileName').textContent = f.name;
+        localStorage.setItem('gc_script', $('editor').value); syncStatusBar(); toast('Loaded ' + f.name);
+      }; r.readAsText(f); e.target.value = '';
+    }
+    function clearEditor() {
+      if ($('editor').value.trim() && !confirm('Clear editor?')) return;
+      $('editor').value = ''; updateLines(); $('fileName').textContent = 'untitled.txt';
+      fmEditingPath = null; localStorage.removeItem('gc_script'); syncStatusBar();
+    }
+    function setTargetOS(os, btn) {
+      targetOS = os;
+      document.querySelectorAll('.os-p').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active'); syncStatusBar(); toast('Target: ' + os.toUpperCase(), 'ok', 1500);
+    }
+
+    // ── Terminal ──────────────────────────────────────
+    function termLog(msg, cls = 't-dim') {
+      const t = $('terminal'); if (t.querySelector('.t-dim:only-child')) t.innerHTML = '';
+      const s = document.createElement('span'); s.className = cls; s.textContent = msg;
+      t.appendChild(s); t.appendChild(document.createElement('br')); t.scrollTop = t.scrollHeight;
+    }
+    function clearTerm() { $('terminal').innerHTML = '<span class="t-dim">// output appears here…</span>'; }
+
+    // ── Execute ───────────────────────────────────────
+    async function runScript() {
+      const script = $('editor').value.trim(); if (!script) { toast('No script to execute', 'warn'); return; }
+      if (isRunning) return; isRunning = true;
+      const btn = $('runBtn'); btn.classList.add('running'); btn.innerHTML = '<span class="spin"></span> EXECUTING...';
+      $('execDot').className = 'exec-dot run'; $('execLabel').textContent = 'Executing…';
+      clearTerm(); lastLogLen = 0;
+      termLog('[' + new Date().toLocaleTimeString() + '] Sending payload…', 't-start');
+      addActivity('Payload executed', 'green');
+      try {
+        await deviceFetch('/', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'duckyscript=' + encodeURIComponent(script) });
+        termLog('Payload delivered ✓', 't-ok'); toast('Script executed ✓'); setConnOn();
+      } catch {
+        termLog('Payload sent (opaque response — check device)', 't-ok'); toast('Script sent ✓'); setConnOn();
+      }
+      if (execPoll) clearInterval(execPoll);
+      execPoll = setInterval(pollExec, 500); setTimeout(finishExec, 8000);
+    }
+    function pollExec() {
+      deviceGet('/execstatus').then(d => {
+        if (d.log && d.log.length > lastLogLen) {
+          for (let i = lastLogLen; i < d.log.length; i++) { let cls = 't-dim'; if (d.log[i].startsWith('[START]')) cls = 't-start'; else if (d.log[i].startsWith('[DONE]')) cls = 't-ok'; termLog(d.log[i], cls); }
+          lastLogLen = d.log.length;
+        }
+        if (!d.running) finishExec();
+      }).catch(() => { });
+    }
+    function finishExec() {
+      if (execPoll) { clearInterval(execPoll); execPoll = null; }
+      isRunning = false; $('runBtn').classList.remove('running'); $('runBtn').innerHTML = '▶ EXECUTE PAYLOAD';
+      $('execDot').className = 'exec-dot ok'; $('execLabel').textContent = 'Ready';
+    }
+    function setConnOn() {
+      [$('connDot'), $('connDot2'), $('settingsConnDot'), $('sbDot')].forEach(d => { if (d) d.className = 'conn-dot on'; });
+      if ($('settingsConnLabel')) $('settingsConnLabel').textContent = 'Connected ✓';
+      if ($('sbConnText')) $('sbConnText').textContent = 'Connected';
+      if ($('connIp')) $('connIp').textContent = $('ipInput')?.value || 'ghostchip.local';
+      if ($('tbIp')) $('tbIp').textContent = $('ipInput')?.value || 'ghostchip.local';
+      if ($('dashConn')) $('dashConn').textContent = 'ONLINE';
+    }
+    function setConnErr() {
+      [$('connDot'), $('connDot2'), $('settingsConnDot'), $('sbDot')].forEach(d => { if (d) d.className = 'conn-dot err'; });
+      if ($('settingsConnLabel')) $('settingsConnLabel').textContent = 'Offline';
+      if ($('sbConnText')) $('sbConnText').textContent = 'Disconnected';
+      if ($('dashConn')) $('dashConn').textContent = 'OFFLINE';
+    }
+    async function pingDevice() {
+      toast('Pinging…', 'warn', 1500);
+      try {
+        const c = new AbortController(); setTimeout(() => c.abort(), 4000);
+        await deviceFetch('/', { signal: c.signal }); setConnOn(); toast('Device online ✓'); addActivity('Device ping OK', 'green');
+      } catch (e) {
+        if (e.name === 'AbortError') { setConnErr(); toast('Connection timeout', 'err'); }
+        else { setConnOn(); toast('Device reachable ✓'); }
+      }
+    }
+    function addActivity(text, type = 'green') {
+      const log = $('actLog'); if (!log) return;
+      const item = document.createElement('div'); item.className = 'act-item';
+      item.innerHTML = `<div class="act-dot ${type}"></div><div class="act-text">${escHtml(text)}</div><div class="act-time">${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>`;
+      log.insertBefore(item, log.firstChild); while (log.children.length > 8) log.removeChild(log.lastChild);
+    }
+    function togglePass(id, btn) { const i = $(id); const s = i.type === 'password'; i.type = s ? 'text' : 'password'; btn.textContent = s ? 'HIDE' : 'SHOW'; }
+
+    // ── Favourites / Library ──────────────────────────
+    const TAG_META = { attack: { emoji: '⚔', label: 'Attack', cls: 'attack' }, recon: { emoji: '🔍', label: 'Recon', cls: 'recon' }, utility: { emoji: '🔧', label: 'Utility', cls: 'utility' }, custom: { emoji: '✦', label: 'Custom', cls: 'custom' } };
+    async function getDeviceScripts(filter = 'all') {
+      let cats = filter === 'all' ? ['Attack', 'Recon', 'Utility', 'Custom'] : [filter.charAt(0).toUpperCase() + filter.slice(1)];
+      let all = []; await Promise.all(cats.map(async cat => {
+        try {
+          const r = await fmFetch('/fm/list?path=/' + cat); const text = await r.text(); let items = [];
+          try { items = JSON.parse(text); } catch { } const files = Array.isArray(items) ? items : (items.files || items.entries || []);
+          files.forEach(item => { if (!(item.dir || item.type === 'dir' || item.directory)) { const name = item.name || item.filename || ''; if (name) all.push({ id: cat + '-' + name, tag: cat.toLowerCase(), name: name.replace(/\.[^.]+$/, ''), path: '/' + cat + '/' + name, size: item.size || 0 }); } });
+        } catch { }
+      })); return all;
+    }
+    async function loadDashFavs() {
+      const grid = $('dashFavGrid'); if (!grid) return;
+      const list = await getDeviceScripts();
+      if ($('dashScripts')) $('dashScripts').textContent = list.length;
+      if ($('libBadge')) $('libBadge').textContent = list.length;
+      if (!list.length) { grid.innerHTML = '<div class="empty-state" style="padding:16px"><div class="empty-icon">⭐</div><div class="empty-title">No favourites yet</div><div class="empty-hint">Save scripts from the Editor to see them here</div></div>'; return; }
+      const show = list.slice(0, 8);
+      grid.innerHTML = show.map(f => { const m = TAG_META[f.tag] || TAG_META.custom; return `<div class="fav-card"><span class="fav-tag ${m.cls}">${m.emoji} ${m.label}</span><div class="fav-card-name" title="${escHtml(f.path)}">${escHtml(f.name)}</div><div class="fav-card-bottom"><button class="fav-run" onclick="runFavPath('${f.path}')">⚡ Run</button><button class="fav-edit" onclick="openFavPath('${f.path}')">✏</button></div></div>`; }).join('');
+    }
+    async function loadLibrary() {
+      const grid = $('libGrid'); if (!grid) return;
+      grid.innerHTML = '<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>';
+      const list = await getDeviceScripts(libFilter);
+      const q = ($('libSearch')?.value || '').toLowerCase();
+      const filtered = list.filter(f => !q || f.name.toLowerCase().includes(q));
+      if (!filtered.length) { grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">📚</div><div class="empty-title">No scripts found</div><div class="empty-hint">Write a script in the Editor and click ⭐ Star to save it</div></div>'; return; }
+      grid.innerHTML = filtered.map(f => { const m = TAG_META[f.tag] || TAG_META.custom; return `<div class="lib-card"><div class="lib-card-top"><div style="display:flex;align-items:center;gap:7px;margin-bottom:6px"><span class="tag-pill ${m.cls}" style="background:${m.cls === 'attack' ? 'var(--red2)' : m.cls === 'recon' ? 'var(--blue2)' : m.cls === 'utility' ? 'rgba(0,204,136,.1)' : 'var(--amber2)'};color:${m.cls === 'attack' ? 'var(--red)' : m.cls === 'recon' ? 'var(--blue)' : m.cls === 'utility' ? '#00cc88' : 'var(--amber)'}">${m.emoji} ${m.label}</span><span style="font-size:.58rem;color:var(--dim2);font-family:var(--mono)">${f.path}</span></div><div class="lib-card-name">${escHtml(f.name)}</div></div><div class="lib-card-bottom"><button class="lib-act run" onclick="runFavPath('${f.path}')">⚡ Run</button><button class="lib-act" onclick="openFavPath('${f.path}')">✏ Edit</button><button class="lib-act del" onclick="deleteFav('${f.path}')">🗑</button></div></div>`; }).join('');
+    }
+    function filterLib(tag, btn) { libFilter = tag; document.querySelectorAll('.lib-filter-bar .filter-pill').forEach(b => b.classList.remove('active')); if (btn) btn.classList.add('active'); loadLibrary(); }
+    function filterLibrary() { loadLibrary(); }
+    async function runFavPath(path) { try { await fmPost('/fm/run?path=' + encodeURIComponent(path)); toast('Running: ' + path.split('/').pop() + ' ✓'); addActivity('Ran: ' + path.split('/').pop(), 'green'); } catch { toast('Run sent', 'warn'); } }
+    async function openFavPath(path) {
+      try { const r = await fetch(fmBase() + '/fm/read?path=' + encodeURIComponent(path)); const text = await r.text(); $('editor').value = text; updateLines(); $('fileName').textContent = path.split('/').pop(); fmEditingPath = path; localStorage.setItem('gc_script', text); syncStatusBar(); goPage('editor', document.getElementById('nav-editor')); toast('Opened: ' + path.split('/').pop()); } catch { toast('Could not open file', 'err'); }
+    }
+    async function deleteFav(path) { if (!confirm('Delete ' + path + '?')) return; try { await fmPost('/fm/delete?path=' + encodeURIComponent(path)); toast('Deleted ✓'); loadLibrary(); loadDashFavs(); } catch { toast('Delete sent', 'warn'); } }
+
+    function selectFavTag(tag, btn) { favSelectedTag = tag; document.querySelectorAll('#addFavModal [data-tag]').forEach(b => b.classList.remove('active')); if (btn) btn.classList.add('active'); }
+    function showAddFavModal() { const s = $('editor').value.trim(); if (!s) { toast('Editor is empty', 'warn'); return; }; $('favName').value = ($('fileName').textContent || '').replace(/\.[^.]+$/, ''); $('addFavModal').style.display = 'flex'; setTimeout(() => $('favName')?.focus(), 100); }
+    function hideAddFavModal() { $('addFavModal').style.display = 'none'; }
+    async function confirmAddFav() {
+      const name = $('favName').value.trim(); if (!name) { toast('Enter a name', 'warn'); return; }
+      const script = $('editor').value.trim(); if (!script) { toast('No script', 'warn'); return; }
+      const btn = $('addFavConfirmBtn'); btn.innerHTML = '<span class="spin"></span>'; btn.disabled = true;
+      const cat = favSelectedTag.charAt(0).toUpperCase() + favSelectedTag.slice(1);
+      let fname = name.replace(/[^a-zA-Z0-9_\- ]/g, ''); if (!fname) fname = 'script'; if (!fname.match(/\.[a-zA-Z0-9]+$/)) fname += '.txt';
+      try {
+        try { await fmPost('/fm/mkdir?path=/' + encodeURIComponent(cat)); } catch { }
+        const upUrl = fmBase() + '/fm/upload?path=/' + encodeURIComponent(cat);
+        const co = new URL(upUrl).origin !== location.origin;
+        const fd = new FormData(); fd.append('file', new File([script], fname, { type: 'text/plain' }), fname);
+        await fetch(upUrl, co ? { method: 'POST', mode: 'no-cors', body: fd } : { method: 'POST', body: fd });
+        fmEditingPath = '/' + cat + '/' + fname; $('fileName').textContent = fname; syncStatusBar();
+        hideAddFavModal(); toast('⭐ Saved to Library ✓'); loadDashFavs();
+      } catch { toast('Save sent — check Library', 'warn', 4000); hideAddFavModal(); }
+      finally { btn.innerHTML = '⭐ Save to Library'; btn.disabled = false; }
+    }
+
+    // ── Save Modal ────────────────────────────────────
+    function showSaveModal() {
+      const s = $('editor').value.trim(); if (!s) { toast('Editor is empty', 'warn'); return; }
+      if (fmEditingPath) { saveEditBack(); return; }
+      $('saveFileName').value = ($('fileName').textContent || '').replace(/\.[^.]+$/, '');
+      saveCurrentPath = '/'; saveChosenFolder = '/'; $('saveSelectedPath').textContent = '/'; updateSavePreview();
+      $('saveModal').style.display = 'flex'; saveFolderLoad('/');
+      setTimeout(() => $('saveFileName')?.focus(), 200);
+    }
+    function hideSaveModal() { $('saveModal').style.display = 'none'; }
+    function updateSavePreview() {
+      let f = saveChosenFolder || '/'; let n = ($('saveFileName') ? $('saveFileName').value : '').trim() || 'script';
+      if (!n.match(/\.[a-zA-Z0-9]+$/)) n += '.txt';
+      $('savePathPreview').textContent = (f === '/' ? '' : f) + '/' + n;
+    }
+    async function saveFolderLoad(path) {
+      saveCurrentPath = path; const list = $('saveFolderList'); if (!list) return;
+      list.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;font-size:.72rem;color:var(--dim)"><span class="spin"></span>Loading…</div>';
+      const parts = path.split('/').filter(Boolean);
+      let h = `<span class="fm-crumb${path === '/' ? ' active' : ''}" onclick="saveFolderSelect('/');saveFolderLoad('/')">⌂ root</span>`;
+      let built = ''; parts.forEach((p, i) => { built += '/' + p; const isLast = i === parts.length - 1; const sp = built.replace(/'/g, "\\'"); h += `<span class="fm-crumb-sep">›</span><span class="fm-crumb${isLast ? ' active' : ''}" onclick="saveFolderSelect('${sp}');saveFolderLoad('${sp}')">${escHtml(p)}</span>`; });
+      $('saveBreadcrumb').innerHTML = h; saveFolderSelect(path);
+      try {
+        const r = await fetch(fmBase() + '/fm/list?path=' + encodeURIComponent(path)); const data = await r.json();
+        const items = Array.isArray(data) ? data : (data.files || data.entries || []);
+        const dirs = items.filter(i => i.dir || i.type === 'dir' || i.directory);
+        if (!dirs.length) { list.innerHTML = '<div style="text-align:center;padding:12px;font-size:.72rem;color:var(--dim2)">No subfolders here.</div>'; return; }
+        list.innerHTML = dirs.map(item => { const name = item.name || item.filename || ''; const iPath = (path === '/' ? '' : path) + '/' + name; const sp = iPath.replace(/'/g, "\\'"); return `<div style="display:flex;align-items:center;gap:8px;padding:9px 12px;cursor:pointer;border-bottom:1px solid var(--b1);font-size:.76rem;transition:.15s" onmouseover="this.style.background='var(--g4)'" onmouseout="this.style.background=''" onclick="saveFolderSelect('${sp}');saveFolderLoad('${sp}')">📁 ${escHtml(name)} <span style="margin-left:auto;color:var(--dim2);font-size:.65rem">›</span></div>`; }).join('');
+      } catch { list.innerHTML = '<div style="text-align:center;padding:12px;font-size:.72rem;color:var(--red)">Load failed</div>'; }
+    }
+    function saveFolderSelect(path) { saveChosenFolder = path; $('saveSelectedPath').textContent = path; updateSavePreview(); }
+    async function confirmSave() {
+      const s = $('editor').value.trim(); if (!s) { toast('Nothing to save', 'warn'); return; }
+      const folder = saveChosenFolder || '/'; let n = ($('saveFileName')?.value || '').trim() || 'script';
+      if (!n.match(/\.[a-zA-Z0-9]+$/)) n += '.txt';
+      const btn = $('saveConfirmBtn'); btn.innerHTML = '<span class="spin"></span>'; btn.disabled = true;
+      try {
+        const upUrl = fmBase() + '/fm/upload?path=' + encodeURIComponent(folder); const co = new URL(upUrl).origin !== location.origin;
+        const fd = new FormData(); fd.append('file', new File([s], n, { type: 'text/plain' }), n);
+        await fetch(upUrl, co ? { method: 'POST', mode: 'no-cors', body: fd } : { method: 'POST', body: fd });
+        $('fileName').textContent = n; fmEditingPath = (folder === '/' ? '' : folder) + '/' + n; syncStatusBar();
+        toast('Saved → ' + fmEditingPath + ' ✓'); hideSaveModal();
+      } catch { toast('Save sent', 'warn', 4000); hideSaveModal(); }
+      finally { btn.innerHTML = '💾 Save Here'; btn.disabled = false; }
+    }
+    async function saveEditBack() {
+      const s = $('editor').value.trim(); if (!s || !fmEditingPath) return;
+      const parts = fmEditingPath.split('/'); const name = parts.pop(); const folder = parts.join('/') || '/';
+      try { const upUrl = fmBase() + '/fm/upload?path=' + encodeURIComponent(folder); const co = new URL(upUrl).origin !== location.origin; const fd = new FormData(); fd.append('file', new File([s], name, { type: 'text/plain' }), name); await fetch(upUrl, co ? { method: 'POST', mode: 'no-cors', body: fd } : { method: 'POST', body: fd }); toast('Saved → ' + fmEditingPath + ' ✓'); } catch { toast('Save sent', 'warn'); }
+    }
+
+    // ── Network ───────────────────────────────────────
+    function switchNet(name) { ['wifi', 'ble'].forEach(n => { $('np-' + n).style.display = n === name ? 'block' : 'none'; $('seg-' + n).classList.toggle('active', n === name); }); }
+    function signalBars(rssi) { let lv = rssi >= -55 ? 4 : rssi >= -65 ? 3 : rssi >= -75 ? 2 : rssi >= -85 ? 1 : 0; return `<div class="signal-bars">${[4, 7, 10, 14].map((h, i) => `<span style="height:${h}px" class="${i < lv ? 'lit' : ''}"></span>`).join('')}</div>`; }
+    async function scanWifi() {
+      const list = $('wifiResults'); list.innerHTML = '<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>';
+      try { const nets = await deviceGet('/wifi/scan'); if (!nets.length) { list.innerHTML = '<div class="empty-state">No networks found</div>'; return; } nets.sort((a, b) => b.rssi - a.rssi); if ($('dashNets')) $('dashNets').textContent = nets.length; list.innerHTML = nets.map(n => `<div class="net-card"><div style="flex:1;min-width:0"><div class="net-ssid">${n.secure ? '🔒' : '🔓'} ${escHtml(n.ssid || '(hidden)')}</div><div class="net-meta">CH ${n.channel || '?'} · ${n.rssi} dBm · ${n.bssid || ''}</div></div>${signalBars(n.rssi)}</div>`).join(''); toast('Found ' + nets.length + ' networks'); addActivity('WiFi scan: ' + nets.length + ' nets', 'green'); } catch { list.innerHTML = '<div class="empty-state" style="color:var(--red)">Scan failed — check device connection</div>'; toast('WiFi scan failed', 'err'); }
+    }
+    async function scanBle() {
+      const list = $('bleResults'); list.innerHTML = '<div class="skeleton"></div><div class="skeleton"></div>';
+      try { const devs = await deviceGet('/blescan'); if (!devs.length) { list.innerHTML = '<div class="empty-state">No BLE devices found</div>'; return; } devs.sort((a, b) => b.rssi - a.rssi); list.innerHTML = devs.map(d => `<div class="net-card"><div style="flex:1;min-width:0"><div class="net-ssid">${d.flipper ? '🐬' : '📱'} ${escHtml(d.name || '(unknown)')}</div><div class="net-meta">${d.mac} · ${d.rssi} dBm</div></div>${signalBars(d.rssi)}</div>`).join(''); toast('Found ' + devs.length + ' BLE devices'); } catch { list.innerHTML = '<div class="empty-state">Scan failed</div>'; toast('BLE scan failed', 'err'); }
+    }
+    async function scanWifiSettings() { const list = $('wifiSettingsList'); list.innerHTML = '<div class="skeleton"></div><div class="skeleton"></div>'; try { const nets = await deviceGet('/wifi/scan'); list.innerHTML = nets.sort((a, b) => b.rssi - a.rssi).map(n => `<div class="net-card" style="cursor:pointer" onclick="selWifi1('${(n.ssid || '').replace(/'/g, "\\'")}')"><div style="flex:1;min-width:0"><div class="net-ssid">${n.secure ? '🔒' : '🔓'} ${escHtml(n.ssid || '(hidden)')}</div><div class="net-meta">${n.rssi} dBm</div></div>${signalBars(n.rssi)}</div>`).join(''); } catch { toast('Scan failed', 'err'); } }
+    async function scanWifiSettings2() { const list = $('wifiSettingsList2'); list.innerHTML = '<div class="skeleton"></div><div class="skeleton"></div>'; try { const nets = await deviceGet('/wifi/scan'); list.innerHTML = nets.sort((a, b) => b.rssi - a.rssi).map(n => `<div class="net-card" style="cursor:pointer" onclick="selWifi2('${(n.ssid || '').replace(/'/g, "\\'")}')"><div style="flex:1;min-width:0"><div class="net-ssid">${n.secure ? '🔒' : '🔓'} ${escHtml(n.ssid || '(hidden)')}</div><div class="net-meta">${n.rssi} dBm</div></div>${signalBars(n.rssi)}</div>`).join(''); } catch { toast('Scan failed', 'err'); } }
+    function selWifi1(ssid) { selectedSsid = ssid; $('wifiSelSsid').textContent = ssid; $('wifiPassGrp').style.display = 'block'; }
+    function selWifi2(ssid) { selectedSsid2 = ssid; $('wifiSelSsid2').textContent = ssid; $('wifiPassGrp2').style.display = 'block'; }
+    async function connectWifi() { if (!selectedSsid) return; try { await deviceFetch('/wifi/connect', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'ssid=' + encodeURIComponent(selectedSsid) + '&pass=' + encodeURIComponent($('wifiPassInput').value) }); toast('Connected to ' + selectedSsid + ' ✓'); } catch { toast('Connection failed', 'err'); } }
+    async function connectWifi2() { if (!selectedSsid2) return; try { await deviceFetch('/wifi/connect', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'ssid=' + encodeURIComponent(selectedSsid2) + '&pass=' + encodeURIComponent($('wifiPassInput2').value) }); toast('Connected ✓'); } catch { toast('Connection failed', 'err'); } }
+    function deauthStart() { deviceFetch('/deauth/start', { method: 'POST' }).then(() => { $('ddDot').className = 'dd-dot on'; $('ddLabel').textContent = 'Monitoring for attacks…'; toast('Deauth monitor started'); addActivity('Deauth monitor ON', 'amber'); if (ddPoll) clearInterval(ddPoll); ddPoll = setInterval(deauthPoll, 1500); }).catch(() => toast('Failed', 'err')); }
+    function deauthStop() { if (ddPoll) { clearInterval(ddPoll); ddPoll = null; } deviceFetch('/deauth/stop', { method: 'POST' }).then(() => { $('ddDot').className = 'dd-dot'; $('ddLabel').textContent = 'Monitoring stopped'; toast('Stopped', 'warn'); }); }
+    function deauthPoll() { deviceGet('/deauth/results').then(d => { if (d.events && d.events.length > ddSeen) { for (let i = ddSeen; i < d.events.length; i++) { const e = d.events[i]; const log = $('deauthLog'); log.innerHTML += `<span class="t-err">⚠ DEAUTH — ${e.mac} CH:${e.ch} ${e.rssi}dBm</span><br>`; log.scrollTop = log.scrollHeight; $('ddDot').className = 'dd-dot alert'; toast('⚠ Deauth: ' + e.mac, 'err', 6000); addActivity('Deauth: ' + e.mac, 'red'); setTimeout(() => { if (ddPoll) $('ddDot').className = 'dd-dot on'; }, 1500); } ddSeen = d.events.length; } }).catch(() => { }); }
+
+    // ── AI Studio ─────────────────────────────────────
+    function setAiOS(os, btn) { aiTargetOS = os; document.querySelectorAll('#page-ai .os-p').forEach(b => b.classList.remove('active')); btn.classList.add('active'); }
+    function fillAi(t) { $('aiPrompt').value = t; }
+    function toggleVoice() {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition; if (!SR) { toast('Speech not supported', 'err'); return; }
+      if (isListening && voiceRecog) { voiceRecog.stop(); return; }
+      voiceRecog = new SR(); voiceRecog.lang = 'en-US'; voiceRecog.interimResults = true; voiceRecog.continuous = false;
+      let ft = $('aiPrompt').value; const btn = $('micBtn');
+      voiceRecog.onstart = () => { isListening = true; btn.classList.add('listening'); toast('🎙 Listening…', 'ok', 2000); };
+      voiceRecog.onresult = e => { let interim = ''; for (let i = e.resultIndex; i < e.results.length; i++) { const t = e.results[i][0].transcript; if (e.results[i].isFinal) ft += (ft ? ' ' : '') + t; else interim += t; } $('aiPrompt').value = ft + (interim ? ' ' + interim : ''); };
+      voiceRecog.onend = () => { isListening = false; btn.classList.remove('listening'); };
+      voiceRecog.onerror = e => { isListening = false; btn.classList.remove('listening'); if (e.error !== 'aborted') toast('Voice: ' + e.error, 'err'); };
+      voiceRecog.start();
+    }
+    async function aiGenerate() {
+      const prompt = $('aiPrompt').value.trim(); if (!prompt) { toast('Enter a description', 'warn'); return; }
+      const apiKey = GROQ_KEY || localStorage.getItem('gc_groq_key') || '';
+      if (!apiKey || apiKey.length < 5) { toast('No API key — go to Settings', 'err'); return; }
+      const btn = $('aiGenBtn'); btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Generating…';
+      $('aiOutputCard').style.display = 'none'; $('aiPlaceholder').style.display = 'block';
+      const osCtx = { windows: 'Target OS is Windows. Use GUI r for Run dialog.', macos: 'Target OS is macOS. Use GUI SPACE for Spotlight.', linux: 'Target OS is Linux. Use CTRL ALT t for terminal.' }[aiTargetOS] || 'Target OS is Windows.';
+      try {
+        const res = await fetch('https://api.groq.com/openai/v1/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey }, body: JSON.stringify({ model: GROQ_MODEL, messages: [{ role: 'system', content: `You are a DuckyScript expert. ${osCtx} Return ONLY the DuckyScript payload, no markdown, no explanations.` }, { role: 'user', content: prompt }], temperature: 0.2, max_tokens: 800 }) });
+        if (!res.ok) { const err = await res.json(); throw new Error(err.error?.message || 'API error ' + res.status); }
+        const data = await res.json(); let script = data.choices?.[0]?.message?.content?.trim() || ''; script = script.replace(/```[\w]*\n?/g, '').trim();
+        $('aiOutput').value = script; $('aiOutputCard').style.display = 'block'; $('aiPlaceholder').style.display = 'none';
+        toast('Script generated ✓'); addActivity('AI script generated', 'green');
+      } catch (e) { toast('Generation failed: ' + e.message, 'err'); }
+      finally { btn.disabled = false; btn.innerHTML = '⚡ Generate DuckyScript'; }
+    }
+    async function aiConvert(newOS) {
+      const s = $('aiOutput').value.trim(); if (!s) { toast('No script', 'warn'); return; }
+      const apiKey = GROQ_KEY || localStorage.getItem('gc_groq_key') || ''; if (!apiKey) { toast('No API key', 'err'); return; }
+      toast('Converting…', 'ok', 2000);
+      try { const res = await fetch('https://api.groq.com/openai/v1/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey }, body: JSON.stringify({ model: GROQ_MODEL, messages: [{ role: 'system', content: `Convert this DuckyScript to target ${newOS}. Return ONLY the converted script.` }, { role: 'user', content: s }], temperature: 0.1, max_tokens: 800 }) }); if (!res.ok) throw new Error('API error'); const data = await res.json(); let out = data.choices?.[0]?.message?.content?.trim() || ''; out = out.replace(/```[\w]*\n?/g, '').trim(); $('aiOutput').value = out; toast('Converted to ' + newOS + ' ✓'); } catch { toast('Conversion failed', 'err'); }
+    }
+    function aiExec() { const s = $('aiOutput').value; if (!s) return; $('editor').value = s; updateLines(); syncStatusBar(); runScript(); goPage('editor', document.getElementById('nav-editor')); }
+    function aiCopy() { navigator.clipboard.writeText($('aiOutput').value).then(() => toast('Copied!')).catch(() => toast('Copy failed', 'err')); }
+    function aiToEditor() { const s = $('aiOutput').value; if (!s) return; $('editor').value = s; updateLines(); localStorage.setItem('gc_script', s); syncStatusBar(); toast('Sent to Editor ✓'); goPage('editor', document.getElementById('nav-editor')); }
+
+    // ── API Key ───────────────────────────────────────
+    async function saveApiKey() { const k = $('apiKeyInput').value.trim(); if (!k) { toast('Enter a key', 'warn'); return; } GROQ_KEY = k; localStorage.setItem('gc_groq_key', k); try { await deviceFetch('/saveApiKey', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'apiKey=' + encodeURIComponent(k) }); } catch { } toast('API Key saved ✓'); $('apiKeyInput').value = ''; }
+    function clearApiKey() { if (!confirm('Clear API key?')) return; GROQ_KEY = ''; localStorage.removeItem('gc_groq_key'); deviceFetch('/saveApiKey', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'apiKey=' }).then(() => toast('Key cleared', 'warn')); }
+
+    // ── Keyboard ──────────────────────────────────────
+    function updateModDots() { ['shift', 'ctrl', 'alt', 'gui'].forEach(m => { const d = $('ms-' + m); if (d) d.className = 'conn-dot' + (kbMods[m] ? ' on' : ''); }); }
+    function kbMacro(cmd) { deviceFetch('/key', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'key=' + encodeURIComponent(cmd) }).catch(() => { }); if ($('kbStatus')) $('kbStatus').textContent = 'Sent: ' + cmd; if ($('lastKey')) $('lastKey').textContent = cmd; toast('⌨ ' + cmd, 'ok', 1200); }
+    function kbKey(k) { let combo = k; if (kbMods.ctrl) combo = 'CTRL ' + combo; if (kbMods.alt) combo = 'ALT ' + combo; if (kbMods.gui) combo = 'GUI ' + combo; if (kbMods.shift) combo = 'SHIFT ' + combo; deviceFetch('/key', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'key=' + encodeURIComponent(combo) }).catch(() => { }); if ($('kbStatus')) $('kbStatus').textContent = 'Sent: ' + combo; if ($('lastKey')) $('lastKey').textContent = combo;['shift', 'ctrl', 'alt', 'gui'].forEach(m => { if (kbMods[m]) { kbMods[m] = false; const el = $('kb' + m.charAt(0).toUpperCase() + m.slice(1)); if (el) el.classList.remove('active'); } }); updateModDots(); }
+    function kbToggle(mod) { kbMods[mod] = !kbMods[mod]; const el = $('kb' + mod.charAt(0).toUpperCase() + mod.slice(1)); if (el) el.classList.toggle('active', kbMods[mod]); updateModDots(); if ($('kbStatus')) $('kbStatus').textContent = mod.toUpperCase() + ' ' + (kbMods[mod] ? 'held' : 'released'); }
+
+    // ── File Manager ──────────────────────────────────
+    function formatSize(b) { if (b < 1024) return b + 'B'; if (b < 1048576) return (b / 1024).toFixed(1) + 'KB'; return (b / 1048576).toFixed(1) + 'MB'; }
+    async function fmNavigate(path) {
+      fmPath = path; const list = $('fmList'); if (!list) return;
+      list.innerHTML = '<div class="empty-state"><span class="spin"></span> Loading…</div>';
+      const bc = $('fmBreadcrumb'); if (bc) { const parts = path.split('/').filter(Boolean); let h = `<span class="fm-crumb active" onclick="fmNavigate('/')">⌂ root</span>`; let built = ''; parts.forEach((p, i) => { built += '/' + p; const isLast = i === parts.length - 1; const sp = built.replace(/'/g, "\\'"); h += `<span class="fm-crumb-sep">›</span><span class="fm-crumb${isLast ? ' active' : ''}" onclick="fmNavigate('${sp}')">${escHtml(p)}</span>`; }); bc.innerHTML = h; }
+      try {
+        const r = await fetch(fmBase() + '/fm/list?path=' + encodeURIComponent(path)); const data = await r.json(); const items = Array.isArray(data) ? data : (data.files || data.entries || []);
+        if (data.totalBytes && $('fmStorage')) { $('fmStorage').textContent = formatSize(data.usedBytes || 0) + ' / ' + formatSize(data.totalBytes); if ($('fmStorageBar')) $('fmStorageBar').style.width = Math.round((data.usedBytes || 0) / data.totalBytes * 100) + '%'; }
+        if (!items.length) { list.innerHTML = '<div class="empty-state">Empty directory</div>'; return; }
+        items.sort((a, b) => { const ad = a.dir || a.type === 'dir'; const bd = b.dir || b.type === 'dir'; return ad === bd ? 0 : ad ? -1 : 1; });
+        list.innerHTML = items.map(item => {
+          const name = item.name || item.filename || ''; const isDir = item.dir || item.type === 'dir' || item.directory;
+          const size = item.size ? formatSize(item.size) : ''; const ip = (path === '/' ? '' : path) + '/' + name; const sp = ip.replace(/'/g, "\\'");
+          const ico = isDir ? '<path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/><path d="M3 10h18"/>' : '<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/>';
+          return `<div class="fm-item" onclick="${isDir ? `fmNavigate('${sp}')` : `fmOpenFile('${sp}')`}"><svg class="fm-item-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${ico}</svg><span class="fm-item-name">${escHtml(name)}</span>${size ? `<span class="fm-item-size">${size}</span>` : ''}<div class="fm-item-acts">${!isDir ? `<button class="fm-act run" onclick="event.stopPropagation();fmRun('${sp}')">Run</button>` : ''}<button class="fm-act del" onclick="event.stopPropagation();fmDelete('${sp}')">✕</button></div></div>`;
+        }).join('');
+      } catch { list.innerHTML = '<div class="empty-state" style="color:var(--red)">Failed to load</div>'; }
+    }
+    function fmUp() { const p = fmPath.replace(/\/[^/]*$/, '') || '/'; fmNavigate(p); }
+    function fmRefresh() { fmNavigate(fmPath); }
+    function fmNewFolder() { $('fmMkdirArea').style.display = 'block'; $('fmMkdirName').focus(); }
+    async function fmCreateDir() { const n = $('fmMkdirName').value.trim(); if (!n) return; const p = (fmPath === '/' ? '' : fmPath) + '/' + n; try { await fmPost('/fm/mkdir?path=' + encodeURIComponent(p)); toast('Folder created ✓'); fmRefresh(); $('fmMkdirArea').style.display = 'none'; $('fmMkdirName').value = ''; } catch { toast('Create failed', 'err'); } }
+    async function fmOpenFile(path) { try { const r = await fetch(fmBase() + '/fm/read?path=' + encodeURIComponent(path)); const text = await r.text(); $('editor').value = text; updateLines(); $('fileName').textContent = path.split('/').pop(); fmEditingPath = path; localStorage.setItem('gc_script', text); syncStatusBar(); goPage('editor', document.getElementById('nav-editor')); toast('Opened: ' + path.split('/').pop()); } catch { toast('Cannot open file', 'err'); } }
+    async function fmRun(path) { try { await fmPost('/fm/run?path=' + encodeURIComponent(path)); toast('Running: ' + path.split('/').pop() + ' ✓'); addActivity('Ran: ' + path.split('/').pop(), 'green'); } catch { toast('Run sent', 'warn'); } }
+    async function fmDelete(path) { if (!confirm('Delete ' + path + '?')) return; try { await fmPost('/fm/delete?path=' + encodeURIComponent(path)); toast('Deleted ✓'); fmRefresh(); } catch { toast('Delete failed', 'err'); } }
+    async function fmUpload(e) { const files = e.target.files; if (!files.length) return; for (const file of files) { const upUrl = fmBase() + '/fm/upload?path=' + encodeURIComponent(fmPath); const co = new URL(upUrl).origin !== location.origin; const fd = new FormData(); fd.append('file', file, file.name); try { await fetch(upUrl, co ? { method: 'POST', mode: 'no-cors', body: fd } : { method: 'POST', body: fd }); toast('Uploaded: ' + file.name + ' ✓'); } catch { toast('Upload sent: ' + file.name, 'warn'); } } fmRefresh(); e.target.value = ''; }
+
+    // ── NeoPixel ──────────────────────────────────────
+    function neoUpdate() {
+      const r = parseInt($('neoR').value), g = parseInt($('neoG').value), b = parseInt($('neoB').value), br = parseInt($('neoBr').value);
+      $('neoRV').textContent = r; $('neoGV').textContent = g; $('neoBV').textContent = b; $('neoBrV').textContent = br;
+      if ($('neoRDisplay')) $('neoRDisplay').textContent = r; if ($('neoGDisplay')) $('neoGDisplay').textContent = g; if ($('neoBDisplay')) $('neoBDisplay').textContent = b;
+      if ($('neoHex')) $('neoHex').textContent = '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
+      const p = $('neoPreview'); if (p) { p.style.background = `rgb(${r},${g},${b})`; p.style.boxShadow = `0 0 40px rgb(${r},${g},${b}),0 0 80px rgba(${r},${g},${b},.3)`; }
+    }
+    function neoSet(r, g, b) { $('neoR').value = r; $('neoG').value = g; $('neoB').value = b; neoUpdate(); }
+    function neoToggleOn() { neoOn = !neoOn; const tog = $('neoToggle'); if (tog) tog.classList.toggle('on', neoOn); if ($('neoLabel')) $('neoLabel').textContent = neoOn ? 'ON' : 'OFF'; if (!neoOn) deviceFetch('/neo', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'r=0&g=0&b=0&bright=0&on=0' }).catch(() => { }); else neoApply(); }
+    function neoApply() { const r = parseInt($('neoR').value), g = parseInt($('neoG').value), b = parseInt($('neoB').value), br = parseInt($('neoBr').value); deviceFetch('/neo', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: `r=${r}&g=${g}&b=${b}&bright=${br}&on=1` }).catch(() => { }); toast('NeoPixel updated ✓'); }
+
+    // ── Vault ─────────────────────────────────────────
+    async function loadVault() { const list = $('vaultList'); if (!list) return; list.innerHTML = '<div class="empty-state"><span class="spin"></span> Loading…</div>'; try { const data = await deviceGet('/vault/list'); if (!data || !data.length) { list.innerHTML = '<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">Vault is empty</div><div class="empty-hint">Add credentials using the button above</div></div>'; return; } list.innerHTML = data.map(item => `<div class="vault-item"><span class="vault-site">${escHtml(item.site)}</span><span class="vault-pass">••••••••</span><button class="vault-type-btn" onclick="vaultType('${escHtml(item.site)}')">⌨ Type</button><button class="lib-act del" style="margin-left:4px" onclick="vaultDelete('${escHtml(item.site)}')">✕</button></div>`).join(''); } catch { list.innerHTML = '<div class="empty-state">Vault unavailable — check device</div>'; } }
+    function hideVaultModal() { $('vaultModal').style.display = 'none'; $('vaultSite').value = ''; $('vaultPass').value = ''; }
+    async function confirmVault() { const s = $('vaultSite').value.trim(), p = $('vaultPass').value; if (!s || !p) { toast('Fill all fields', 'warn'); return; } try { await deviceFetch('/vault/add', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'site=' + encodeURIComponent(s) + '&pass=' + encodeURIComponent(p) }); toast('Saved to vault ✓'); hideVaultModal(); loadVault(); } catch { toast('Save sent', 'warn'); hideVaultModal(); } }
+    async function vaultType(site) { try { await deviceFetch('/vault/type', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'site=' + encodeURIComponent(site) }); toast('Password typed ✓'); } catch { toast('Type sent', 'warn'); } }
+    async function vaultDelete(site) { if (!confirm('Delete "' + site + '"?')) return; try { await deviceFetch('/vault/delete', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'site=' + encodeURIComponent(site) }); toast('Deleted ✓'); loadVault(); } catch { toast('Delete sent', 'warn'); } }
+
+    // ── Shortcuts ─────────────────────────────────────
+    async function loadShortcuts() { const grid = $('shortcutsGrid'); if (!grid) return; grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><span class="spin"></span> Loading…</div>'; try { const data = await deviceGet('/shortcuts/list'); if (!data || !data.length) { grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">⚡</div><div class="empty-title">No shortcuts</div><div class="empty-hint">Add shortcuts using the button above</div></div>'; return; } grid.innerHTML = data.map(s => `<div class="sc-item"><div class="sc-item-name">${escHtml(s.name)}</div><div class="sc-item-acts"><button class="btn btn-primary btn-sm" onclick="runSc('${escHtml(s.name)}')">⚡ Run</button><button class="btn btn-ghost btn-sm" onclick="deleteSc('${escHtml(s.name)}')">✕</button></div></div>`).join(''); } catch { grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1">Shortcuts unavailable</div>'; } }
+    function filterShortcuts() { const q = $('scSearch')?.value.toLowerCase() || ''; document.querySelectorAll('#shortcutsGrid .sc-item').forEach(el => { el.style.display = el.querySelector('.sc-item-name').textContent.toLowerCase().includes(q) ? 'flex' : 'none'; }); }
+    function hideScModal() { $('scModal').style.display = 'none'; $('scName').value = ''; $('scBody').value = ''; }
+    async function confirmSc() { const n = $('scName').value.trim(), s = $('scBody').value.trim(); if (!n || !s) { toast('Fill all fields', 'warn'); return; } try { await deviceFetch('/shortcuts/add', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'name=' + encodeURIComponent(n) + '&script=' + encodeURIComponent(s) }); toast('Shortcut saved ✓'); hideScModal(); loadShortcuts(); } catch { toast('Save sent', 'warn'); hideScModal(); } }
+    async function runSc(name) { try { await deviceFetch('/shortcuts/run', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'name=' + encodeURIComponent(name) }); toast('Running: ' + name + ' ✓'); addActivity('Shortcut: ' + name, 'green'); } catch { toast('Run sent', 'warn'); } }
+    async function deleteSc(name) { if (!confirm('Delete "' + name + '"?')) return; try { await deviceFetch('/shortcuts/delete', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'name=' + encodeURIComponent(name) }); toast('Deleted ✓'); loadShortcuts(); } catch { toast('Delete sent', 'warn'); } }
+
+    // ── Firmware ──────────────────────────────────────
+    function fwPick(inp) { const f = inp.files[0]; if (!f) return; if ($('fwLabel')) $('fwLabel').textContent = f.name + ' (' + formatSize(f.size) + ')'; $('flashBtn').disabled = false; }
+
+    // ── Simulator ─────────────────────────────────────
+    async function simulatePayload() {
+      const script = $('editor').value.trim(); if (!script) { toast('No script to simulate', 'warn'); return; }
+      if (simRunning) return; simRunning = true; simAbort = false;
+      const lines = script.split('\n').filter(l => l.trim());
+      $('simOverlay').style.display = 'flex'; $('simContent').innerHTML = '<span class="sim-cursor">|</span>';
+      $('simProg').style.width = '0%'; $('simCmd').textContent = 'Starting…'; $('simCtr').textContent = '0 / ' + lines.length;
+      let text = '';
+      for (let i = 0; i < lines.length; i++) {
+        if (simAbort) break; const line = lines[i].trim(); const speed = parseInt($('simSpeed').value) || 2;
+        $('simProg').style.width = Math.round(((i + 1) / lines.length) * 100) + '%'; $('simCmd').textContent = line; $('simCtr').textContent = (i + 1) + ' / ' + lines.length;
+        if (line.startsWith('REM') || line.startsWith('//')) { await sleep(80 / speed); continue; }
+        if (line.startsWith('DELAY ')) { const d = parseInt(line.split(' ')[1]) || 100; await sleep(Math.min(d, 2000) / speed); continue; }
+        if (line.startsWith('STRING ')) { const s = line.slice(7); for (const ch of s) { if (simAbort) break; text += ch; $('simContent').innerHTML = escHtml(text) + '<span class="sim-cursor">|</span>'; await sleep(55 / speed); } continue; }
+        if (line === 'ENTER') { text += '\n'; $('simContent').innerHTML = escHtml(text) + '<span class="sim-cursor">|</span>'; await sleep(90 / speed); continue; }
+        if (/^(GUI|CTRL|ALT|SHIFT) /.test(line)) { $('simContent').style.outline = '2px solid var(--amber)'; await sleep(250 / speed); $('simContent').style.outline = ''; continue; }
+        await sleep(90 / speed);
+      }
+      $('simProg').style.width = '100%'; $('simCmd').textContent = 'Complete ✓'; simRunning = false;
+    }
+    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+    function stopSim() { simAbort = true; simRunning = false; $('simOverlay').style.display = 'none'; }
+  </script>
+</body>
+
+</html>

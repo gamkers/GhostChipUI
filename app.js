@@ -3471,19 +3471,24 @@ function addChatMsg(role, text) {
 }
 
 async function processAssistantRequest(query) {
-  const apiKey = GROQ_KEY || localStorage.getItem('gc_groq_key') || '';
+  const apiKey = OPENROUTER_KEY || localStorage.getItem('gc_openrouter_key') || '';
   if (!apiKey) {
-    addChatMsg('bot', 'Please save your Groq API key in Settings first.');
-    speakAssistant('Please save your API key in Settings first.', false);
+    addChatMsg('bot', 'Please save your OpenRouter API key in Settings → OpenRouter API Key first.');
+    speakAssistant('Please save your OpenRouter API key in Settings first.', false);
     return;
   }
 
   try {
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + apiKey,
+        'HTTP-Referer': window.location.href,
+        'X-Title': 'GhostChip AI Agent'
+      },
       body: JSON.stringify({
-        model: GROQ_MODEL,
+        model: AGENT_MODEL,
         messages: [
           {
             role: 'system',
@@ -3928,14 +3933,14 @@ async function runShortcutEntry(name) {
 
 // ═══════════════════════════════════════════════════════════════
 //  AI AGENT — Browser-native LangGraph-style ReAct Agent
-//  Think → Action → Observation loop powered by Groq API
+//  Think → Action → Observation loop powered by OpenRouter API
 // ═══════════════════════════════════════════════════════════════
 
 let agentRunning = false;
 let agentAbort = false;
 let agentHistory = [];   // persists across runs within session
 let agentInspectorOpen = false;
-const AGENT_MODEL = 'qwen/qwen3.8-27b';
+const AGENT_MODEL = 'openrouter/free';
 
 // ─── System Prompt ────────────────────────────────────────────
 const AGENT_SYSTEM_PROMPT = `You are GhostChip AI Agent — an autonomous HID operator for a GhostChip ESP32 device that physically injects keystrokes, manages SD card files & directories, controls WiFi, and drives an RGB LED.
@@ -4075,11 +4080,11 @@ const agentTools = {
   },
 
   async generate_hid_script(input) {
-    const keyToUse = GROQ_KEY || localStorage.getItem('gc_groq_key') || '';
-    if (!keyToUse) return 'Error: No Groq API key configured. Go to Settings and add your Groq API key.';
+    const keyToUse = OPENROUTER_KEY || localStorage.getItem('gc_openrouter_key') || '';
+    if (!keyToUse) return 'Error: No OpenRouter API key configured. Go to Settings → OpenRouter API Key and add your key.';
 
-    const endpoint = 'https://api.groq.com/openai/v1/chat/completions';
-    const modelToUse = GROQ_MODEL;
+    const endpoint = 'https://openrouter.ai/api/v1/chat/completions';
+    const modelToUse = AGENT_MODEL;
 
     const sysPrompt = `STRICT DUCKYSCRIPT SYNTAX RULES:
 1. ALL DuckyScript keywords and key names MUST be UPPERCASE (e.g. GUI SPACE, ENTER, STRING, DELAY 2000). NEVER write "GUI space".
@@ -4105,7 +4110,12 @@ const agentTools = {
 3. Always insert DELAY 2000 after each action line.
 4. Output ONLY raw executable DuckyScript code lines. DO NOT output reasoning, thinking process, preamble, or markdown.`;
 
-    const headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + keyToUse };
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + keyToUse,
+      'HTTP-Referer': window.location.href,
+      'X-Title': 'GhostChip AI Agent'
+    };
 
     try {
       const res = await fetch(endpoint, {
@@ -4119,15 +4129,12 @@ const agentTools = {
           ],
           temperature: 0.6,
           top_p: 0.95,
-          max_tokens: 2048,
-          max_completion_tokens: 2048,
-          reasoning_effort: 'default',
-          stop: null
+          max_tokens: 2048
         })
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        return 'Error from API: ' + (err.error?.message || res.statusText);
+        return 'Error from OpenRouter API: ' + (err.error?.message || res.statusText);
       }
       const data = await res.json();
       let raw = (data.choices[0]?.message?.content || '').trim();
@@ -4607,9 +4614,9 @@ async function peGenerate() {
     btn.innerHTML = '<span class="spin"></span> Generating Master Prompt...';
   }
 
-  const keyToUse = GROQ_KEY || localStorage.getItem('gc_groq_key') || '';
+  const keyToUse = OPENROUTER_KEY || localStorage.getItem('gc_openrouter_key') || '';
   if (!keyToUse || keyToUse.length < 5) {
-    toast('No Groq API key found. Go to Settings → save your Groq key first.', 'err');
+    toast('No OpenRouter API key found. Go to Settings → save your OpenRouter key first.', 'err');
     if (btn) {
       btn.disabled = false;
       btn.innerHTML = '⚡ Generate Master Prompt';
@@ -4617,8 +4624,8 @@ async function peGenerate() {
     return;
   }
 
-  const endpoint = 'https://api.groq.com/openai/v1/chat/completions';
-  const modelToUse = GROQ_MODEL;
+  const endpoint = 'https://openrouter.ai/api/v1/chat/completions';
+  const modelToUse = AGENT_MODEL;
 
   const stylePrompts = {
     professional: 'Tone: Professional, authoritative, structured. Include Role, Clear Objective, Context, Deliverable Format, and Step-by-Step constraints.',
@@ -4630,7 +4637,12 @@ async function peGenerate() {
 
   const styleContext = stylePrompts[peActiveStyle] || stylePrompts.professional;
 
-  const headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + keyToUse };
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer ' + keyToUse,
+    'HTTP-Referer': window.location.href,
+    'X-Title': 'GhostChip Prompt Enhancer'
+  };
 
   try {
     const res = await fetch(endpoint, {
@@ -4814,16 +4826,21 @@ function updateAgentInspector(toolName, toolInput, toolResult) {
 // ─── Main ReAct Loop ──────────────────────────────────────────
 async function runAgent(userMessage) {
   if (agentRunning) return;
-  const keyToUse = GROQ_KEY || localStorage.getItem('gc_groq_key') || '';
+  const keyToUse = OPENROUTER_KEY || localStorage.getItem('gc_openrouter_key') || '';
   if (!keyToUse) {
-    appendAgentLog('error', 'Error', 'No Groq API key found. Please add your Groq API key in Settings.');
+    appendAgentLog('error', 'Error', 'No OpenRouter API key found. Please add your OpenRouter API key in Settings → OpenRouter API Key.');
     return;
   }
 
-  const endpoint = 'https://api.groq.com/openai/v1/chat/completions';
-  const modelToUse = GROQ_MODEL;
+  const endpoint = 'https://openrouter.ai/api/v1/chat/completions';
+  const modelToUse = AGENT_MODEL;
 
-  const headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + keyToUse };
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer ' + keyToUse,
+    'HTTP-Referer': window.location.href,
+    'X-Title': 'GhostChip AI Agent'
+  };
 
   agentRunning = true;
   agentAbort = false;
@@ -4859,10 +4876,7 @@ async function runAgent(userMessage) {
             messages,
             temperature: 0.6,
             top_p: 0.95,
-            max_tokens: 4096,
-            max_completion_tokens: 4096,
-            reasoning_effort: 'default',
-            stop: null
+            max_tokens: 4096
           })
         });
         if (!apiRes.ok) {
@@ -4873,7 +4887,7 @@ async function runAgent(userMessage) {
         llmRes = (apiData.choices[0]?.message?.content || '').trim();
       } catch (e) {
         if (thinkingEl) { thinkingEl.remove(); thinkingEl = null; }
-        appendAgentLog('error', 'API Error', e.message);
+        appendAgentLog('error', 'OpenRouter API Error', e.message);
         agentHistory.push({ role: 'assistant', content: 'Error: ' + e.message });
         break;
       }
