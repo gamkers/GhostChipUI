@@ -3940,7 +3940,7 @@ let agentRunning = false;
 let agentAbort = false;
 let agentHistory = [];   // persists across runs within session
 let agentInspectorOpen = false;
-const AGENT_MODEL = 'openrouter/free';
+const AGENT_MODEL = 'poolside/laguna-xs-2.1';
 
 // ─── System Prompt ────────────────────────────────────────────
 const AGENT_SYSTEM_PROMPT = `You are GhostChip AI Agent — an autonomous HID operator for a GhostChip ESP32 device that physically injects keystrokes, manages SD card files & directories, controls WiFi, and drives an RGB LED.
@@ -4513,7 +4513,7 @@ const agentTools = {
     try {
       const parsed = JSON.parse(name);
       if (parsed && (parsed.name || parsed.shortcut || parsed.file)) name = parsed.name || parsed.shortcut || parsed.file;
-    } catch {}
+    } catch { }
     if (!name.endsWith('.txt')) name += '.txt';
     let path = '/Shortcuts/' + name.replace(/^\/+/, '');
     return this.run_script(path);
@@ -4742,7 +4742,7 @@ function peCopy() {
 function peToEditor() {
   const text = $('peOutput') ? $('peOutput').value.trim() : '';
   if (!text) { toast('No prompt generated yet', 'warn'); return; }
-  
+
   const generatedDs = buildPromptDuckyScriptPayload(text);
   $('editor').value = generatedDs;
   updateLines();
