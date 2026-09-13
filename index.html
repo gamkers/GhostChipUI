@@ -1740,62 +1740,57 @@
             </div>
           </div>
 
-          <!-- Side-by-Side Code Editors -->
-          <div class="code-typer-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
-            <div>
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                <span style="font-size:0.75rem; font-family:var(--mono); color:var(--g); font-weight:700;">Plain Code / Text Input</span>
-                <span style="font-size:0.68rem; color:var(--dim); font-family:var(--mono);" id="ctRawStats">0 lines</span>
-              </div>
-              <textarea id="codeTyperInput" class="code-output" style="height:280px; font-size:0.8rem; white-space:pre; tab-size:4; font-family:var(--mono);" placeholder="Paste or type any plain code or text here (no DuckyScript keywords needed). Exact spaces and newlines are preserved!&#10;&#10;Example:&#10;main().catch((error) => {&#10;    console.error(&quot;\nDeployment failed:&quot;);&#10;    console.error(error);&#10;    process.exitCode = 1;&#10;});" oninput="updateCodeTyperCompiled()"></textarea>
+          <!-- Full-Width Code Editor -->
+          <div style="margin-bottom:14px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <span style="font-size:0.78rem; font-family:var(--mono); color:var(--g); font-weight:700;">Plain Code / Text Input</span>
+              <span style="font-size:0.68rem; color:var(--dim); font-family:var(--mono);" id="ctRawStats">0 lines</span>
             </div>
-
-            <div>
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                <span style="font-size:0.75rem; font-family:var(--mono); color:#ffaa00; font-weight:700;">Compiled DuckyScript Output</span>
-                <span style="font-size:0.68rem; color:var(--dim); font-family:var(--mono);" id="ctCompiledStats">0 commands</span>
-              </div>
-              <textarea id="codeTyperCompiled" class="code-output" style="height:280px; font-size:0.8rem; white-space:pre; font-family:var(--mono); background:var(--s2);" readonly></textarea>
-            </div>
+            <textarea id="codeTyperInput" class="code-output" style="height:320px; font-size:0.82rem; white-space:pre; tab-size:4; font-family:var(--mono); width:100%; box-sizing:border-box;" placeholder="Paste or type any plain code or text here — no DuckyScript keywords needed.&#10;Exact spaces, indentation, and newlines are all preserved!&#10;&#10;Example:&#10;main().catch((error) => {&#10;    console.error(&quot;\nDeployment failed:&quot;);&#10;    console.error(error);&#10;    process.exitCode = 1;&#10;});" oninput="updateCodeTyperCompiled()"></textarea>
+            <!-- hidden compiled output (needed by ctTypeHid / ctCopyCompiled / ctSaveSd) -->
+            <textarea id="codeTyperCompiled" style="display:none;" readonly></textarea>
+            <span id="ctCompiledStats" style="display:none;"></span>
           </div>
 
-          <!-- Saved Local Snippets Bar -->
-          <div style="background:var(--s2); border:1px solid var(--b1); border-radius:8px; padding:10px; margin-bottom:12px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-              <div style="display:flex; align-items:center; gap:8px;">
-                <span style="font-size:0.75rem; font-family:var(--mono); color:var(--white); font-weight:700;">📁 Saved Snippets:</span>
-                <select id="ctSavedSnippetsSelect" class="input" style="width:220px; padding:4px 8px; font-size:0.75rem;" onchange="ctLoadSavedSnippet()">
-                  <option value="">-- Load Saved Snippet --</option>
-                </select>
-              </div>
-              <div style="display:flex; gap:6px;">
-                <button class="btn btn-ghost" style="padding:4px 12px; font-size:0.72rem;" onclick="ctSaveLocalSnippet()">💾 Save Snippet</button>
-                <button class="btn btn-danger-sm" style="padding:4px 10px; font-size:0.72rem;" onclick="ctDeleteSavedSnippet()">Delete Selected</button>
-              </div>
+          <!-- Saved Snippets -->
+          <div style="background:var(--s2); border:1px solid var(--b1); border-radius:10px; padding:12px 14px; margin-bottom:14px;">
+            <div style="font-size:0.7rem; font-family:var(--mono); color:var(--dim); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:8px;">📁 Saved Snippets</div>
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <select id="ctSavedSnippetsSelect" class="input" style="flex:1; min-width:180px; padding:6px 10px; font-size:0.78rem;" onchange="ctLoadSavedSnippet()">
+                <option value="">— Load a saved snippet —</option>
+              </select>
+              <button class="btn btn-ghost" style="padding:6px 14px; font-size:0.76rem; white-space:nowrap;" onclick="ctSaveLocalSnippet()">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                Save Snippet
+              </button>
+              <button class="btn btn-danger-sm" style="padding:6px 12px; font-size:0.76rem; white-space:nowrap;" onclick="ctDeleteSavedSnippet()">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                Delete
+              </button>
             </div>
           </div>
 
           <!-- Action Buttons -->
-          <div class="btn-row" style="flex-wrap:wrap; gap:8px;">
-            <button class="btn btn-primary" onclick="ctTypeHid()" style="background:linear-gradient(135deg, #22c55e, #16a34a); border:none; box-shadow:0 4px 15px rgba(34,197,94,0.3);">
+          <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
+            <button class="btn btn-primary" onclick="ctTypeHid()" style="background:linear-gradient(135deg,#22c55e,#16a34a); border:none; box-shadow:0 4px 18px rgba(34,197,94,0.35); padding:9px 20px; font-size:0.82rem;">
               <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-              <span>Type via HID (Inject)</span>
+              Type via HID
             </button>
-            <button class="btn btn-ghost" onclick="ctToEditor()">
+            <button class="btn btn-ghost" onclick="ctToEditor()" style="padding:8px 16px; font-size:0.8rem;">
               <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-              <span>Send to Editor</span>
+              Send to Editor
             </button>
-            <button class="btn btn-ghost" onclick="ctSaveSd()">
+            <button class="btn btn-ghost" onclick="ctSaveSd()" style="padding:8px 16px; font-size:0.8rem;">
               <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-              <span>Save to SD Card</span>
+              Save to SD Card
             </button>
-            <button class="btn btn-ghost" onclick="ctCopyCompiled()">
+            <button class="btn btn-ghost" onclick="ctCopyCompiled()" style="padding:8px 16px; font-size:0.8rem;">
               <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-              <span>Copy DuckyScript</span>
+              Copy DuckyScript
             </button>
-            <button class="btn btn-ghost" onclick="ctClear()">
+            <button class="btn btn-ghost" onclick="ctClear()" style="padding:8px 14px; font-size:0.8rem; margin-left:auto;">
               <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-              <span>Clear</span>
+              Clear
             </button>
           </div>
         </div>
