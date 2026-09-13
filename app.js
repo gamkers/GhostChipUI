@@ -3087,6 +3087,7 @@ function kbMacro(m) {
 let kbRecognition = null;
 let kbSpeechActive = false;
 let kbSpeechBuffer = '';
+let kbProcessedFinalIndex = -1;
 
 function kbGetSpeechRecognition() {
   const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -3113,20 +3114,24 @@ function kbGetSpeechRecognition() {
       const mode = $('kbVoiceMode')?.value || 'stream';
       const autoEnter = $('kbVoiceAutoEnter')?.checked || false;
       let interimTranscript = '';
-      let finalTranscript = '';
+      let allFinalText = '';
 
-      for (let i = event.resultIndex; i < event.results.length; ++i) {
+      for (let i = 0; i < event.results.length; ++i) {
         const item = event.results[i];
-        const text = item[0].transcript;
+        const text = item[0]?.transcript || '';
         if (item.isFinal) {
-          finalTranscript += text;
-          if (mode === 'stream') {
-            kbProcessSpokenSentence(text.trim(), autoEnter);
-          } else {
-            kbSpeechBuffer += (kbSpeechBuffer ? ' ' : '') + text.trim();
+          allFinalText += (allFinalText ? ' ' : '') + text.trim();
+          // Strictly send each finalized sentence/phrase EXACTLY ONCE
+          if (i > kbProcessedFinalIndex) {
+            kbProcessedFinalIndex = i;
+            if (mode === 'stream') {
+              kbProcessSpokenSentence(text.trim(), autoEnter);
+            } else {
+              kbSpeechBuffer += (kbSpeechBuffer ? ' ' : '') + text.trim();
+            }
           }
         } else {
-          interimTranscript += text;
+          interimTranscript += (interimTranscript ? ' ' : '') + text.trim();
         }
       }
 
@@ -3134,7 +3139,7 @@ function kbGetSpeechRecognition() {
       const liveBox = $('kbVoiceLiveText');
       if (liveBox) {
         if (mode === 'stream') {
-          liveBox.innerHTML = escHtml(finalTranscript || '') + (interimTranscript ? ` <span class="interim">${escHtml(interimTranscript)}</span>` : '');
+          liveBox.innerHTML = escHtml(allFinalText || '') + (interimTranscript ? ` <span class="interim">${escHtml(interimTranscript)}</span>` : '');
         } else {
           liveBox.innerHTML = escHtml(kbSpeechBuffer || '') + (interimTranscript ? ` <span class="interim">${escHtml(interimTranscript)}</span>` : '');
           const bufferActions = $('kbVoiceBufferActions');
@@ -3154,7 +3159,10 @@ function kbGetSpeechRecognition() {
     kbRecognition.onend = () => {
       if (kbSpeechActive) {
         // Auto-restart if user did not explicitly stop
-        try { kbRecognition.start(); } catch (_) {}
+        try {
+          kbProcessedFinalIndex = -1;
+          kbRecognition.start();
+        } catch (_) {}
       } else {
         kbResetVoiceUI();
       }
@@ -3182,6 +3190,7 @@ function kbStartSpeech() {
   if (!rec) return;
   rec.lang = $('kbVoiceLang')?.value || 'en-US';
   kbSpeechActive = true;
+  kbProcessedFinalIndex = -1;
   try {
     rec.start();
   } catch (e) {
@@ -3191,6 +3200,7 @@ function kbStartSpeech() {
 
 function kbStopSpeech() {
   kbSpeechActive = false;
+  kbProcessedFinalIndex = -1;
   if (kbRecognition) {
     try { kbRecognition.stop(); } catch (_) {}
   }
