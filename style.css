@@ -994,6 +994,31 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--w
 .prompt-enhancer-tool-btn svg { color: #38bdf8; }
 .prompt-enhancer-tool-btn span { color: #38bdf8; }
 
+/* Code Typer Tool button glow & layout */
+.code-typer-tool-btn {
+  background: linear-gradient(135deg, rgba(234,179,8,0.18) 0%, rgba(34,197,94,0.18) 100%) !important;
+  border-color: rgba(234,179,8,0.5) !important;
+  position: relative;
+  overflow: hidden;
+}
+.code-typer-tool-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(234,179,8,0.12), transparent);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.code-typer-tool-btn:hover::before { opacity: 1; }
+.code-typer-tool-btn svg { color: #eab308; }
+.code-typer-tool-btn span { color: #eab308; }
+
+@media (max-width: 768px) {
+  .code-typer-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
 /* Status bar */
 .agent-status-bar {
   display: flex;

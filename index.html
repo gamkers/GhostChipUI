@@ -551,6 +551,7 @@
         <button class="tool-app" onclick="openTool('recorder'); initMacroRecorder()"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg><span>Action Recorder</span></button>
         <button class="tool-app agent-tool-btn" onclick="openTool('aiagent'); initAiAgent()"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a4 4 0 0 1 4 4v1h1a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V10a3 3 0 0 1 3-3h1V6a4 4 0 0 1 4-4z"/><circle cx="9" cy="13" r="1" fill="currentColor"/><circle cx="15" cy="13" r="1" fill="currentColor"/><path d="M9 17c1 1 5 1 6 0"/></svg><span>AI Agent</span></button>
         <button class="tool-app prompt-enhancer-tool-btn" onclick="openTool('prompter'); initPromptEnhancer()"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/><path d="M12 7v6M9 10h6"/></svg><span>Prompt Enhancer</span></button>
+        <button class="tool-app code-typer-tool-btn" onclick="openTool('codetyper'); initCodeTyper()"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg><span>Code Typer</span></button>
       </div>
       <div class="tool-panel" id="tool-constructor">
         <div class="tool-panel-head"><h3>Script Builder</h3><button class="tool-back" onclick="closeTool('constructor')">Back</button></div>
@@ -1685,6 +1686,117 @@
                 <span>Device Info</span>
               </button>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── TOOL: CODE TYPER ── -->
+      <div class="tool-panel" id="tool-codetyper">
+        <div class="tool-panel-head">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            <h3>Code Typer — Plain Code & Text Injector</h3>
+          </div>
+          <button class="tool-back" onclick="closeTool('codetyper')">Back</button>
+        </div>
+
+        <div class="card pro-ai-card">
+          <!-- Controls -->
+          <div class="pro-ai-header" style="flex-wrap:wrap; gap:10px; margin-bottom:12px; padding-bottom:10px; border-bottom:1px solid var(--b1);">
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+              <label style="font-size:0.75rem; font-family:var(--mono); color:var(--dim);">Inter-line Delay:</label>
+              <select id="ctDelaySelect" class="input" style="width:auto; padding:4px 8px; font-size:0.75rem;" onchange="updateCodeTyperCompiled()">
+                <option value="0">0 ms (No delay)</option>
+                <option value="100">100 ms</option>
+                <option value="300" selected>300 ms (Recommended)</option>
+                <option value="500">500 ms</option>
+                <option value="1000">1000 ms (1s)</option>
+                <option value="2000">2000 ms (2s)</option>
+              </select>
+              
+              <label style="font-size:0.75rem; font-family:var(--mono); color:var(--dim); margin-left:8px; display:inline-flex; align-items:center; gap:4px; cursor:pointer;">
+                <input type="checkbox" id="ctAutoEnter" checked onchange="updateCodeTyperCompiled()" style="accent-color:var(--g);">
+                Auto ENTER
+              </label>
+            </div>
+
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="agent-model-badge" style="font-size:0.65rem; background:rgba(34,197,94,0.15); color:var(--g); border:1px solid var(--g);">Indentation & Spaces Preserved ✓</span>
+            </div>
+          </div>
+
+          <!-- Header Presets -->
+          <div class="pro-presets-wrapper" style="margin-bottom:12px;">
+            <div class="pro-os-label" style="font-size:0.65rem;">
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M2 12h20"/></svg>
+              <span>TARGET OPENER PRESETS</span>
+            </div>
+            <div class="pro-tags-grid">
+              <button class="pro-tag-chip" onclick="ctInsertHeader('win_cmd')">Win CMD</button>
+              <button class="pro-tag-chip" onclick="ctInsertHeader('win_powershell')">Win PowerShell</button>
+              <button class="pro-tag-chip" onclick="ctInsertHeader('mac_terminal')">Mac Terminal</button>
+              <button class="pro-tag-chip" onclick="ctInsertHeader('linux_terminal')">Linux Terminal</button>
+              <button class="pro-tag-chip" onclick="ctInsertHeader('none')">None (Raw Code Only)</button>
+            </div>
+          </div>
+
+          <!-- Side-by-Side Code Editors -->
+          <div class="code-typer-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
+            <div>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <span style="font-size:0.75rem; font-family:var(--mono); color:var(--g); font-weight:700;">Plain Code / Text Input</span>
+                <span style="font-size:0.68rem; color:var(--dim); font-family:var(--mono);" id="ctRawStats">0 lines</span>
+              </div>
+              <textarea id="codeTyperInput" class="code-output" style="height:280px; font-size:0.8rem; white-space:pre; tab-size:4; font-family:var(--mono);" placeholder="Paste or type any plain code or text here (no DuckyScript keywords needed). Exact spaces and newlines are preserved!&#10;&#10;Example:&#10;main().catch((error) => {&#10;    console.error(&quot;\nDeployment failed:&quot;);&#10;    console.error(error);&#10;    process.exitCode = 1;&#10;});" oninput="updateCodeTyperCompiled()"></textarea>
+            </div>
+
+            <div>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <span style="font-size:0.75rem; font-family:var(--mono); color:#ffaa00; font-weight:700;">Compiled DuckyScript Output</span>
+                <span style="font-size:0.68rem; color:var(--dim); font-family:var(--mono);" id="ctCompiledStats">0 commands</span>
+              </div>
+              <textarea id="codeTyperCompiled" class="code-output" style="height:280px; font-size:0.8rem; white-space:pre; font-family:var(--mono); background:var(--s2);" readonly></textarea>
+            </div>
+          </div>
+
+          <!-- Saved Local Snippets Bar -->
+          <div style="background:var(--s2); border:1px solid var(--b1); border-radius:8px; padding:10px; margin-bottom:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="font-size:0.75rem; font-family:var(--mono); color:var(--white); font-weight:700;">📁 Saved Snippets:</span>
+                <select id="ctSavedSnippetsSelect" class="input" style="width:220px; padding:4px 8px; font-size:0.75rem;" onchange="ctLoadSavedSnippet()">
+                  <option value="">-- Load Saved Snippet --</option>
+                </select>
+              </div>
+              <div style="display:flex; gap:6px;">
+                <button class="btn btn-ghost" style="padding:4px 12px; font-size:0.72rem;" onclick="ctSaveLocalSnippet()">💾 Save Snippet</button>
+                <button class="btn btn-danger-sm" style="padding:4px 10px; font-size:0.72rem;" onclick="ctDeleteSavedSnippet()">Delete Selected</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="btn-row" style="flex-wrap:wrap; gap:8px;">
+            <button class="btn btn-primary" onclick="ctTypeHid()" style="background:linear-gradient(135deg, #22c55e, #16a34a); border:none; box-shadow:0 4px 15px rgba(34,197,94,0.3);">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              <span>Type via HID (Inject)</span>
+            </button>
+            <button class="btn btn-ghost" onclick="ctToEditor()">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+              <span>Send to Editor</span>
+            </button>
+            <button class="btn btn-ghost" onclick="ctSaveSd()">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              <span>Save to SD Card</span>
+            </button>
+            <button class="btn btn-ghost" onclick="ctCopyCompiled()">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              <span>Copy DuckyScript</span>
+            </button>
+            <button class="btn btn-ghost" onclick="ctClear()">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              <span>Clear</span>
+            </button>
           </div>
         </div>
       </div>

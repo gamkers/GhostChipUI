@@ -5048,3 +5048,218 @@ function agentQuickPrompt(text) {
   const ta = $('agentInput');
   if (ta) { ta.value = text; ta.focus(); }
 }
+
+// ═══════════════════════════════════════════════════════════════
+//  CODE TYPER — Plain Code & Text-to-HID Compiler Studio
+// ═══════════════════════════════════════════════════════════════
+
+let ctActiveHeader = 'none';
+let ctSavedSnippets = {};
+
+function initCodeTyper() {
+  loadCodeTyperSavedSnippets();
+  updateCodeTyperCompiled();
+  // Enable Tab key indentation inside textarea
+  const ta = $('codeTyperInput');
+  if (ta && !ta._tabBound) {
+    ta._tabBound = true;
+    ta.addEventListener('keydown', function(e) {
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        const start = this.selectionStart;
+        const end = this.selectionEnd;
+        this.value = this.value.substring(0, start) + '    ' + this.value.substring(end);
+        this.selectionStart = this.selectionEnd = start + 4;
+        updateCodeTyperCompiled();
+      }
+    });
+  }
+}
+
+function ctInsertHeader(preset) {
+  ctActiveHeader = preset;
+  updateCodeTyperCompiled();
+}
+
+function compileTextToDucky(rawText, delayMs = 300, autoEnter = true, headerPreset = 'none') {
+  if (!rawText) return '';
+  const lines = rawText.split(/\r?\n/);
+  const compiledLines = [];
+
+  // Target Opener Headers
+  if (headerPreset === 'win_cmd') {
+    compiledLines.push('REM --- Target: Windows CMD ---');
+    compiledLines.push('GUI r');
+    compiledLines.push('DELAY 1000');
+    compiledLines.push('STRING cmd');
+    compiledLines.push('ENTER');
+    compiledLines.push('DELAY 1500');
+  } else if (headerPreset === 'win_powershell') {
+    compiledLines.push('REM --- Target: Windows PowerShell ---');
+    compiledLines.push('GUI r');
+    compiledLines.push('DELAY 1000');
+    compiledLines.push('STRING powershell');
+    compiledLines.push('ENTER');
+    compiledLines.push('DELAY 2000');
+  } else if (headerPreset === 'mac_terminal') {
+    compiledLines.push('REM --- Target: macOS Terminal ---');
+    compiledLines.push('GUI SPACE');
+    compiledLines.push('DELAY 1000');
+    compiledLines.push('STRING terminal');
+    compiledLines.push('ENTER');
+    compiledLines.push('DELAY 1500');
+  } else if (headerPreset === 'linux_terminal') {
+    compiledLines.push('REM --- Target: Linux Terminal ---');
+    compiledLines.push('CTRL ALT t');
+    compiledLines.push('DELAY 1500');
+  }
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (line.length === 0) {
+      if (autoEnter) compiledLines.push('ENTER');
+    } else {
+      compiledLines.push('STRING ' + line);
+      if (autoEnter) compiledLines.push('ENTER');
+    }
+    if (delayMs > 0) {
+      compiledLines.push('DELAY ' + delayMs);
+    }
+  }
+
+  return compiledLines.join('\n');
+}
+
+function updateCodeTyperCompiled() {
+  const inputEl = $('codeTyperInput');
+  const outputEl = $('codeTyperCompiled');
+  const delaySel = $('ctDelaySelect');
+  const autoEnterEl = $('ctAutoEnter');
+  if (!inputEl || !outputEl) return;
+
+  const raw = inputEl.value;
+  const delayMs = delaySel ? parseInt(delaySel.value, 10) || 0 : 300;
+  const autoEnter = autoEnterEl ? autoEnterEl.checked : true;
+
+  const compiled = compileTextToDucky(raw, delayMs, autoEnter, ctActiveHeader);
+  outputEl.value = compiled;
+
+  // Stats
+  const rawLines = raw ? raw.split('\n').length : 0;
+  const compiledLines = compiled ? compiled.split('\n').length : 0;
+
+  const rawStats = $('ctRawStats');
+  const compiledStats = $('ctCompiledStats');
+  if (rawStats) rawStats.textContent = `${rawLines} line${rawLines === 1 ? '' : 's'}`;
+  if (compiledStats) compiledStats.textContent = `${compiledLines} command line${compiledLines === 1 ? '' : 's'}`;
+}
+
+async function ctTypeHid() {
+  const compiled = $('codeTyperCompiled')?.value?.trim();
+  if (!compiled) { toast('Enter code or text first', 'warn'); return; }
+  toast('Sending keystrokes to target…', 'warn', 3000);
+  try {
+    await deviceFetch('/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'duckyscript=' + encodeURIComponent(compiled)
+    });
+    toast('Keystrokes injected successfully ✓');
+  } catch (e) {
+    toast('Error sending keystrokes: ' + e.message, 'err');
+  }
+}
+
+function ctToEditor() {
+  const compiled = $('codeTyperCompiled')?.value?.trim();
+  if (!compiled) { toast('Enter code or text first', 'warn'); return; }
+  const ta = $('duckyInput') || document.querySelector('textarea[id*="ducky"]');
+  if (ta) {
+    ta.value = compiled;
+    ta.dispatchEvent(new Event('input'));
+    toast('Pushed to DuckyScript Editor ✓');
+  }
+}
+
+async function ctSaveSd() {
+  const compiled = $('codeTyperCompiled')?.value?.trim();
+  if (!compiled) { toast('Enter code or text first', 'warn'); return; }
+
+  const filename = prompt('Enter filename to save on SD card (e.g. deployment.txt):', 'codetyper_payload.txt');
+  if (!filename) return;
+
+  let path = '/CodeSnippets/' + filename.replace(/^\/+/, '');
+  if (!path.endsWith('.txt')) path += '.txt';
+  try {
+    await fmFetchPost('/fm/write?path=' + encodeURIComponent(path), compiled);
+    toast(`Saved to SD card: ${path} ✓`);
+  } catch (e) {
+    toast('Error saving to SD card: ' + e.message, 'err');
+  }
+}
+
+function loadCodeTyperSavedSnippets() {
+  try {
+    ctSavedSnippets = JSON.parse(localStorage.getItem('gc_codetyper_snippets') || '{}');
+  } catch {
+    ctSavedSnippets = {};
+  }
+  const sel = $('ctSavedSnippetsSelect');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">-- Load Saved Snippet --</option>';
+  for (const name in ctSavedSnippets) {
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = name;
+    sel.appendChild(opt);
+  }
+}
+
+function ctSaveLocalSnippet() {
+  const raw = $('codeTyperInput')?.value?.trim();
+  if (!raw) { toast('Enter text to save', 'warn'); return; }
+  const name = prompt('Snippet Title / Name:', 'My Code Snippet ' + (Object.keys(ctSavedSnippets).length + 1));
+  if (!name) return;
+
+  ctSavedSnippets[name] = raw;
+  localStorage.setItem('gc_codetyper_snippets', JSON.stringify(ctSavedSnippets));
+  loadCodeTyperSavedSnippets();
+  if ($('ctSavedSnippetsSelect')) $('ctSavedSnippetsSelect').value = name;
+  toast(`Snippet "${name}" saved locally ✓`);
+}
+
+function ctLoadSavedSnippet() {
+  const sel = $('ctSavedSnippetsSelect');
+  if (!sel || !sel.value) return;
+  const name = sel.value;
+  if (ctSavedSnippets[name]) {
+    $('codeTyperInput').value = ctSavedSnippets[name];
+    updateCodeTyperCompiled();
+    toast(`Loaded snippet "${name}" ✓`);
+  }
+}
+
+function ctDeleteSavedSnippet() {
+  const sel = $('ctSavedSnippetsSelect');
+  if (!sel || !sel.value) { toast('Select a snippet to delete', 'warn'); return; }
+  const name = sel.value;
+  if (!confirm(`Delete saved snippet "${name}"?`)) return;
+
+  delete ctSavedSnippets[name];
+  localStorage.setItem('gc_codetyper_snippets', JSON.stringify(ctSavedSnippets));
+  loadCodeTyperSavedSnippets();
+  toast(`Deleted "${name}"`, 'warn');
+}
+
+function ctCopyCompiled() {
+  const compiled = $('codeTyperCompiled')?.value;
+  if (!compiled) { toast('Nothing to copy', 'warn'); return; }
+  navigator.clipboard.writeText(compiled).then(() => toast('DuckyScript copied to clipboard ✓'));
+}
+
+function ctClear() {
+  if ($('codeTyperInput')) $('codeTyperInput').value = '';
+  ctActiveHeader = 'none';
+  updateCodeTyperCompiled();
+  toast('Editor cleared');
+}
