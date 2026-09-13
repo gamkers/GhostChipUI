@@ -3087,7 +3087,9 @@ function kbMacro(m) {
 let kbRecognition = null;
 let kbSpeechActive = false;
 let kbSpeechBuffer = '';
-let kbProcessedFinalIndex = -1;
+let kbPriorSpeechText = '';
+let kbStreamedCharsCount = 0;
+let kbCurrentSessionFinal = '';
 
 function kbGetSpeechRecognition() {
   const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -3099,6 +3101,8 @@ function kbGetSpeechRecognition() {
 
     kbRecognition.onstart = () => {
       kbSpeechActive = true;
+      kbCurrentSessionFinal = '';
+      kbStreamedCharsCount = 0;
       const btn = $('kbMicBtn');
       const label = $('kbMicBtnLabel');
       const status = $('kbVoiceStatus');
@@ -3113,38 +3117,43 @@ function kbGetSpeechRecognition() {
     kbRecognition.onresult = (event) => {
       const mode = $('kbVoiceMode')?.value || 'stream';
       const autoEnter = $('kbVoiceAutoEnter')?.checked || false;
-      let interimTranscript = '';
-      let allFinalText = '';
+
+      let sessionFinal = '';
+      let interim = '';
 
       for (let i = 0; i < event.results.length; ++i) {
         const item = event.results[i];
         const text = item[0]?.transcript || '';
         if (item.isFinal) {
-          allFinalText += (allFinalText ? ' ' : '') + text.trim();
-          // Strictly send each finalized sentence/phrase EXACTLY ONCE
-          if (i > kbProcessedFinalIndex) {
-            kbProcessedFinalIndex = i;
-            if (mode === 'stream') {
-              kbProcessSpokenSentence(text.trim(), autoEnter);
-            } else {
-              kbSpeechBuffer += (kbSpeechBuffer ? ' ' : '') + text.trim();
-            }
-          }
+          sessionFinal += (sessionFinal ? ' ' : '') + text.trim();
         } else {
-          interimTranscript += (interimTranscript ? ' ' : '') + text.trim();
+          interim += (interim ? ' ' : '') + text.trim();
         }
+      }
+
+      kbCurrentSessionFinal = sessionFinal;
+
+      if (mode === 'stream') {
+        // Delta stream: only send characters that have not been sent yet
+        if (sessionFinal.length > kbStreamedCharsCount) {
+          const newChunk = sessionFinal.slice(kbStreamedCharsCount).trim();
+          kbStreamedCharsCount = sessionFinal.length;
+          if (newChunk) {
+            kbProcessSpokenSentence(newChunk, autoEnter);
+          }
+        }
+      } else {
+        // Buffer mode: declarative accumulation
+        kbSpeechBuffer = (kbPriorSpeechText ? kbPriorSpeechText + ' ' : '') + sessionFinal;
+        const bufferActions = $('kbVoiceBufferActions');
+        if (bufferActions) bufferActions.style.display = kbSpeechBuffer ? 'flex' : 'none';
       }
 
       // Update live preview UI
       const liveBox = $('kbVoiceLiveText');
       if (liveBox) {
-        if (mode === 'stream') {
-          liveBox.innerHTML = escHtml(allFinalText || '') + (interimTranscript ? ` <span class="interim">${escHtml(interimTranscript)}</span>` : '');
-        } else {
-          liveBox.innerHTML = escHtml(kbSpeechBuffer || '') + (interimTranscript ? ` <span class="interim">${escHtml(interimTranscript)}</span>` : '');
-          const bufferActions = $('kbVoiceBufferActions');
-          if (bufferActions) bufferActions.style.display = kbSpeechBuffer ? 'flex' : 'none';
-        }
+        const totalBase = (kbPriorSpeechText ? kbPriorSpeechText + ' ' : '') + sessionFinal;
+        liveBox.innerHTML = escHtml(totalBase || '') + (interim ? ` <span class="interim">${escHtml(interim)}</span>` : '');
       }
     };
 
@@ -3158,9 +3167,13 @@ function kbGetSpeechRecognition() {
 
     kbRecognition.onend = () => {
       if (kbSpeechActive) {
-        // Auto-restart if user did not explicitly stop
+        // Carry over finalized text from this session before restarting
+        if (kbCurrentSessionFinal) {
+          kbPriorSpeechText = (kbPriorSpeechText ? kbPriorSpeechText + ' ' : '') + kbCurrentSessionFinal;
+        }
+        kbCurrentSessionFinal = '';
+        kbStreamedCharsCount = 0;
         try {
-          kbProcessedFinalIndex = -1;
           kbRecognition.start();
         } catch (_) {}
       } else {
@@ -3190,7 +3203,8 @@ function kbStartSpeech() {
   if (!rec) return;
   rec.lang = $('kbVoiceLang')?.value || 'en-US';
   kbSpeechActive = true;
-  kbProcessedFinalIndex = -1;
+  kbCurrentSessionFinal = '';
+  kbStreamedCharsCount = 0;
   try {
     rec.start();
   } catch (e) {
@@ -3200,7 +3214,11 @@ function kbStartSpeech() {
 
 function kbStopSpeech() {
   kbSpeechActive = false;
-  kbProcessedFinalIndex = -1;
+  if (kbCurrentSessionFinal) {
+    kbPriorSpeechText = (kbPriorSpeechText ? kbPriorSpeechText + ' ' : '') + kbCurrentSessionFinal;
+  }
+  kbCurrentSessionFinal = '';
+  kbStreamedCharsCount = 0;
   if (kbRecognition) {
     try { kbRecognition.stop(); } catch (_) {}
   }
@@ -3288,6 +3306,9 @@ async function kbSendBufferedSpeech(withEnter = false) {
 
 function kbClearSpeechBuffer() {
   kbSpeechBuffer = '';
+  kbPriorSpeechText = '';
+  kbCurrentSessionFinal = '';
+  kbStreamedCharsCount = 0;
   const liveBox = $('kbVoiceLiveText');
   if (liveBox) liveBox.innerHTML = '';
   const bufferActions = $('kbVoiceBufferActions');
