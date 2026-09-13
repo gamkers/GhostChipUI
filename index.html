@@ -242,7 +242,7 @@
             <button class="icon-btn sm star-btn" id="starBtn" onclick="showAddFavModal()" title="Add to Favourites">⭐</button>
             <button class="icon-btn sm" onclick="document.getElementById('fileIn').click()" title="Open">OPEN</button>
             <button class="icon-btn sm save-btn" onclick="showSaveModal()" title="Save to Device">SAVE</button>
-            <button class="icon-btn sm" onclick="clearEditor()" title="Clear">✕</button>
+            <button class="icon-btn sm" onclick="clearEditor()" title="Clear Editor">CLR</button>
           </div>
         </div>
         <div class="editor-wrap" style="position:relative">
@@ -848,6 +848,59 @@
       </div>
       <div class="tool-panel" id="tool-keyboard">
         <div class="tool-panel-head"><h3>Live Keyboard</h3><button class="tool-back" onclick="closeTool('keyboard')">Back</button></div>
+
+        <!-- ── Voice-to-Keystroke (Speech Dictation) Bar ── -->
+        <div class="kb-voice-card">
+          <div class="kb-voice-header">
+            <div class="kb-voice-title">
+              <button class="kb-mic-btn" id="kbMicBtn" onclick="kbToggleSpeech()" title="Toggle Voice Dictation">
+                <svg class="kb-mic-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+                <span id="kbMicBtnLabel">Voice Dictate</span>
+              </button>
+              <span class="kb-voice-status" id="kbVoiceStatus">Tap mic to speak</span>
+            </div>
+            <div class="kb-voice-controls">
+              <!-- Live Stream vs Review Mode -->
+              <select id="kbVoiceMode" class="ct-select" onchange="kbUpdateVoiceMode()">
+                <option value="stream" selected>⚡ Live Stream (Instant Keystrokes)</option>
+                <option value="buffer">📝 Review &amp; Send</option>
+              </select>
+              <!-- Language selection -->
+              <select id="kbVoiceLang" class="ct-select" onchange="kbUpdateVoiceLang()">
+                <option value="en-US" selected>English (US)</option>
+                <option value="en-GB">English (UK)</option>
+                <option value="en-IN">English (India)</option>
+                <option value="es-ES">Español</option>
+                <option value="fr-FR">Français</option>
+                <option value="de-DE">Deutsch</option>
+                <option value="it-IT">Italiano</option>
+                <option value="pt-BR">Português</option>
+                <option value="zh-CN">中文</option>
+                <option value="ja-JP">日本語</option>
+              </select>
+              <label class="ct-toggle-label" title="Automatically press ENTER after each sentence">
+                <input type="checkbox" id="kbVoiceAutoEnter" class="ct-checkbox">
+                <span class="ct-toggle-track"><span class="ct-toggle-thumb"></span></span>
+                <span class="ct-setting-label">Auto ENTER</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Transcript Live Preview / Buffer box -->
+          <div class="kb-voice-preview-wrap" id="kbVoicePreviewWrap">
+            <div class="kb-voice-live-text" id="kbVoiceLiveText" placeholder="Spoken words will appear here in real time…"></div>
+            <div class="kb-voice-actions" id="kbVoiceBufferActions" style="display:none;">
+              <button class="btn btn-primary btn-sm" onclick="kbSendBufferedSpeech(false)">
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                <span>Type via HID</span>
+              </button>
+              <button class="btn btn-ghost btn-sm" onclick="kbSendBufferedSpeech(true)">
+                <span>Type + ENTER ↵</span>
+              </button>
+              <button class="btn btn-danger-sm" onclick="kbClearSpeechBuffer()">✕</button>
+            </div>
+          </div>
+        </div>
 
         <div class="keyboard-wrap">
 
@@ -1692,108 +1745,146 @@
 
       <!-- ── TOOL: CODE TYPER ── -->
       <div class="tool-panel" id="tool-codetyper">
-        <div class="tool-panel-head">
-          <div style="display:flex; align-items:center; gap:8px;">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-            <h3>Code Typer — Plain Code & Text Injector</h3>
+
+        <!-- ── Editor Chrome: sticky top bar ── -->
+        <div class="ct-topbar">
+          <div class="ct-topbar-left">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            <span class="ct-filename">Code Typer</span>
           </div>
-          <button class="tool-back" onclick="closeTool('codetyper')">Back</button>
-        </div>
-
-        <div class="card pro-ai-card">
-          <!-- Controls -->
-          <div class="pro-ai-header" style="flex-wrap:wrap; gap:10px; margin-bottom:12px; padding-bottom:10px; border-bottom:1px solid var(--b1);">
-            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-              <label style="font-size:0.75rem; font-family:var(--mono); color:var(--dim);">Inter-line Delay:</label>
-              <select id="ctDelaySelect" class="input" style="width:auto; padding:4px 8px; font-size:0.75rem;" onchange="updateCodeTyperCompiled()">
-                <option value="0">0 ms (No delay)</option>
-                <option value="100">100 ms</option>
-                <option value="300" selected>300 ms (Recommended)</option>
-                <option value="500">500 ms</option>
-                <option value="1000">1000 ms (1s)</option>
-                <option value="2000">2000 ms (2s)</option>
-              </select>
-              
-              <label style="font-size:0.75rem; font-family:var(--mono); color:var(--dim); margin-left:8px; display:inline-flex; align-items:center; gap:4px; cursor:pointer;">
-                <input type="checkbox" id="ctAutoEnter" checked onchange="updateCodeTyperCompiled()" style="accent-color:var(--g);">
-                Auto ENTER
-              </label>
-            </div>
-
-            <div style="display:flex; align-items:center; gap:8px;">
-              <span class="agent-model-badge" style="font-size:0.65rem; background:rgba(34,197,94,0.15); color:var(--g); border:1px solid var(--g);">Indentation & Spaces Preserved ✓</span>
-            </div>
-          </div>
-
-          <!-- Header Presets -->
-          <div class="pro-presets-wrapper" style="margin-bottom:12px;">
-            <div class="pro-os-label" style="font-size:0.65rem;">
-              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M2 12h20"/></svg>
-              <span>TARGET OPENER PRESETS</span>
-            </div>
-            <div class="pro-tags-grid">
-              <button class="pro-tag-chip" onclick="ctInsertHeader('win_cmd')">Win CMD</button>
-              <button class="pro-tag-chip" onclick="ctInsertHeader('win_powershell')">Win PowerShell</button>
-              <button class="pro-tag-chip" onclick="ctInsertHeader('mac_terminal')">Mac Terminal</button>
-              <button class="pro-tag-chip" onclick="ctInsertHeader('linux_terminal')">Linux Terminal</button>
-              <button class="pro-tag-chip" onclick="ctInsertHeader('none')">None (Raw Code Only)</button>
-            </div>
-          </div>
-
-          <!-- Full-Width Code Editor -->
-          <div style="margin-bottom:14px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-              <span style="font-size:0.78rem; font-family:var(--mono); color:var(--g); font-weight:700;">Plain Code / Text Input</span>
-              <span style="font-size:0.68rem; color:var(--dim); font-family:var(--mono);" id="ctRawStats">0 lines</span>
-            </div>
-            <textarea id="codeTyperInput" class="code-output" style="height:320px; font-size:0.82rem; white-space:pre; tab-size:4; font-family:var(--mono); width:100%; box-sizing:border-box;" placeholder="Paste or type any plain code or text here — no DuckyScript keywords needed.&#10;Exact spaces, indentation, and newlines are all preserved!&#10;&#10;Example:&#10;main().catch((error) => {&#10;    console.error(&quot;\nDeployment failed:&quot;);&#10;    console.error(error);&#10;    process.exitCode = 1;&#10;});" oninput="updateCodeTyperCompiled()"></textarea>
-            <!-- hidden compiled output (needed by ctTypeHid / ctCopyCompiled / ctSaveSd) -->
-            <textarea id="codeTyperCompiled" style="display:none;" readonly></textarea>
-            <span id="ctCompiledStats" style="display:none;"></span>
-          </div>
-
-          <!-- Saved Snippets -->
-          <div style="background:var(--s2); border:1px solid var(--b1); border-radius:10px; padding:12px 14px; margin-bottom:14px;">
-            <div style="font-size:0.7rem; font-family:var(--mono); color:var(--dim); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:8px;">📁 Saved Snippets</div>
-            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-              <select id="ctSavedSnippetsSelect" class="input" style="flex:1; min-width:180px; padding:6px 10px; font-size:0.78rem;" onchange="ctLoadSavedSnippet()">
-                <option value="">— Load a saved snippet —</option>
-              </select>
-              <button class="btn btn-ghost" style="padding:6px 14px; font-size:0.76rem; white-space:nowrap;" onclick="ctSaveLocalSnippet()">
-                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-                Save Snippet
-              </button>
-              <button class="btn btn-danger-sm" style="padding:6px 12px; font-size:0.76rem; white-space:nowrap;" onclick="ctDeleteSavedSnippet()">
-                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                Delete
-              </button>
-            </div>
-          </div>
-
-          <!-- Action Buttons -->
-          <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
-            <button class="btn btn-primary" onclick="ctTypeHid()" style="background:linear-gradient(135deg,#22c55e,#16a34a); border:none; box-shadow:0 4px 18px rgba(34,197,94,0.35); padding:9px 20px; font-size:0.82rem;">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-              Type via HID
+          <div class="ct-topbar-right">
+            <span id="ctRawStats" class="ct-stat">0 lines</span>
+            <!-- AI Content Generator Toggle -->
+            <button class="ct-ai-toggle-btn" id="ctAiToggleBtn" onclick="ctToggleAiBar()" title="Generate with OpenRouter AI">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
+              <span>AI</span>
             </button>
-            <button class="btn btn-ghost" onclick="ctToEditor()" style="padding:8px 16px; font-size:0.8rem;">
-              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-              Send to Editor
+            <!-- Copy DuckyScript -->
+            <button class="ct-icon-btn" onclick="ctCopyCompiled()" title="Copy DuckyScript">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
             </button>
-            <button class="btn btn-ghost" onclick="ctSaveSd()" style="padding:8px 16px; font-size:0.8rem;">
+            <!-- Clear editor -->
+            <button class="ct-icon-btn" onclick="ctClear()" title="Clear editor">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            </button>
+            <!-- Save to SD card -->
+            <button class="ct-save-btn" onclick="ctSaveSd()">
               <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-              Save to SD Card
+              Save
             </button>
-            <button class="btn btn-ghost" onclick="ctCopyCompiled()" style="padding:8px 16px; font-size:0.8rem;">
-              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-              Copy DuckyScript
-            </button>
-            <button class="btn btn-ghost" onclick="ctClear()" style="padding:8px 14px; font-size:0.8rem; margin-left:auto;">
-              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-              Clear
-            </button>
+            <button class="tool-back" onclick="closeTool('codetyper')">Back</button>
           </div>
         </div>
+
+        <!-- ── Settings strip ── -->
+        <div class="ct-settings-strip">
+          <div class="ct-setting-item">
+            <label class="ct-setting-label">Delay</label>
+            <select id="ctDelaySelect" class="ct-select" onchange="updateCodeTyperCompiled()">
+              <option value="0">0 ms</option>
+              <option value="100">100 ms</option>
+              <option value="300" selected>300 ms</option>
+              <option value="500">500 ms</option>
+              <option value="1000">1 s</option>
+              <option value="2000">2 s</option>
+            </select>
+          </div>
+          <div class="ct-setting-item">
+            <label class="ct-toggle-label">
+              <input type="checkbox" id="ctAutoEnter" checked onchange="updateCodeTyperCompiled()" class="ct-checkbox">
+              <span class="ct-toggle-track"><span class="ct-toggle-thumb"></span></span>
+              <span class="ct-setting-label">Auto ENTER</span>
+            </label>
+          </div>
+          <div class="ct-setting-item">
+            <label class="ct-toggle-label" title="Soft-wrap long lines to fit screen without adding real newlines">
+              <input type="checkbox" id="ctWrapToggle" checked onchange="ctToggleWrap()" class="ct-checkbox">
+              <span class="ct-toggle-track"><span class="ct-toggle-thumb"></span></span>
+              <span class="ct-setting-label">Soft Wrap</span>
+            </label>
+          </div>
+          <!-- Quick Scroll Left / Right buttons when in horizontal scroll mode -->
+          <div class="ct-setting-item ct-scroll-btns" id="ctScrollBtns" style="display:none;">
+            <button type="button" class="ct-nav-scroll-btn" onclick="ctScrollEditor('left')" title="Scroll Left (←)">◀</button>
+            <button type="button" class="ct-nav-scroll-btn" onclick="ctScrollEditor('right')" title="Scroll Right (→)">▶</button>
+          </div>
+          <span class="ct-badge-preserved">⚡ Spaces &amp; Indent Preserved</span>
+        </div>
+
+        <!-- ── AI Content Generator Bar (Collapsible) ── -->
+        <div class="ct-ai-bar" id="ctAiBar" style="display:none;">
+          <div class="ct-ai-bar-top">
+            <div class="ct-ai-title-wrap">
+              <span class="ct-ai-sparkle">✨</span>
+              <span class="ct-ai-title">AI Content Creator</span>
+              <span class="ct-ai-badge">OpenRouter</span>
+            </div>
+            <select id="ctAiModelSelect" class="ct-ai-model-select">
+              <option value="google/gemini-2.0-flash-001" selected>Gemini 2.0 Flash</option>
+              <option value="deepseek/deepseek-chat">DeepSeek V3</option>
+              <option value="openai/gpt-4o-mini">GPT-4o Mini</option>
+              <option value="meta-llama/llama-3.3-70b-instruct">Llama 3.3 70B</option>
+              <option value="anthropic/claude-3.5-haiku">Claude 3.5 Haiku</option>
+              <option value="poolside/laguna-xs-2.1">Laguna XS 2.1</option>
+            </select>
+          </div>
+
+          <!-- Quick Starter Chips -->
+          <div class="ct-ai-chips">
+            <button type="button" class="ct-ai-chip" onclick="ctAiSetPrompt('Write a clean Python script to ')">🐍 Python Script</button>
+            <button type="button" class="ct-ai-chip" onclick="ctAiSetPrompt('Write a PowerShell script to ')">💻 PowerShell</button>
+            <button type="button" class="ct-ai-chip" onclick="ctAiSetPrompt('Write a professional email about ')">✉️ Email / Letter</button>
+            <button type="button" class="ct-ai-chip" onclick="ctAiSetPrompt('Write a Bash script to ')">🐧 Bash Script</button>
+            <button type="button" class="ct-ai-chip" onclick="ctAiSetPrompt('Create a payload command to ')">🛡️ Payload</button>
+            <button type="button" class="ct-ai-chip" onclick="ctAiSetPrompt('Write a detailed note explaining ')">📝 Note / Memo</button>
+          </div>
+
+          <!-- Prompt Input Box & Action -->
+          <div class="ct-ai-box">
+            <textarea id="ctAiPromptInput" class="ct-ai-textarea" rows="2"
+              placeholder="Ask AI to create any content (e.g. 'Write a python script to backup MySQL database', 'A formal email asking for approval', 'Curl commands to test user login endpoint')..."></textarea>
+            <button id="ctAiGenBtn" class="ct-ai-gen-btn" onclick="ctGenerateAI()">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/></svg>
+              <span>Generate</span>
+            </button>
+          </div>
+
+          <!-- Inline OpenRouter API Key configuration if not saved yet -->
+          <div id="ctAiKeyNotice" class="ct-ai-key-notice" style="display:none;">
+            <div class="ct-ai-key-row">
+              <span class="ct-ai-key-label">🔑 OpenRouter Key:</span>
+              <input type="password" id="ctAiInlineKeyInput" class="ct-ai-key-input" placeholder="sk-or-v1-...">
+              <button class="ct-ai-key-save" onclick="ctSaveInlineKey()">Save Key</button>
+            </div>
+            <p class="ct-ai-key-hint">Enter your OpenRouter key once. Saved locally in your browser.</p>
+          </div>
+        </div>
+
+        <!-- ── Code Editor ── -->
+        <div class="ct-editor-wrap">
+          <!-- Line numbers -->
+          <div class="ct-line-nums" id="ctLineNums" aria-hidden="true">1</div>
+          <!-- Editor textarea -->
+          <textarea id="codeTyperInput" class="ct-editor" spellcheck="false"
+            placeholder="Paste or type any code or text…&#10;No DuckyScript keywords needed.&#10;&#10;Example:&#10;main().catch((error) => {&#10;    console.error(error);&#10;    process.exitCode = 1;&#10;});"
+            oninput="updateCodeTyperCompiled(); ctSyncLineNums()"></textarea>
+          <!-- hidden compiled output -->
+          <textarea id="codeTyperCompiled" style="display:none;" readonly></textarea>
+          <span id="ctCompiledStats" style="display:none;"></span>
+        </div>
+
+        <!-- ── Action buttons (two only) ── -->
+        <div class="ct-actions">
+          <button class="ct-action-primary" onclick="ctTypeHid()">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Type via HID
+          </button>
+          <button class="ct-action-btn" onclick="ctToEditor()">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            Open in Editor
+          </button>
+        </div>
+
       </div>
     </section>
 

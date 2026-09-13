@@ -1092,11 +1092,20 @@ function openFile(e) {
   e.target.value = '';
 }
 function clearEditor() {
-  $('editor').value = '';
+  const ed = $('editor');
+  if (ed) {
+    ed.value = '';
+    ed.dispatchEvent(new Event('input'));
+  }
   updateLines();
+  if (typeof liveCompile === 'function') liveCompile();
   $('fileName').textContent = 'untitled.txt';
   localStorage.removeItem('gc_script');
   clearEditorEditMode();
+  if (typeof acDismissAiSuggestion === 'function') acDismissAiSuggestion();
+  const acDrop = $('acDropdown');
+  if (acDrop) acDrop.style.display = 'none';
+  toast('Editor cleared');
 }
 
 // ═══════════════════════════════════════════════════
@@ -2186,6 +2195,9 @@ function openTool(name) {
   }
 }
 function closeTool(name) {
+  if (name === 'keyboard' && typeof kbStopSpeech === 'function') {
+    kbStopSpeech();
+  }
   const panel = $('tool-' + name);
   if (panel) {
     panel.classList.remove('open');
@@ -3068,6 +3080,210 @@ function kbMacro(m) {
     setTimeout(() => { if ($('kbStatus')) $('kbStatus').textContent = 'Ready.'; }, 800);
   });
 }
+
+// ═══════════════════════════════════════════════════
+//  🎙️ LIVE KEYBOARD VOICE DICTATION
+// ═══════════════════════════════════════════════════
+let kbRecognition = null;
+let kbSpeechActive = false;
+let kbSpeechBuffer = '';
+
+function kbGetSpeechRecognition() {
+  const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRec) return null;
+  if (!kbRecognition) {
+    kbRecognition = new SpeechRec();
+    kbRecognition.continuous = true;
+    kbRecognition.interimResults = true;
+
+    kbRecognition.onstart = () => {
+      kbSpeechActive = true;
+      const btn = $('kbMicBtn');
+      const label = $('kbMicBtnLabel');
+      const status = $('kbVoiceStatus');
+      if (btn) btn.classList.add('active');
+      if (label) label.textContent = 'Listening…';
+      if (status) {
+        status.textContent = '🎙️ Listening... Speak naturally';
+        status.classList.add('listening');
+      }
+    };
+
+    kbRecognition.onresult = (event) => {
+      const mode = $('kbVoiceMode')?.value || 'stream';
+      const autoEnter = $('kbVoiceAutoEnter')?.checked || false;
+      let interimTranscript = '';
+      let finalTranscript = '';
+
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        const item = event.results[i];
+        const text = item[0].transcript;
+        if (item.isFinal) {
+          finalTranscript += text;
+          if (mode === 'stream') {
+            kbProcessSpokenSentence(text.trim(), autoEnter);
+          } else {
+            kbSpeechBuffer += (kbSpeechBuffer ? ' ' : '') + text.trim();
+          }
+        } else {
+          interimTranscript += text;
+        }
+      }
+
+      // Update live preview UI
+      const liveBox = $('kbVoiceLiveText');
+      if (liveBox) {
+        if (mode === 'stream') {
+          liveBox.innerHTML = escHtml(finalTranscript || '') + (interimTranscript ? ` <span class="interim">${escHtml(interimTranscript)}</span>` : '');
+        } else {
+          liveBox.innerHTML = escHtml(kbSpeechBuffer || '') + (interimTranscript ? ` <span class="interim">${escHtml(interimTranscript)}</span>` : '');
+          const bufferActions = $('kbVoiceBufferActions');
+          if (bufferActions) bufferActions.style.display = kbSpeechBuffer ? 'flex' : 'none';
+        }
+      }
+    };
+
+    kbRecognition.onerror = (event) => {
+      if (event.error === 'not-allowed') {
+        toast('Microphone access blocked. Please allow mic permissions in browser settings.', 'err');
+      } else if (event.error !== 'no-speech') {
+        toast('Voice dictation: ' + event.error, 'warn');
+      }
+    };
+
+    kbRecognition.onend = () => {
+      if (kbSpeechActive) {
+        // Auto-restart if user did not explicitly stop
+        try { kbRecognition.start(); } catch (_) {}
+      } else {
+        kbResetVoiceUI();
+      }
+    };
+  }
+  return kbRecognition;
+}
+
+function kbToggleSpeech() {
+  const rec = kbGetSpeechRecognition();
+  if (!rec) {
+    toast('Speech Recognition not supported in this browser. Please use Chrome, Edge, or Safari.', 'err');
+    return;
+  }
+
+  if (kbSpeechActive) {
+    kbStopSpeech();
+  } else {
+    kbStartSpeech();
+  }
+}
+
+function kbStartSpeech() {
+  const rec = kbGetSpeechRecognition();
+  if (!rec) return;
+  rec.lang = $('kbVoiceLang')?.value || 'en-US';
+  kbSpeechActive = true;
+  try {
+    rec.start();
+  } catch (e) {
+    // If already active, ignore
+  }
+}
+
+function kbStopSpeech() {
+  kbSpeechActive = false;
+  if (kbRecognition) {
+    try { kbRecognition.stop(); } catch (_) {}
+  }
+  kbResetVoiceUI();
+}
+
+function kbResetVoiceUI() {
+  const btn = $('kbMicBtn');
+  const label = $('kbMicBtnLabel');
+  const status = $('kbVoiceStatus');
+  if (btn) btn.classList.remove('active');
+  if (label) label.textContent = 'Voice Dictate';
+  if (status) {
+    status.textContent = 'Tap mic to speak';
+    status.classList.remove('listening');
+  }
+}
+
+function kbUpdateVoiceMode() {
+  const mode = $('kbVoiceMode')?.value || 'stream';
+  const bufferActions = $('kbVoiceBufferActions');
+  if (bufferActions) {
+    bufferActions.style.display = (mode === 'buffer' && kbSpeechBuffer) ? 'flex' : 'none';
+  }
+}
+
+function kbUpdateVoiceLang() {
+  if (kbRecognition && kbSpeechActive) {
+    kbRecognition.lang = $('kbVoiceLang')?.value || 'en-US';
+  }
+}
+
+async function kbProcessSpokenSentence(text, autoEnter = false) {
+  if (!text) return;
+
+  // Handle special voice commands
+  const lower = text.toLowerCase().trim();
+  let script = '';
+
+  if (lower === 'enter' || lower === 'new line' || lower === 'newline') {
+    script = 'ENTER';
+  } else if (lower === 'backspace' || lower === 'delete') {
+    script = 'BACKSPACE';
+  } else if (lower === 'tab' || lower === 'next') {
+    script = 'TAB';
+  } else if (lower === 'space') {
+    script = 'SPACE';
+  } else if (lower === 'escape') {
+    script = 'ESC';
+  } else {
+    script = 'STRING ' + text + (autoEnter ? '\nENTER' : '');
+  }
+
+  $('kbStatus').textContent = 'Voice Sent: ' + text;
+  try {
+    await deviceFetch('/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'duckyscript=' + encodeURIComponent(script)
+    });
+  } catch (e) {
+    console.error('Speech send error:', e);
+  }
+}
+
+async function kbSendBufferedSpeech(withEnter = false) {
+  if (!kbSpeechBuffer) {
+    toast('No speech recorded yet', 'warn');
+    return;
+  }
+  const script = 'STRING ' + kbSpeechBuffer + (withEnter ? '\nENTER' : '');
+  toast('Typing spoken text via HID…', 'warn', 2000);
+  try {
+    await deviceFetch('/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'duckyscript=' + encodeURIComponent(script)
+    });
+    toast('Spoken text typed successfully ✓');
+    kbClearSpeechBuffer();
+  } catch (e) {
+    toast('Error sending keystrokes: ' + e.message, 'err');
+  }
+}
+
+function kbClearSpeechBuffer() {
+  kbSpeechBuffer = '';
+  const liveBox = $('kbVoiceLiveText');
+  if (liveBox) liveBox.innerHTML = '';
+  const bufferActions = $('kbVoiceBufferActions');
+  if (bufferActions) bufferActions.style.display = 'none';
+}
+
 
 
 // ═══════════════════════════════════════════════════
@@ -5057,8 +5273,25 @@ let ctActiveHeader = 'none';
 let ctSavedSnippets = {};
 
 function initCodeTyper() {
-  loadCodeTyperSavedSnippets();
   updateCodeTyperCompiled();
+
+  // Initialize Line Wrap preference (defaults to true for optimal mobile/desktop viewing)
+  const savedWrap = localStorage.getItem('gc_ct_wrap');
+  const isWrap = savedWrap === null ? true : savedWrap === '1';
+  const wrapToggle = $('ctWrapToggle');
+  if (wrapToggle) wrapToggle.checked = isWrap;
+  const inputTa = $('codeTyperInput');
+  const scrollBtns = $('ctScrollBtns');
+  if (inputTa) {
+    if (isWrap) {
+      inputTa.classList.remove('no-wrap');
+      if (scrollBtns) scrollBtns.style.display = 'none';
+    } else {
+      inputTa.classList.add('no-wrap');
+      if (scrollBtns) scrollBtns.style.display = 'inline-flex';
+    }
+  }
+
   // Enable Tab key indentation inside textarea
   const ta = $('codeTyperInput');
   if (ta && !ta._tabBound) {
@@ -5074,6 +5307,49 @@ function initCodeTyper() {
       }
     });
   }
+  // Sync line numbers on scroll too
+  if (ta) ta.addEventListener('scroll', ctSyncLineNums);
+  ctSyncLineNums();
+}
+
+function ctToggleWrap() {
+  const ta = $('codeTyperInput');
+  const toggle = $('ctWrapToggle');
+  const scrollBtns = $('ctScrollBtns');
+  if (!ta) return;
+  const isWrapped = toggle ? toggle.checked : true;
+  if (isWrapped) {
+    ta.classList.remove('no-wrap');
+    if (scrollBtns) scrollBtns.style.display = 'none';
+  } else {
+    ta.classList.add('no-wrap');
+    if (scrollBtns) scrollBtns.style.display = 'inline-flex';
+  }
+  localStorage.setItem('gc_ct_wrap', isWrapped ? '1' : '0');
+  ctSyncLineNums();
+}
+
+function ctScrollEditor(dir) {
+  const ta = $('codeTyperInput');
+  if (!ta) return;
+  if (dir === 'right') {
+    ta.scrollBy({ left: 220, behavior: 'smooth' });
+  } else if (dir === 'left') {
+    ta.scrollBy({ left: -220, behavior: 'smooth' });
+  }
+}
+
+function ctSyncLineNums() {
+  const ta = $('codeTyperInput');
+  const gutter = $('ctLineNums');
+  if (!ta || !gutter) return;
+  const lines = ta.value.split('\n').length;
+  let nums = '';
+  for (let i = 1; i <= Math.max(lines, 1); i++) nums += i + '\n';
+  // Only rebuild DOM text when line count actually changes
+  if (gutter.textContent !== nums) gutter.textContent = nums;
+  // Sync scroll position (gutter has overflow-y:hidden scrollbar but is scrollable via JS)
+  gutter.scrollTop = ta.scrollTop;
 }
 
 function ctInsertHeader(preset) {
@@ -5112,6 +5388,14 @@ function compileTextToDucky(rawText, delayMs = 300, autoEnter = true, headerPres
     compiledLines.push('REM --- Target: Linux Terminal ---');
     compiledLines.push('CTRL ALT t');
     compiledLines.push('DELAY 1500');
+  }
+
+  // Add a small initial delay so the HID device doesn't drop the very
+  // first STRING before the target input field has focus.
+  // (Only needed when no preset header already provides an initial delay.)
+  const hasHeader = headerPreset !== 'none';
+  if (!hasHeader && lines.some(l => l.length > 0)) {
+    compiledLines.push('DELAY 200');
   }
 
   for (let i = 0; i < lines.length; i++) {
@@ -5173,93 +5457,240 @@ async function ctTypeHid() {
 function ctToEditor() {
   const compiled = $('codeTyperCompiled')?.value?.trim();
   if (!compiled) { toast('Enter code or text first', 'warn'); return; }
-  const ta = $('duckyInput') || document.querySelector('textarea[id*="ducky"]');
-  if (ta) {
-    ta.value = compiled;
-    ta.dispatchEvent(new Event('input'));
-    toast('Pushed to DuckyScript Editor ✓');
-  }
+  // Navigate to the scripts page (where the DuckyScript editor lives)
+  const scriptsNav = document.querySelectorAll('.nav-item')[0];
+  goPage('scripts', scriptsNav);
+  // Small delay for the page transition, then populate the editor
+  setTimeout(() => {
+    const ta = $('editor');
+    if (ta) {
+      ta.value = compiled;
+      ta.dispatchEvent(new Event('input'));
+      if (typeof liveCompile === 'function') liveCompile();
+      if (typeof renderEditor === 'function') renderEditor();
+      toast('Pushed to DuckyScript Editor ✓');
+    } else {
+      toast('Editor not found', 'err');
+    }
+  }, 320);
 }
 
 async function ctSaveSd() {
   const compiled = $('codeTyperCompiled')?.value?.trim();
   if (!compiled) { toast('Enter code or text first', 'warn'); return; }
 
-  const filename = prompt('Enter filename to save on SD card (e.g. deployment.txt):', 'codetyper_payload.txt');
+  const filename = prompt('Filename to save on SD card:', 'code_snippet.txt');
   if (!filename) return;
 
-  let path = '/CodeSnippets/' + filename.replace(/^\/+/, '');
-  if (!path.endsWith('.txt')) path += '.txt';
+  // Sanitise and ensure .txt extension
+  let safeName = filename.trim().replace(/^\/+/, '').replace(/\//g, '_');
+  if (!safeName) safeName = 'code_snippet.txt';
+  if (!safeName.match(/\.[a-zA-Z0-9]+$/)) safeName += '.txt';
+
+  const folder   = '/CodeSnippets';
+  const fullPath = folder + '/' + safeName;
+
+  toast('Saving to SD card...', 'warn', 4000);
+
   try {
-    await fmFetchPost('/fm/write?path=' + encodeURIComponent(path), compiled);
-    toast(`Saved to SD card: ${path} ✓`);
+    // Step 1: ensure /CodeSnippets folder exists (mkdir is idempotent on GhostChip)
+    try {
+      await fmFetchPost('/fm/mkdir?path=' + encodeURIComponent(folder));
+    } catch (_) { /* already exists - ok */ }
+
+    // Step 2: upload file content as multipart FormData (same as Favourites / Vault)
+    const uploadUrl   = fmBase() + '/fm/upload?path=' + encodeURIComponent(folder);
+    const crossOrigin = new URL(uploadUrl).origin !== location.origin;
+    const blob = new Blob([compiled], { type: 'text/plain' });
+    const file = new File([blob], safeName, { type: 'text/plain' });
+    const fd   = new FormData();
+    fd.append('file', file, safeName);
+
+    const opts = crossOrigin
+      ? { method: 'POST', mode: 'no-cors', body: fd }
+      : { method: 'POST', headers: { 'Accept': '*/*' }, body: fd };
+
+    await fetch(uploadUrl, opts);
+    toast('Saved to SD: ' + fullPath + ' ✓');
   } catch (e) {
-    toast('Error saving to SD card: ' + e.message, 'err');
+    toast('Error saving to SD card: ' + (e.message || e), 'err');
   }
-}
-
-function loadCodeTyperSavedSnippets() {
-  try {
-    ctSavedSnippets = JSON.parse(localStorage.getItem('gc_codetyper_snippets') || '{}');
-  } catch {
-    ctSavedSnippets = {};
-  }
-  const sel = $('ctSavedSnippetsSelect');
-  if (!sel) return;
-  sel.innerHTML = '<option value="">-- Load Saved Snippet --</option>';
-  for (const name in ctSavedSnippets) {
-    const opt = document.createElement('option');
-    opt.value = name;
-    opt.textContent = name;
-    sel.appendChild(opt);
-  }
-}
-
-function ctSaveLocalSnippet() {
-  const raw = $('codeTyperInput')?.value?.trim();
-  if (!raw) { toast('Enter text to save', 'warn'); return; }
-  const name = prompt('Snippet Title / Name:', 'My Code Snippet ' + (Object.keys(ctSavedSnippets).length + 1));
-  if (!name) return;
-
-  ctSavedSnippets[name] = raw;
-  localStorage.setItem('gc_codetyper_snippets', JSON.stringify(ctSavedSnippets));
-  loadCodeTyperSavedSnippets();
-  if ($('ctSavedSnippetsSelect')) $('ctSavedSnippetsSelect').value = name;
-  toast(`Snippet "${name}" saved locally ✓`);
-}
-
-function ctLoadSavedSnippet() {
-  const sel = $('ctSavedSnippetsSelect');
-  if (!sel || !sel.value) return;
-  const name = sel.value;
-  if (ctSavedSnippets[name]) {
-    $('codeTyperInput').value = ctSavedSnippets[name];
-    updateCodeTyperCompiled();
-    toast(`Loaded snippet "${name}" ✓`);
-  }
-}
-
-function ctDeleteSavedSnippet() {
-  const sel = $('ctSavedSnippetsSelect');
-  if (!sel || !sel.value) { toast('Select a snippet to delete', 'warn'); return; }
-  const name = sel.value;
-  if (!confirm(`Delete saved snippet "${name}"?`)) return;
-
-  delete ctSavedSnippets[name];
-  localStorage.setItem('gc_codetyper_snippets', JSON.stringify(ctSavedSnippets));
-  loadCodeTyperSavedSnippets();
-  toast(`Deleted "${name}"`, 'warn');
 }
 
 function ctCopyCompiled() {
-  const compiled = $('codeTyperCompiled')?.value;
-  if (!compiled) { toast('Nothing to copy', 'warn'); return; }
-  navigator.clipboard.writeText(compiled).then(() => toast('DuckyScript copied to clipboard ✓'));
+  const compiled = $('codeTyperCompiled')?.value?.trim();
+  if (!compiled) { toast('Enter code or text first', 'warn'); return; }
+  navigator.clipboard.writeText(compiled).then(() => {
+    toast('DuckyScript copied to clipboard ✓');
+  }).catch(() => {
+    toast('Failed to copy to clipboard', 'err');
+  });
 }
 
 function ctClear() {
-  if ($('codeTyperInput')) $('codeTyperInput').value = '';
-  ctActiveHeader = 'none';
-  updateCodeTyperCompiled();
-  toast('Editor cleared');
+  const ta = $('codeTyperInput');
+  if (ta) {
+    ta.value = '';
+    updateCodeTyperCompiled();
+    ctSyncLineNums();
+    ta.focus();
+    toast('Editor cleared');
+  }
 }
+
+// ─── Code Typer OpenRouter AI Assistant ───
+function ctToggleAiBar() {
+  const bar = $('ctAiBar');
+  const btn = $('ctAiToggleBtn');
+  if (!bar) return;
+  const isHidden = bar.style.display === 'none' || !bar.style.display;
+  bar.style.display = isHidden ? 'flex' : 'none';
+  if (btn) btn.classList.toggle('active', isHidden);
+
+  if (isHidden) {
+    // Check if OpenRouter key exists
+    const key = OPENROUTER_KEY || localStorage.getItem('gc_openrouter_key') || '';
+    const keyNotice = $('ctAiKeyNotice');
+    if (keyNotice) keyNotice.style.display = key ? 'none' : 'block';
+
+    const input = $('ctAiPromptInput');
+    if (input) {
+      input.focus();
+      if (!input._boundKeydown) {
+        input._boundKeydown = true;
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+            e.preventDefault();
+            ctGenerateAI();
+          }
+        });
+      }
+    }
+  }
+}
+
+function ctAiSetPrompt(prefix) {
+  const bar = $('ctAiBar');
+  const btn = $('ctAiToggleBtn');
+  if (bar && bar.style.display === 'none') {
+    bar.style.display = 'flex';
+    if (btn) btn.classList.add('active');
+  }
+  const input = $('ctAiPromptInput');
+  if (input) {
+    input.value = prefix;
+    input.focus();
+    input.selectionStart = input.selectionEnd = input.value.length;
+  }
+}
+
+function ctSaveInlineKey() {
+  const input = $('ctAiInlineKeyInput');
+  const k = input?.value?.trim();
+  if (!k) { toast('Enter OpenRouter API key first', 'warn'); return; }
+  OPENROUTER_KEY = k;
+  localStorage.setItem('gc_openrouter_key', k);
+  if ($('openrouterApiKeyInput')) $('openrouterApiKeyInput').value = '';
+  const keyNotice = $('ctAiKeyNotice');
+  if (keyNotice) keyNotice.style.display = 'none';
+  toast('OpenRouter API Key saved ✓');
+}
+
+async function ctGenerateAI() {
+  const promptInput = $('ctAiPromptInput')?.value?.trim();
+  if (!promptInput) {
+    toast('Please enter a description or prompt for the AI', 'warn');
+    $('ctAiPromptInput')?.focus();
+    return;
+  }
+
+  const keyToUse = OPENROUTER_KEY || localStorage.getItem('gc_openrouter_key') || '';
+  if (!keyToUse || keyToUse.length < 5) {
+    const keyNotice = $('ctAiKeyNotice');
+    if (keyNotice) keyNotice.style.display = 'block';
+    toast('Please enter your OpenRouter API Key first', 'err');
+    $('ctAiInlineKeyInput')?.focus();
+    return;
+  }
+
+  const modelSelect = $('ctAiModelSelect');
+  const modelToUse = modelSelect ? modelSelect.value : 'google/gemini-2.0-flash-001';
+
+  const btn = $('ctAiGenBtn');
+  const oldBtnHtml = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span>Generating…</span>';
+  }
+
+  toast(`Generating content with ${modelToUse.split('/')[1] || 'AI'}…`, 'warn', 6000);
+
+  const endpoint = 'https://openrouter.ai/api/v1/chat/completions';
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer ' + keyToUse,
+    'HTTP-Referer': window.location.href,
+    'X-Title': 'GhostChip Code Typer'
+  };
+
+  const systemInstruction = `You are an expert typing assistant for GhostChip Code Typer.
+The user wants you to create ANY content (programming code, shell script, payload, configuration, documentation, professional/casual email, resignation letter, note, memo, poem, or raw text).
+
+STRICT RULES:
+1. Output ONLY the raw content itself.
+2. DO NOT include conversational text, preambles, explanations, or greeting intros (e.g. "Sure, here is the code:").
+3. DO NOT wrap the output in markdown code fences (no \`\`\` or \`\`\`language tags) - output pure plain text so it can be typed directly via USB HID keystroke simulation.
+4. Maintain exact spacing, indentation, and structure appropriate for the requested content.`;
+
+  try {
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        model: modelToUse,
+        messages: [
+          { role: 'system', content: systemInstruction },
+          { role: 'user', content: promptInput }
+        ],
+        temperature: 0.5,
+        max_tokens: 4000
+      })
+    });
+
+    if (!res.ok) {
+      let errMsg = res.statusText;
+      try {
+        const errJson = await res.json();
+        errMsg = errJson.error?.message || errMsg;
+      } catch (_) {}
+      throw new Error(errMsg);
+    }
+
+    const data = await res.json();
+    let content = data.choices?.[0]?.message?.content;
+    if (!content) throw new Error('No content returned from OpenRouter AI');
+
+    // Strip accidental markdown code blocks if the model still wrapped it
+    content = content.replace(/^```[a-zA-Z0-9_-]*\r?\n/, '').replace(/\r?\n```\s*$/, '');
+
+    // Set into editor
+    const ta = $('codeTyperInput');
+    if (ta) {
+      ta.value = content;
+      updateCodeTyperCompiled();
+      ctSyncLineNums();
+      ta.focus();
+    }
+
+    toast('✨ Content generated & loaded into Code Typer ✓');
+  } catch (e) {
+    toast('OpenRouter Error: ' + (e.message || e), 'err', 5000);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = oldBtnHtml;
+    }
+  }
+}
+
+
