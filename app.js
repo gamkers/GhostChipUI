@@ -3087,22 +3087,17 @@ function kbMacro(m) {
 let kbRecognition = null;
 let kbSpeechActive = false;
 let kbSpeechBuffer = '';
-let kbPriorSpeechText = '';
-let kbStreamedCharsCount = 0;
-let kbCurrentSessionFinal = '';
 
 function kbGetSpeechRecognition() {
   const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRec) return null;
   if (!kbRecognition) {
     kbRecognition = new SpeechRec();
-    kbRecognition.continuous = true;
+    kbRecognition.continuous = false; // Prevents Android/iOS Chromium audio buffer replay bug
     kbRecognition.interimResults = true;
+    kbRecognition.maxAlternatives = 1;
 
     kbRecognition.onstart = () => {
-      kbSpeechActive = true;
-      kbCurrentSessionFinal = '';
-      kbStreamedCharsCount = 0;
       const btn = $('kbMicBtn');
       const label = $('kbMicBtnLabel');
       const status = $('kbVoiceStatus');
@@ -3118,64 +3113,71 @@ function kbGetSpeechRecognition() {
       const mode = $('kbVoiceMode')?.value || 'stream';
       const autoEnter = $('kbVoiceAutoEnter')?.checked || false;
 
-      let sessionFinal = '';
       let interim = '';
+      let finalChunk = '';
 
       for (let i = 0; i < event.results.length; ++i) {
-        const item = event.results[i];
-        const text = item[0]?.transcript || '';
-        if (item.isFinal) {
-          sessionFinal += (sessionFinal ? ' ' : '') + text.trim();
+        const res = event.results[i];
+        if (res.isFinal) {
+          finalChunk += res[0].transcript;
         } else {
-          interim += (interim ? ' ' : '') + text.trim();
+          interim += res[0].transcript;
         }
       }
 
-      kbCurrentSessionFinal = sessionFinal;
+      finalChunk = finalChunk.trim();
+      interim = interim.trim();
 
-      if (mode === 'stream') {
-        // Delta stream: only send characters that have not been sent yet
-        if (sessionFinal.length > kbStreamedCharsCount) {
-          const newChunk = sessionFinal.slice(kbStreamedCharsCount).trim();
-          kbStreamedCharsCount = sessionFinal.length;
-          if (newChunk) {
-            kbProcessSpokenSentence(newChunk, autoEnter);
-          }
+      // When a speech segment is finalized
+      if (finalChunk && !event._handledFinal) {
+        event._handledFinal = true;
+
+        if (mode === 'stream') {
+          kbProcessSpokenSentence(finalChunk, autoEnter);
         }
-      } else {
-        // Buffer mode: declarative accumulation
-        kbSpeechBuffer = (kbPriorSpeechText ? kbPriorSpeechText + ' ' : '') + sessionFinal;
-        const bufferActions = $('kbVoiceBufferActions');
-        if (bufferActions) bufferActions.style.display = kbSpeechBuffer ? 'flex' : 'none';
+
+        // Add to buffer with single space separation
+        if (kbSpeechBuffer) {
+          kbSpeechBuffer += ' ' + finalChunk;
+        } else {
+          kbSpeechBuffer = finalChunk;
+        }
       }
 
-      // Update live preview UI
+      // Update UI live text
       const liveBox = $('kbVoiceLiveText');
       if (liveBox) {
-        const totalBase = (kbPriorSpeechText ? kbPriorSpeechText + ' ' : '') + sessionFinal;
-        liveBox.innerHTML = escHtml(totalBase || '') + (interim ? ` <span class="interim">${escHtml(interim)}</span>` : '');
+        const base = kbSpeechBuffer;
+        liveBox.innerHTML = escHtml(base) + (interim ? (base ? ' ' : '') + `<span class="interim">${escHtml(interim)}</span>` : '');
+      }
+
+      const bufferActions = $('kbVoiceBufferActions');
+      if (bufferActions) {
+        bufferActions.style.display = (mode === 'buffer' && kbSpeechBuffer) ? 'flex' : 'none';
       }
     };
 
     kbRecognition.onerror = (event) => {
       if (event.error === 'not-allowed') {
+        kbSpeechActive = false;
         toast('Microphone access blocked. Please allow mic permissions in browser settings.', 'err');
+        kbResetVoiceUI();
       } else if (event.error !== 'no-speech') {
-        toast('Voice dictation: ' + event.error, 'warn');
+        console.warn('Speech recognition warning:', event.error);
       }
     };
 
     kbRecognition.onend = () => {
       if (kbSpeechActive) {
-        // Carry over finalized text from this session before restarting
-        if (kbCurrentSessionFinal) {
-          kbPriorSpeechText = (kbPriorSpeechText ? kbPriorSpeechText + ' ' : '') + kbCurrentSessionFinal;
-        }
-        kbCurrentSessionFinal = '';
-        kbStreamedCharsCount = 0;
-        try {
-          kbRecognition.start();
-        } catch (_) {}
+        // Auto-restart next clean utterance after brief interval
+        setTimeout(() => {
+          if (kbSpeechActive && kbRecognition) {
+            try {
+              kbRecognition.lang = $('kbVoiceLang')?.value || 'en-US';
+              kbRecognition.start();
+            } catch (_) {}
+          }
+        }, 80);
       } else {
         kbResetVoiceUI();
       }
@@ -3203,8 +3205,6 @@ function kbStartSpeech() {
   if (!rec) return;
   rec.lang = $('kbVoiceLang')?.value || 'en-US';
   kbSpeechActive = true;
-  kbCurrentSessionFinal = '';
-  kbStreamedCharsCount = 0;
   try {
     rec.start();
   } catch (e) {
@@ -3214,11 +3214,6 @@ function kbStartSpeech() {
 
 function kbStopSpeech() {
   kbSpeechActive = false;
-  if (kbCurrentSessionFinal) {
-    kbPriorSpeechText = (kbPriorSpeechText ? kbPriorSpeechText + ' ' : '') + kbCurrentSessionFinal;
-  }
-  kbCurrentSessionFinal = '';
-  kbStreamedCharsCount = 0;
   if (kbRecognition) {
     try { kbRecognition.stop(); } catch (_) {}
   }
@@ -3306,9 +3301,6 @@ async function kbSendBufferedSpeech(withEnter = false) {
 
 function kbClearSpeechBuffer() {
   kbSpeechBuffer = '';
-  kbPriorSpeechText = '';
-  kbCurrentSessionFinal = '';
-  kbStreamedCharsCount = 0;
   const liveBox = $('kbVoiceLiveText');
   if (liveBox) liveBox.innerHTML = '';
   const bufferActions = $('kbVoiceBufferActions');
