@@ -773,12 +773,33 @@
             <a href="https://gamkers.github.io/GhostChipUI/" target="_blank" rel="noopener noreferrer" style="color: var(--g); text-decoration: underline; font-weight: bold;">Hosted PWA App Link</a>
           </div>
 
+          <div class="form-group" style="margin-bottom: 20px;">
+            <label for="fwVersion">Select Firmware Version</label>
+            <select id="fwVersion" style="width: 100%; max-width: 300px;" onchange="updateFwLabels()">
+              <option value="standard" selected>Standard Release (Stable)</option>
+              <option value="beta">Beta Release (Experimental)</option>
+            </select>
+          </div>
+
+          <script>
+            function updateFwLabels() {
+              const isBeta = document.getElementById('fwVersion').value === 'beta';
+              const suffix = isBeta ? '_beta' : '';
+              const labels = document.querySelectorAll('.fw-file-label');
+              if (labels.length >= 3) {
+                labels[0].textContent = `GhostChip.ino.bootloader${suffix}.bin`;
+                labels[1].textContent = `GhostChip.ino.partitions${suffix}.bin`;
+                labels[2].textContent = `GhostChip.ino-4${suffix}.bin`;
+              }
+            }
+          </script>
+
           <div class="firmware-list">
             <!-- Bootloader -->
             <div class="fw-item">
               <div class="fw-info">
                 <div class="fw-name">1. GhostChip Bootloader Bin</div>
-                <div class="fw-meta">Offset Address: <span>0x0</span> | File Name: GhostChip.ino.bootloader.bin</div>
+                <div class="fw-meta">Offset Address: <span>0x0</span> | File Name: <span class="fw-file-label">GhostChip.ino.bootloader.bin</span></div>
               </div>
               <div id="statusBootloader" class="fw-status-badge">Pending</div>
             </div>
@@ -786,7 +807,7 @@
             <div class="fw-item">
               <div class="fw-info">
                 <div class="fw-name">2. GhostChip Partition Table</div>
-                <div class="fw-meta">Offset Address: <span>0x8000</span> | File Name: GhostChip.ino.partitions.bin</div>
+                <div class="fw-meta">Offset Address: <span>0x8000</span> | File Name: <span class="fw-file-label">GhostChip.ino.partitions.bin</span></div>
               </div>
               <div id="statusPartitions" class="fw-status-badge">Pending</div>
             </div>
@@ -794,7 +815,7 @@
             <div class="fw-item">
               <div class="fw-info">
                 <div class="fw-name">3. GhostChip Main Application</div>
-                <div class="fw-meta">Offset Address: <span>0x10000</span> | File Name: GhostChip.ino-4.bin</div>
+                <div class="fw-meta">Offset Address: <span>0x10000</span> | File Name: <span class="fw-file-label">GhostChip.ino-4.bin</span></div>
               </div>
               <div id="statusMain" class="fw-status-badge">Pending</div>
             </div>
@@ -1174,10 +1195,13 @@
 
     // ─── AUTO-FLASH PRESETS DOWNLOADS ───
     async function fetchPresetFiles() {
+      const isBeta = document.getElementById('fwVersion').value === 'beta';
+      const suffix = isBeta ? '_beta' : '';
+      
       const endpoints = {
-        bootloader: 'https://raw.githubusercontent.com/gamkers/GhostChipUI/main/GhostChip.ino.bootloader.bin',
-        partitions: 'https://raw.githubusercontent.com/gamkers/GhostChipUI/main/GhostChip.ino.partitions.bin',
-        main: 'https://raw.githubusercontent.com/gamkers/GhostChipUI/main/GhostChip.ino-4.bin'
+        bootloader: `https://raw.githubusercontent.com/gamkers/GhostChipUI/main/GhostChip.ino.bootloader${suffix}.bin`,
+        partitions: `https://raw.githubusercontent.com/gamkers/GhostChipUI/main/GhostChip.ino.partitions${suffix}.bin`,
+        main: `https://raw.githubusercontent.com/gamkers/GhostChipUI/main/GhostChip.ino-4${suffix}.bin`
       };
 
       fetchFwBtn.disabled = true;
