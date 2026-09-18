@@ -811,10 +811,18 @@
               </div>
               <div id="statusPartitions" class="fw-status-badge">Pending</div>
             </div>
+            <!-- Boot App -->
+            <div class="fw-item">
+              <div class="fw-info">
+                <div class="fw-name">3. OTA Boot App</div>
+                <div class="fw-meta">Offset Address: <span>0xe000</span> | File Name: <span>boot_app0.bin</span></div>
+              </div>
+              <div id="statusBootapp" class="fw-status-badge">Pending</div>
+            </div>
             <!-- Main App -->
             <div class="fw-item">
               <div class="fw-info">
-                <div class="fw-name">3. GhostChip Main Application</div>
+                <div class="fw-name">4. GhostChip Main Application</div>
                 <div class="fw-meta">Offset Address: <span>0x10000</span> | File Name: <span class="fw-file-label">GhostChip.ino-4.bin</span></div>
               </div>
               <div id="statusMain" class="fw-status-badge">Pending</div>
@@ -889,7 +897,21 @@
 
             <!-- File 3 Upload -->
             <div class="form-group">
-              <label>3. Main Application Binary (Offset: 0x10000)</label>
+              <label>3. OTA Boot App Binary (Offset: 0xe000)</label>
+              <div class="upload-zone">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                <p>Drag & Drop or <strong>Browse</strong> to select boot_app0.bin</p>
+                <input type="file" id="fileBootapp" onchange="handleManualFileUpload(this, 'bootapp', 0xe000)">
+              </div>
+              <div id="detailsBootapp" class="uploaded-file-details">
+                <span class="file-text">file.bin (0 bytes)</span>
+                <button class="remove-file-btn" onclick="removeManualFile('bootapp')">×</button>
+              </div>
+            </div>
+
+            <!-- File 4 Upload -->
+            <div class="form-group">
+              <label>4. Main Application Binary (Offset: 0x10000)</label>
               <div class="upload-zone">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                 <p>Drag & Drop or <strong>Browse</strong> to select application.bin</p>
@@ -1009,6 +1031,7 @@
     const fwFiles = {
       bootloader: { data: null, name: 'GhostChip.ino.bootloader.bin', address: 0x0, required: true },
       partitions: { data: null, name: 'GhostChip.ino.partitions.bin', address: 0x8000, required: true },
+      bootapp: { data: null, name: 'boot_app0.bin', address: 0xe000, required: true },
       main: { data: null, name: 'GhostChip.ino-4.bin', address: 0x10000, required: true }
     };
 
@@ -1201,6 +1224,7 @@
       const endpoints = {
         bootloader: `https://raw.githubusercontent.com/gamkers/GhostChipUI/main/GhostChip.ino.bootloader${suffix}.bin`,
         partitions: `https://raw.githubusercontent.com/gamkers/GhostChipUI/main/GhostChip.ino.partitions${suffix}.bin`,
+        bootapp: `https://raw.githubusercontent.com/gamkers/GhostChipUI/main/boot_app0.bin`,
         main: `https://raw.githubusercontent.com/gamkers/GhostChipUI/main/GhostChip.ino-4${suffix}.bin`
       };
 
@@ -1332,7 +1356,10 @@
 
     // Verify if all required files are loaded and device is connected
     function checkFlashValidity() {
-      const ready = connected && fwFiles.bootloader.data && fwFiles.partitions.data && fwFiles.main.data;
+      let ready = connected && fwFiles.bootloader.data && fwFiles.partitions.data && fwFiles.main.data;
+      if (activeTab !== 'thirdparty') {
+        ready = ready && !!fwFiles.bootapp.data;
+      }
       flashBtn.disabled = !ready;
     }
 
@@ -1357,6 +1384,9 @@
           { data: fwFiles.partitions.data, address: fwFiles.partitions.address },
           { data: fwFiles.main.data, address: fwFiles.main.address }
         ];
+        if (fwFiles.bootapp && fwFiles.bootapp.data) {
+          fileArray.push({ data: fwFiles.bootapp.data, address: fwFiles.bootapp.address });
+        }
 
         const eraseAll = eraseAllCheckbox.checked;
         if (eraseAll) {
@@ -1382,7 +1412,7 @@
             barPart.style.width = `${segPct}%`;
             pctPart.textContent = `${segPct}%`;
 
-            const names = ['Bootloader Segment', 'Partition Table', 'Main Application Firmware'];
+            const names = ['Bootloader Segment', 'Partition Table', 'Main Application Firmware', 'OTA Boot App'];
             partNameLabel.textContent = `Writing ${names[fileIndex]}...`;
 
             // Calculate overall progress across three files weighted by size
